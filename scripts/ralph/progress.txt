@@ -197,3 +197,27 @@ Session: Ralph autonomous loop
   - Mobile menu slide-out: fixed positioning + transform animation + backdrop
   - User dropdown should close when clicking anywhere else on page for better UX
 ---
+
+## 2026-02-19 - US-011: Health Assessment - Questionnaire UI
+Session: Ralph autonomous loop
+- Created CurrencyInput component with $ prefix and auto-formatting (commas, 2 decimal places)
+- Created 6-step assessment questionnaire at /assessment
+- Step-by-step form: cash, revenue, expenses, receivables, employees, worry (textarea)
+- Progress bar shows step number and percentage, animates smoothly
+- Next/Back navigation with validation (required fields except textarea)
+- Keyboard support: Enter advances, Cmd/Ctrl+Enter submits textarea
+- Slide animations (forward/backward) between steps
+- On submit: saves to health_assessments table with placeholder user ID (TODO: replace with real auth once credentials available)
+- Mobile responsive: tested at 375px and 1280px
+- 182 tests passing total (31 new: 12 CurrencyInput + 19 assessment)
+- Browser verified via dev-browser skill: all acceptance criteria met
+- Files: src/components/ui/CurrencyInput.tsx, src/app/assessment/page.tsx, src/components/ui/__tests__/CurrencyInput.test.tsx, src/app/assessment/__tests__/page.test.tsx, src/components/ui/index.ts
+- **Learnings for future iterations:**
+  - CurrencyInput: formatCurrency adds commas, unformatCurrency removes them - parent receives raw numeric string
+  - Slide animations: use direction state + CSS animations with animation-delay for smooth transitions
+  - Progress calculation: ((currentStep + 1) / totalSteps) * 100
+  - Textarea needs special keyboard handling: allow Enter for new lines, Cmd/Ctrl+Enter to submit
+  - Toast showToast signature: (type, message) - two parameters, not object
+  - InsForge auth API: placeholder user ID until credentials available, will replace with real session/user extraction
+  - Dev browser testing workflow: start server on 3002, run desktop + mobile tests, take screenshots, verify visually
+---

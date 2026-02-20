@@ -211,7 +211,7 @@
         "Verify in browser using dev-browser skill or playwright skill"
       ],
       "priority": 11,
-      "passes": false,
+      "passes": true,
       "notes": "Phase 3 - Use frontend-design skill. This is the first-action experience. Must feel warm and conversational, not like a form."
     },
     {
