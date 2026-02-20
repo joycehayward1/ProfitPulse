@@ -9,6 +9,7 @@ import { TrafficLightDot } from "@/components/ui/TrafficLightDot";
 import type { HealthStatus } from "@/components/ui/TrafficLightDot";
 import { calculateHealthScore, getHealthStatus } from "@/lib/healthScore";
 import type { HealthAssessment } from "@/lib/database.types";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 
 function getTimeOfDay(): string {
   const hour = new Date().getHours();
@@ -94,26 +95,30 @@ function MetricCard({ label, value, statusText, status, delay }: MetricCardProps
 }
 
 export default function DashboardPage() {
+  const { user, loading: authLoading } = useRequireAuth();
   const [loading, setLoading] = useState(true);
   const [assessment, setAssessment] = useState<HealthAssessment | null>(null);
-  const [userName] = useState("Jessica"); // TODO: Replace with real user name from auth
 
   useEffect(() => {
     async function fetchLatestAssessment() {
-      try {
-        // TODO: Replace with real InsForge query when credentials are available
-        // const { getInsForgeClient } = await import("@/lib/insforge");
-        // const client = getInsForgeClient();
-        // const { data, error } = await client.database
-        //   .from("health_assessments")
-        //   .select("*")
-        //   .eq("user_id", currentUserId)
-        //   .order("created_at", { ascending: false })
-        //   .limit(1)
-        //   .single();
+      if (!user) return;
 
-        // Placeholder: simulate no assessment for empty state
-        setAssessment(null);
+      try {
+        const { getInsForgeClient } = await import("@/lib/insforge");
+        const client = getInsForgeClient();
+        const { data, error } = await client.database
+          .from("health_assessments")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single();
+
+        if (error || !data) {
+          setAssessment(null);
+        } else {
+          setAssessment(data);
+        }
         setLoading(false);
       } catch (error) {
         console.error("Error fetching assessment:", error);
@@ -123,10 +128,12 @@ export default function DashboardPage() {
     }
 
     fetchLatestAssessment();
-  }, []);
+  }, [user]);
 
   const timeOfDay = getTimeOfDay();
   const formattedDate = getFormattedDate();
+  // Use actual user's name from profile, not business name
+  const userName = user?.name?.split(' ')[0] || user?.email?.split('@')[0] || "there";
 
   // Calculate health score if assessment exists
   const healthScore = assessment

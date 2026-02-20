@@ -4,6 +4,7 @@ import { useState, useEffect, ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -24,16 +25,19 @@ const navItems: NavItem[] = [
 export function AppLayout({ children }: AppLayoutProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const { user, signOut } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
-  // Mock user data - will be replaced with real auth
-  const user = {
-    name: "Jessica Morgan",
-    email: "jessica@example.com",
-    initials: "JM",
-    avatar: "/avatar-jessica.jpg",
-  };
+  // Get user initials for placeholder avatar
+  const userInitials = user?.name
+    ? user.name
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2)
+    : user?.email?.[0]?.toUpperCase() || "U";
 
   // Close mobile menu on route change
   useEffect(() => {
@@ -54,8 +58,8 @@ export function AppLayout({ children }: AppLayoutProps) {
   }, [userMenuOpen]);
 
   async function handleLogout() {
-    // Will integrate with InsForge auth
-    router.push("/login");
+    await signOut();
+    // signOut already redirects to /login
   }
 
   return (
@@ -112,13 +116,21 @@ export function AppLayout({ children }: AppLayoutProps) {
                   aria-label="User menu"
                   aria-expanded={userMenuOpen}
                 >
-                  <Image
-                    src={user.avatar}
-                    alt={user.name}
-                    width={36}
-                    height={36}
-                    className="w-9 h-9 rounded-full object-cover shadow-md group-hover:shadow-lg transition-shadow"
-                  />
+                  {user?.profile?.avatar_url ? (
+                    <Image
+                      src={user.profile.avatar_url}
+                      alt={user.name || "User"}
+                      width={36}
+                      height={36}
+                      className="w-9 h-9 rounded-full object-cover shadow-md group-hover:shadow-lg transition-shadow"
+                    />
+                  ) : (
+                    <div className="w-9 h-9 rounded-full bg-orange/10 flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow">
+                      <span className="text-sm font-semibold text-orange">
+                        {userInitials}
+                      </span>
+                    </div>
+                  )}
                   <svg
                     width="16"
                     height="16"
@@ -146,9 +158,9 @@ export function AppLayout({ children }: AppLayoutProps) {
                     {/* User Info */}
                     <div className="px-4 py-3 border-b border-[#F0EDE8] bg-background/30">
                       <p className="text-body font-medium text-text-primary truncate">
-                        {user.name}
+                        {user?.name || "User"}
                       </p>
-                      <p className="text-small text-text-muted truncate">{user.email}</p>
+                      <p className="text-small text-text-muted truncate">{user?.email}</p>
                     </div>
 
                     {/* Menu Items */}

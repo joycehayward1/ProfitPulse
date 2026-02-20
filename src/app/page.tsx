@@ -26,7 +26,7 @@ const benefits = [
     ),
     title: "Your numbers, translated.",
     description:
-      "AI reads your financials and tells you what they actually mean\u2014in plain English. Like having a CFO on speed dial, without the $200K salary.",
+      "AI reads your financials and tells you what they actually mean. Like having a CFO on speed dial, without the $200K salary.",
   },
   {
     icon: (

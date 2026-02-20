@@ -96,7 +96,7 @@ export default function SignUpPage() {
     try {
       const { getInsForgeClient } = await import("@/lib/insforge");
       const client = getInsForgeClient();
-      const { error } = await client.auth.signUp({
+      const { data, error } = await client.auth.signUp({
         email,
         password,
         name: businessName,
@@ -108,9 +108,14 @@ export default function SignUpPage() {
         return;
       }
 
-      // Show email verification message before redirecting
-      setVerificationEmail(email);
-      setShowVerification(true);
+      // Check if email verification is required
+      if (data?.requireEmailVerification) {
+        // Redirect to verification page
+        router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+      } else {
+        // User is signed in, go to dashboard
+        router.push("/dashboard");
+      }
     } catch {
       setErrors({
         general: "Something went wrong. Please try again.",

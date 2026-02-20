@@ -8,6 +8,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useToast } from "@/components/ui/Toast";
 import { generateScenarioExplanation } from "@/lib/ai-insights";
 import { ArrowLeft, TrendingUp } from "lucide-react";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 
 interface BreakEvenResult {
   breakEvenUnits: number;
@@ -19,6 +20,7 @@ interface BreakEvenResult {
 export default function BreakEvenPage() {
   const router = useRouter();
   const { showToast } = useToast();
+  const { user } = useRequireAuth();
 
   // Form inputs
   const [fixedExpenses, setFixedExpenses] = useState("");
@@ -33,17 +35,16 @@ export default function BreakEvenPage() {
 
   useEffect(() => {
     async function loadFinancialData() {
+      if (!user) return;
+
       try {
         const { getInsForgeClient } = await import("@/lib/insforge");
         const client = getInsForgeClient();
 
-        // TODO: Replace with actual auth
-        const userId = "placeholder-user-id";
-
         const { data, error } = await client.database
           .from('financial_data')
           .select('*')
-          .eq('user_id', userId)
+          .eq('user_id', user.id)
           .order('created_at', { ascending: false })
           .limit(1)
           .single();
@@ -59,7 +60,7 @@ export default function BreakEvenPage() {
     }
 
     loadFinancialData();
-  }, []);
+  }, [user]);
 
   const handleCalculate = async () => {
     const fixed = parseFloat(fixedExpenses);
@@ -127,20 +128,17 @@ export default function BreakEvenPage() {
   };
 
   const handleSave = async () => {
-    if (!result) return;
+    if (!result || !user) return;
 
     setSaving(true);
     try {
       const { getInsForgeClient } = await import("@/lib/insforge");
       const client = getInsForgeClient();
 
-      // TODO: Replace with actual auth
-      const userId = "placeholder-user-id";
-
       const { error } = await client.database
         .from('scenarios')
         .insert([{
-          user_id: userId,
+          user_id: user.id,
           scenario_type: 'break-even',
           inputs: {
             fixedExpenses: parseFloat(fixedExpenses),
@@ -219,6 +217,7 @@ export default function BreakEvenPage() {
                     </span>
                     <input
                       type="number"
+                      name="fixedExpenses"
                       value={fixedExpenses}
                       onChange={(e) => setFixedExpenses(e.target.value)}
                       className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg font-body text-text-primary focus:outline-none focus:ring-2 focus:ring-orange focus:border-transparent transition-all"
@@ -241,6 +240,7 @@ export default function BreakEvenPage() {
                     </span>
                     <input
                       type="number"
+                      name="pricePerUnit"
                       value={pricePerUnit}
                       onChange={(e) => setPricePerUnit(e.target.value)}
                       className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg font-body text-text-primary focus:outline-none focus:ring-2 focus:ring-orange focus:border-transparent transition-all"
@@ -263,6 +263,7 @@ export default function BreakEvenPage() {
                     </span>
                     <input
                       type="number"
+                      name="variableCost"
                       value={variableCost}
                       onChange={(e) => setVariableCost(e.target.value)}
                       className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg font-body text-text-primary focus:outline-none focus:ring-2 focus:ring-orange focus:border-transparent transition-all"
@@ -282,6 +283,7 @@ export default function BreakEvenPage() {
                   <div className="relative">
                     <input
                       type="number"
+                      name="currentSales"
                       value={currentSales}
                       onChange={(e) => setCurrentSales(e.target.value)}
                       className="w-full px-4 py-3 border border-gray-200 rounded-lg font-body text-text-primary focus:outline-none focus:ring-2 focus:ring-orange focus:border-transparent transition-all"

@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Papa, { ParseResult } from "papaparse";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button, Card, CurrencyInput } from "@/components/ui";
 import { useToast } from "@/components/ui/Toast";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
+import { getInsForgeClient } from "@/lib/insforge";
 
 type Tab = "manual" | "upload";
 
@@ -49,6 +51,7 @@ interface ColumnMapping {
 type ColumnMappingKey = keyof ColumnMapping;
 
 export default function DataPage() {
+  const { user } = useRequireAuth();
   const [activeTab, setActiveTab] = useState<Tab>("manual");
   const [showExpenseBreakdown, setShowExpenseBreakdown] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -57,7 +60,7 @@ export default function DataPage() {
 
   // CSV Upload States
   const [isDragging, setIsDragging] = useState(false);
-  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [csvFiles, setCsvFiles] = useState<File[]>([]);
   const [csvData, setCsvData] = useState<CSVRow[]>([]);
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
   const [columnMapping, setColumnMapping] = useState<ColumnMapping>({
@@ -84,29 +87,50 @@ export default function DataPage() {
     other: "",
   });
 
-  // Mock history data - will be replaced with real data from InsForge
-  const [historyEntries] = useState<HistoryEntry[]>([
-    {
-      id: "1",
-      period: "2026-01",
-      cash: 24500,
-      revenue: 18200,
-      expenses: 12400,
-      receivables: 5800,
-      createdAt: "2026-01-31T10:30:00Z",
-      dataSource: "manual",
-    },
-    {
-      id: "2",
-      period: "2025-12",
-      cash: 22100,
-      revenue: 16500,
-      expenses: 11200,
-      receivables: 4200,
-      createdAt: "2025-12-31T14:15:00Z",
-      dataSource: "manual",
-    },
-  ]);
+  const [historyEntries, setHistoryEntries] = useState<HistoryEntry[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(true);
+
+  // Load financial data history
+  useEffect(() => {
+    async function loadHistory() {
+      if (!user) return;
+
+      try {
+        const client = getInsForgeClient();
+        const { data, error } = await client.database
+          .from("financial_data")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(20);
+
+        if (error) {
+          console.error("Error loading financial history:", error);
+          return;
+        }
+
+        if (data) {
+          const entries: HistoryEntry[] = data.map((row: any) => ({
+            id: row.id,
+            period: row.period_date || getCurrentPeriod(),
+            cash: row.cash_balance || 0,
+            revenue: row.revenue || 0,
+            expenses: row.expenses || 0,
+            receivables: row.receivables || 0,
+            createdAt: row.created_at,
+            dataSource: row.data_source || "manual",
+          }));
+          setHistoryEntries(entries);
+        }
+      } catch (error) {
+        console.error("Error loading history:", error);
+      } finally {
+        setLoadingHistory(false);
+      }
+    }
+
+    loadHistory();
+  }, [user]);
 
   function getCurrentPeriod() {
     const now = new Date();
@@ -145,13 +169,35 @@ export default function DataPage() {
     setIsSubmitting(true);
 
     try {
-      // TODO: Save to InsForge financial_data table
-      // const insforge = await import("@/lib/insforge");
-      // const client = insforge.getInsForgeClient();
-      // await client.database.from("financial_data").insert({...});
+      if (!user) {
+        showToast("error", "You must be logged in to save data");
+        return;
+      }
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 800));
+      const client = getInsForgeClient();
+
+      // Parse currency values
+      const cashValue = parseFloat(formData.cash.replace(/,/g, ""));
+      const revenueValue = parseFloat(formData.revenue.replace(/,/g, ""));
+      const expensesValue = parseFloat(formData.expenses.replace(/,/g, ""));
+      const receivablesValue = parseFloat(formData.receivables.replace(/,/g, ""));
+
+      // Save to InsForge financial_data table
+      const { error } = await client.database.from("financial_data").insert({
+        user_id: user.id,
+        period_date: formData.period,
+        cash_balance: cashValue,
+        revenue: revenueValue,
+        expenses: expensesValue,
+        receivables: receivablesValue,
+        data_source: "manual",
+      });
+
+      if (error) {
+        console.error("Error saving financial data:", error);
+        showToast("error", "Failed to save data. Please try again.");
+        return;
+      }
 
       showToast("success", "Financial data saved successfully");
 
@@ -171,6 +217,30 @@ export default function DataPage() {
         other: "",
       });
       setShowExpenseBreakdown(false);
+
+      // Reload history
+      setLoadingHistory(true);
+      const { data: historyData } = await client.database
+        .from("financial_data")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(20);
+
+      if (historyData) {
+        const entries: HistoryEntry[] = historyData.map((row: any) => ({
+          id: row.id,
+          period: row.period_date || getCurrentPeriod(),
+          cash: row.cash_balance || 0,
+          revenue: row.revenue || 0,
+          expenses: row.expenses || 0,
+          receivables: row.receivables || 0,
+          createdAt: row.created_at,
+          dataSource: row.data_source || "manual",
+        }));
+        setHistoryEntries(entries);
+      }
+      setLoadingHistory(false);
     } catch (error) {
       showToast("error", "Failed to save data. Please try again.");
       console.error(error);
@@ -197,63 +267,78 @@ export default function DataPage() {
     e.preventDefault();
     setIsDragging(false);
 
-    const file = e.dataTransfer.files[0];
-    if (file) {
-      processFile(file);
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) {
+      processFiles(files);
     }
   }
 
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (file) {
-      processFile(file);
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) {
+      processFiles(files);
     }
   }
 
-  function processFile(file: File) {
-    // Validate file type
-    if (!file.name.endsWith(".csv")) {
-      showToast("error", "Please upload a CSV file");
+  async function processFiles(files: File[]) {
+    // Validate file types
+    const invalidFiles = files.filter(f => !f.name.endsWith(".csv"));
+    if (invalidFiles.length > 0) {
+      showToast("error", `Please upload CSV files only. Invalid: ${invalidFiles.map(f => f.name).join(", ")}`);
       return;
     }
 
-    // Validate file size (10MB limit)
+    // Validate file sizes (10MB limit)
     const maxSize = 10 * 1024 * 1024; // 10MB in bytes
-    if (file.size > maxSize) {
-      showToast("error", "File size exceeds 10MB limit");
+    const oversizedFiles = files.filter(f => f.size > maxSize);
+    if (oversizedFiles.length > 0) {
+      showToast("error", `File size exceeds 10MB limit: ${oversizedFiles.map(f => f.name).join(", ")}`);
       return;
     }
 
-    setCsvFile(file);
+    setCsvFiles(prev => [...prev, ...files]);
 
-    // Parse CSV
-    Papa.parse<CSVRow>(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: (results: ParseResult<CSVRow>) => {
-        if (results.errors.length > 0) {
-          showToast("error", "Error parsing CSV file");
-          console.error("CSV parse errors:", results.errors);
-          return;
-        }
+    // Aggregate data from all files
+    let allData: CSVRow[] = [];
+    let allHeaders: Set<string> = new Set();
 
-        const data = results.data;
-        const headers = results.meta.fields || [];
+    // Process each file sequentially
+    for (const file of files) {
+      await new Promise<void>((resolve) => {
+        Papa.parse<CSVRow>(file, {
+          header: true,
+          skipEmptyLines: true,
+          complete: (results: ParseResult<CSVRow>) => {
+            if (results.errors.length > 0) {
+              console.warn(`Parsing errors in ${file.name}:`, results.errors);
+            }
 
-        setCsvData(data);
-        setCsvHeaders(headers);
+            // Aggregate data
+            allData = [...allData, ...results.data];
 
-        // Auto-detect column mapping
-        const autoMapping = autoDetectColumns(headers);
-        setColumnMapping(autoMapping);
+            // Aggregate headers
+            const fileHeaders = results.meta.fields || [];
+            fileHeaders.forEach(h => allHeaders.add(h));
 
-        showToast("success", "CSV file loaded successfully");
-      },
-      error: (error: Error) => {
-        showToast("error", "Failed to parse CSV file");
-        console.error("CSV parse error:", error);
-      },
-    });
+            resolve();
+          },
+          error: (error: Error) => {
+            console.error(`Failed to parse ${file.name}:`, error);
+            resolve();
+          },
+        });
+      });
+    }
+
+    const headersArray = Array.from(allHeaders);
+    setCsvData(allData);
+    setCsvHeaders(headersArray);
+
+    // Auto-detect column mapping
+    const autoMapping = autoDetectColumns(headersArray);
+    setColumnMapping(autoMapping);
+
+    showToast("success", `${files.length} file(s) loaded successfully - ${allData.length} total rows`);
   }
 
   function autoDetectColumns(headers: string[]): ColumnMapping {
@@ -314,7 +399,7 @@ export default function DataPage() {
   }
 
   function resetUpload() {
-    setCsvFile(null);
+    setCsvFiles([]);
     setCsvData([]);
     setCsvHeaders([]);
     setColumnMapping({
@@ -335,28 +420,84 @@ export default function DataPage() {
       return;
     }
 
+    if (!user) {
+      showToast("error", "You must be logged in to import data");
+      return;
+    }
+
     setIsImporting(true);
 
     try {
-      // TODO: Save to InsForge financial_data table
-      // const insforge = await import("@/lib/insforge");
-      // const client = insforge.getInsForgeClient();
-      // for (const row of csvData) {
-      //   await client.database.from("financial_data").insert({
-      //     user_id: "...",
-      //     period_date: row[columnMapping.date],
-      //     revenue: parseFloat(row[columnMapping.revenue]),
-      //     expenses: parseFloat(row[columnMapping.expenses]),
-      //     cash_balance: parseFloat(row[columnMapping.cashBalance]),
-      //     data_source: "spreadsheet",
-      //   });
-      // }
+      const client = getInsForgeClient();
+      let importedCount = 0;
+      let skippedCount = 0;
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1200));
+      // Import each row
+      for (const row of csvData) {
+        try {
+          const revenue = parseFloat(row[columnMapping.revenue]?.replace(/[^0-9.-]/g, "") || "0");
+          const expenses = parseFloat(row[columnMapping.expenses]?.replace(/[^0-9.-]/g, "") || "0");
+          const cashBalance = parseFloat(row[columnMapping.cashBalance]?.replace(/[^0-9.-]/g, "") || "0");
 
-      showToast("success", `Successfully imported ${csvData.length} rows`);
-      resetUpload();
+          // Skip rows with invalid data
+          if (isNaN(revenue) && isNaN(expenses) && isNaN(cashBalance)) {
+            skippedCount++;
+            continue;
+          }
+
+          const { error } = await client.database.from("financial_data").insert({
+            user_id: user.id,
+            period_date: columnMapping.date ? row[columnMapping.date] : getCurrentPeriod(),
+            revenue: isNaN(revenue) ? 0 : revenue,
+            expenses: isNaN(expenses) ? 0 : expenses,
+            cash_balance: isNaN(cashBalance) ? 0 : cashBalance,
+            receivables: 0, // Not mapped in CSV import
+            data_source: "spreadsheet",
+          });
+
+          if (error) {
+            console.error("Error importing row:", error);
+            skippedCount++;
+          } else {
+            importedCount++;
+          }
+        } catch (rowError) {
+          console.error("Error processing row:", rowError);
+          skippedCount++;
+        }
+      }
+
+      if (importedCount > 0) {
+        showToast("success", `Successfully imported ${importedCount} rows${skippedCount > 0 ? ` (${skippedCount} skipped)` : ""}`);
+
+        // Reload history
+        setLoadingHistory(true);
+        const { data: historyData } = await client.database
+          .from("financial_data")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(20);
+
+        if (historyData) {
+          const entries: HistoryEntry[] = historyData.map((row: any) => ({
+            id: row.id,
+            period: row.period_date || getCurrentPeriod(),
+            cash: row.cash_balance || 0,
+            revenue: row.revenue || 0,
+            expenses: row.expenses || 0,
+            receivables: row.receivables || 0,
+            createdAt: row.created_at,
+            dataSource: row.data_source || "manual",
+          }));
+          setHistoryEntries(entries);
+        }
+        setLoadingHistory(false);
+
+        resetUpload();
+      } else {
+        showToast("error", "No valid data found to import");
+      }
     } catch (error) {
       showToast("error", "Failed to import data. Please try again.");
       console.error(error);
@@ -606,7 +747,14 @@ export default function DataPage() {
                   Previous Entries
                 </h2>
 
-                {historyEntries.length === 0 ? (
+                {loadingHistory ? (
+                  <Card className="text-center py-12">
+                    <div className="text-text-muted mb-2">
+                      <div className="w-12 h-12 mx-auto mb-4 border-4 border-orange/20 border-t-orange rounded-full animate-spin" />
+                      <p className="font-body text-sm">Loading your financial history...</p>
+                    </div>
+                  </Card>
+                ) : historyEntries.length === 0 ? (
                   <Card className="text-center py-12">
                     <div className="text-text-muted mb-2">
                       <svg
@@ -699,7 +847,7 @@ export default function DataPage() {
               className="animate-fade-in"
               style={{ animationDelay: "0.3s" }}
             >
-              {!csvFile ? (
+              {csvFiles.length === 0 ? (
                 /* Drag and Drop Zone */
                 <Card className="mb-8">
                   <div
@@ -726,15 +874,16 @@ export default function DataPage() {
                       />
                     </svg>
                     <h3 className="text-xl font-display text-text-primary mb-3">
-                      Drop your financial spreadsheet here
+                      Drop your financial spreadsheets here
                     </h3>
                     <p className="text-sm font-body text-text-secondary mb-6">
-                      Or click the button below to browse your files
+                      Upload multiple files at once - we'll combine them automatically
                     </p>
                     <input
                       ref={fileInputRef}
                       type="file"
                       accept=".csv"
+                      multiple
                       onChange={handleFileSelect}
                       className="hidden"
                     />
@@ -742,7 +891,7 @@ export default function DataPage() {
                       variant="primary"
                       onClick={() => fileInputRef.current?.click()}
                     >
-                      Choose CSV File
+                      Choose CSV Files
                     </Button>
                     <p className="text-xs font-body text-text-muted mt-6">
                       Accepts .csv files up to 10MB
@@ -752,35 +901,59 @@ export default function DataPage() {
               ) : (
                 /* CSV Preview and Mapping */
                 <div className="space-y-6">
-                  {/* File Info */}
+                  {/* Files Info */}
                   <Card>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <svg
-                          className="w-8 h-8 text-success"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                          />
-                        </svg>
-                        <div>
-                          <p className="font-body font-medium text-text-primary">
-                            {csvFile.name}
-                          </p>
-                          <p className="text-xs font-body text-text-muted">
-                            {csvData.length} rows • {csvHeaders.length} columns
-                          </p>
-                        </div>
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-lg font-display text-text-primary">
+                          Uploaded Files ({csvFiles.length})
+                        </h3>
+                        <Button variant="secondary" size="sm" onClick={resetUpload}>
+                          Remove All
+                        </Button>
                       </div>
-                      <Button variant="secondary" size="sm" onClick={resetUpload}>
-                        Remove
-                      </Button>
+
+                      {/* List of uploaded files */}
+                      <div className="space-y-2">
+                        {csvFiles.map((file, index) => (
+                          <div key={index} className="flex items-center gap-3 p-3 bg-background/50 rounded-lg">
+                            <svg
+                              className="w-6 h-6 text-success flex-shrink-0"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                              />
+                            </svg>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-body font-medium text-text-primary truncate">
+                                {file.name}
+                              </p>
+                              <p className="text-xs font-body text-text-muted">
+                                {(file.size / 1024).toFixed(1)} KB
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="pt-2 border-t border-text-muted/20">
+                        <p className="text-sm font-body text-text-primary mb-2">
+                          Total: {csvData.length} rows • {csvHeaders.length} unique columns
+                        </p>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => fileInputRef.current?.click()}
+                        >
+                          Add More Files
+                        </Button>
+                      </div>
                     </div>
                   </Card>
 

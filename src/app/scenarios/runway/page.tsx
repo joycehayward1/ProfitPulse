@@ -8,6 +8,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useToast } from "@/components/ui/Toast";
 import { generateScenarioExplanation } from "@/lib/ai-insights";
 import { ArrowLeft, Hourglass, TrendingUp, AlertCircle } from "lucide-react";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 
 interface RunwayResult {
   currentCash: number;
@@ -27,6 +28,7 @@ interface ShortfallResult {
 export default function RunwayPage() {
   const router = useRouter();
   const { showToast } = useToast();
+  const { user } = useRequireAuth();
 
   // Cash Runway inputs
   const [currentCash, setCurrentCash] = useState("");
@@ -44,17 +46,16 @@ export default function RunwayPage() {
 
   useEffect(() => {
     async function loadFinancialData() {
+      if (!user) return;
+
       try {
         const { getInsForgeClient } = await import("@/lib/insforge");
         const client = getInsForgeClient();
 
-        // TODO: Replace with actual auth
-        const userId = "placeholder-user-id";
-
         const { data, error } = await client.database
           .from('financial_data')
           .select('*')
-          .eq('user_id', userId)
+          .eq('user_id', user.id)
           .order('created_at', { ascending: false })
           .limit(1)
           .single();
@@ -71,7 +72,7 @@ export default function RunwayPage() {
     }
 
     loadFinancialData();
-  }, []);
+  }, [user]);
 
   const handleRunwayCalculate = async () => {
     const cash = parseFloat(currentCash);
@@ -154,19 +155,17 @@ export default function RunwayPage() {
   };
 
   const handleSaveRunway = async () => {
-    if (!runwayResult) return;
+    if (!runwayResult || !user) return;
 
     setRunwaySaving(true);
     try {
       const { getInsForgeClient } = await import("@/lib/insforge");
       const client = getInsForgeClient();
 
-      const userId = "placeholder-user-id";
-
       const { error } = await client.database
         .from('scenarios')
         .insert([{
-          user_id: userId,
+          user_id: user.id,
           scenario_type: 'runway',
           inputs: {
             currentCash: runwayResult.currentCash,
@@ -193,19 +192,17 @@ export default function RunwayPage() {
   };
 
   const handleSaveShortfall = async () => {
-    if (!shortfallResult) return;
+    if (!shortfallResult || !user) return;
 
     setShortfallSaving(true);
     try {
       const { getInsForgeClient } = await import("@/lib/insforge");
       const client = getInsForgeClient();
 
-      const userId = "placeholder-user-id";
-
       const { error } = await client.database
         .from('scenarios')
         .insert([{
-          user_id: userId,
+          user_id: user.id,
           scenario_type: 'runway',
           inputs: {
             missedAmount: shortfallResult.missedAmount,

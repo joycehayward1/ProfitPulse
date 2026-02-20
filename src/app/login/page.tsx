@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { Button, Input } from "@/components/ui";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface FormErrors {
   email?: string;
@@ -14,6 +15,7 @@ interface FormErrors {
 
 export default function LoginPage() {
   const router = useRouter();
+  const { refreshUser } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<FormErrors>({});
@@ -43,19 +45,44 @@ export default function LoginPage() {
     try {
       const { getInsForgeClient } = await import("@/lib/insforge");
       const client = getInsForgeClient();
-      const { error } = await client.auth.signInWithPassword({
+      const { data, error } = await client.auth.signInWithPassword({
         email,
         password,
       });
 
+      console.log("Login response:", { data, error });
+
       if (error) {
-        setErrors({ general: "Invalid email or password. Please try again." });
+        console.error("Login error:", error);
+
+        // Check if it's an email verification error
+        if (error.message?.toLowerCase().includes("verify") || error.message?.toLowerCase().includes("unverified")) {
+          setErrors({ general: "Please verify your email address first." });
+          setLoading(false);
+          // Redirect to verification page
+          setTimeout(() => router.push(`/verify-email?email=${encodeURIComponent(email)}`), 2000);
+          return;
+        }
+
+        setErrors({ general: error.message || "Invalid email or password. Please try again." });
         setLoading(false);
         return;
       }
 
+      if (!data?.accessToken) {
+        console.error("No access token received");
+        setErrors({ general: "Login failed. Please try again." });
+        setLoading(false);
+        return;
+      }
+
+      console.log("Login successful, refreshing user...");
+      // Refresh user state before redirecting
+      await refreshUser();
+      console.log("User refreshed, redirecting to dashboard...");
       router.push("/dashboard");
-    } catch {
+    } catch (err) {
+      console.error("Login exception:", err);
       setErrors({
         general: "Something went wrong. Please try again.",
       });

@@ -153,17 +153,31 @@ export async function generateAssessmentSummary(
   const cached = getCached(cacheKey);
   if (cached) return JSON.parse(cached);
 
-  const systemPrompt = `You are a compassionate financial advisor for small business owners.
-Generate a warm, plain-English summary of their financial health and 3 actionable recommendations.
-Be conversational and encouraging. Avoid jargon. Focus on what they can DO.
+  const systemPrompt = `You are a financial advisor helping business owners use ProfitPulse features.
+
+CRITICAL: Recommendations MUST direct users to specific ProfitPulse features based on their financial data.
+
+Available ProfitPulse Features:
+- Break-Even Calculator: Shows how many sales needed to cover costs
+- Cash Runway Calculator: Calculates how long cash will last
+- Shortfall Recovery: Plans recovery from missed revenue targets
+- Hiring Readiness: Determines if they can afford to hire
+- Goal Planning: Tracks progress toward financial goals
+- Scenario Planning: Test "what-if" decisions before acting
+
+Generate:
+1. Warm 2-3 sentence summary of their financial health
+2. THREE recommendations that each direct them to use a SPECIFIC ProfitPulse feature that will help their situation
+
+Each recommendation should reference a feature by name and explain why it's relevant to their numbers.
 
 Respond in JSON format:
 {
   "summary": "2-3 sentences about their financial situation",
   "recommendations": [
-    {"title": "Short title", "description": "Actionable advice"},
-    {"title": "Short title", "description": "Actionable advice"},
-    {"title": "Short title", "description": "Actionable advice"}
+    {"title": "Use [Feature Name]", "description": "Based on your [situation], use our [Feature] to [benefit]"},
+    {"title": "Try [Feature Name]", "description": "Your [metric] shows you should use [Feature] to [outcome]"},
+    {"title": "Check [Feature Name]", "description": "With [situation], our [Feature] will help you [action]"}
   ]
 }`;
 

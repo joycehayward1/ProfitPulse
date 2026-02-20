@@ -10,6 +10,7 @@ import {
   User,
   Hourglass
 } from "lucide-react";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 
 interface SavedScenario {
   id: string;
@@ -53,23 +54,22 @@ const scenarioTypes = [
 
 export default function ScenariosPage() {
   const router = useRouter();
+  const { user } = useRequireAuth();
   const [savedScenarios, setSavedScenarios] = useState<SavedScenario[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function loadSavedScenarios() {
+      if (!user) return;
+
       try {
-        // Dynamic import to avoid SSR issues
         const { getInsForgeClient } = await import("@/lib/insforge");
         const client = getInsForgeClient();
-
-        // TODO: Replace with actual auth check once InsForge credentials are available
-        const userId = "placeholder-user-id";
 
         const { data, error } = await client.database
           .from('scenarios')
           .select('*')
-          .eq('user_id', userId)
+          .eq('user_id', user.id)
           .order('created_at', { ascending: false })
           .limit(5);
 
@@ -84,7 +84,7 @@ export default function ScenariosPage() {
     }
 
     loadSavedScenarios();
-  }, []);
+  }, [user]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);

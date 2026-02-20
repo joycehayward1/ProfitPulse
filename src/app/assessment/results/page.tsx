@@ -9,10 +9,12 @@ import { calculateHealthScore, getHealthStatus, type HealthScoreBreakdown } from
 import { useToast } from "@/components/ui/Toast";
 import { generateAssessmentSummary } from "@/lib/ai-insights";
 import type { Recommendation } from "@/lib/database.types";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 
 export default function AssessmentResultsPage() {
   const router = useRouter();
   const { showToast } = useToast();
+  const { user, loading: authLoading } = useRequireAuth();
   const [breakdown, setBreakdown] = useState<HealthScoreBreakdown | null>(null);
   const [loading, setLoading] = useState(true);
   const [aiSummary, setAiSummary] = useState<string | null>(null);
@@ -21,28 +23,40 @@ export default function AssessmentResultsPage() {
 
   useEffect(() => {
     async function loadResults() {
+      if (!user) return;
+
       try {
-        // Dynamic import to avoid SSR issues
-        const { getInsForgeClient } = await import("@/lib/insforge");
-        const client = getInsForgeClient();
+        let assessmentData = null;
 
-        // TODO: Replace with actual auth check once InsForge credentials are available
-        const userId = "placeholder-user-id";
+        // First, try to load from sessionStorage (for testing/demo mode)
+        const sessionData = sessionStorage.getItem('assessment_data');
+        if (sessionData) {
+          console.log('Loading assessment from sessionStorage');
+          assessmentData = JSON.parse(sessionData);
+        } else {
+          // Try to load from database
+          try {
+            const { getInsForgeClient } = await import("@/lib/insforge");
+            const client = getInsForgeClient();
 
-        // Fetch the most recent assessment
-        const { data, error } = await client.database
-          .from('health_assessments')
-          .select('*')
-          .eq('user_id', userId)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single();
+            const { data, error } = await client.database
+              .from('health_assessments')
+              .select('*')
+              .eq('user_id', user.id)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .single();
 
-        if (error) {
-          throw error;
+            if (!error && data) {
+              assessmentData = data;
+            }
+          } catch (dbError) {
+            console.warn('Database load failed, no session data available:', dbError);
+          }
         }
 
-        if (!data) {
+        // If no data from either source, redirect to assessment
+        if (!assessmentData) {
           showToast('error', 'No assessment found. Please complete the assessment first.');
           router.push('/assessment');
           return;
@@ -50,33 +64,38 @@ export default function AssessmentResultsPage() {
 
         // Calculate the health score
         const scoreBreakdown = calculateHealthScore({
-          cashOnHand: data.cash_on_hand,
-          monthlyRevenue: data.monthly_revenue,
-          monthlyExpenses: data.monthly_expenses,
-          accountsReceivable: data.accounts_receivable,
+          cashOnHand: assessmentData.cash_on_hand,
+          monthlyRevenue: assessmentData.monthly_revenue,
+          monthlyExpenses: assessmentData.monthly_expenses,
+          accountsReceivable: assessmentData.accounts_receivable,
         });
 
         setBreakdown(scoreBreakdown);
 
-        // Update the assessment record with the calculated score
-        const { error: updateError } = await client.database
-          .from('health_assessments')
-          .update({ health_score: scoreBreakdown.totalScore })
-          .eq('id', data.id);
+        // Try to update database if we have an ID (means it came from DB)
+        if (assessmentData.id) {
+          try {
+            const { getInsForgeClient } = await import("@/lib/insforge");
+            const client = getInsForgeClient();
 
-        if (updateError) {
-          console.error('Error updating health score:', updateError);
+            await client.database
+              .from('health_assessments')
+              .update({ health_score: scoreBreakdown.totalScore })
+              .eq('id', assessmentData.id);
+          } catch (updateError) {
+            console.warn('Could not update health score in database:', updateError);
+          }
         }
 
         // Generate AI summary and recommendations
         setAiLoading(true);
         const aiResult = await generateAssessmentSummary({
-          cash_on_hand: data.cash_on_hand,
-          monthly_revenue: data.monthly_revenue,
-          monthly_expenses: data.monthly_expenses,
-          accounts_receivable: data.accounts_receivable,
-          employee_count: data.employee_count,
-          biggest_worry: data.biggest_worry,
+          cash_on_hand: assessmentData.cash_on_hand,
+          monthly_revenue: assessmentData.monthly_revenue,
+          monthly_expenses: assessmentData.monthly_expenses,
+          accounts_receivable: assessmentData.accounts_receivable,
+          employee_count: assessmentData.employee_count || 0,
+          biggest_worry: assessmentData.biggest_worry || '',
           health_score: scoreBreakdown.totalScore,
         });
 
@@ -84,17 +103,22 @@ export default function AssessmentResultsPage() {
           setAiSummary(aiResult.summary);
           setRecommendations(aiResult.recommendations);
 
-          // Save AI insights to database
-          const { error: aiUpdateError } = await client.database
-            .from('health_assessments')
-            .update({
-              ai_summary: aiResult.summary,
-              recommendations: aiResult.recommendations,
-            })
-            .eq('id', data.id);
+          // Try to save AI insights to database if we have an ID
+          if (assessmentData.id) {
+            try {
+              const { getInsForgeClient } = await import("@/lib/insforge");
+              const client = getInsForgeClient();
 
-          if (aiUpdateError) {
-            console.error('Error saving AI insights:', aiUpdateError);
+              await client.database
+                .from('health_assessments')
+                .update({
+                  ai_summary: aiResult.summary,
+                  recommendations: aiResult.recommendations,
+                })
+                .eq('id', assessmentData.id);
+            } catch (aiUpdateError) {
+              console.warn('Could not save AI insights to database:', aiUpdateError);
+            }
           }
         }
         setAiLoading(false);
@@ -108,7 +132,7 @@ export default function AssessmentResultsPage() {
     }
 
     loadResults();
-  }, [router, showToast]);
+  }, [user, router, showToast]);
 
   if (loading || !breakdown) {
     return (
@@ -116,7 +140,7 @@ export default function AssessmentResultsPage() {
         <div className="text-center">
           <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-orange border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]" />
           <p className="mt-4 text-lg text-text-secondary font-body">
-            Calculating your health score...
+            Loading your breakdown...
           </p>
         </div>
       </div>

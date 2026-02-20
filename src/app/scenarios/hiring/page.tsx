@@ -8,6 +8,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useToast } from "@/components/ui/Toast";
 import { generateScenarioExplanation } from "@/lib/ai-insights";
 import { ArrowLeft, UserPlus, CheckCircle, XCircle } from "lucide-react";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 
 interface HiringResult {
   canAfford: boolean;
@@ -21,6 +22,7 @@ interface HiringResult {
 export default function HiringPage() {
   const router = useRouter();
   const { showToast } = useToast();
+  const { user } = useRequireAuth();
 
   // Form inputs
   const [annualSalary, setAnnualSalary] = useState("");
@@ -38,17 +40,16 @@ export default function HiringPage() {
 
   useEffect(() => {
     async function loadFinancialData() {
+      if (!user) return;
+
       try {
         const { getInsForgeClient } = await import("@/lib/insforge");
         const client = getInsForgeClient();
 
-        // TODO: Replace with actual auth
-        const userId = "placeholder-user-id";
-
         const { data, error } = await client.database
           .from('financial_data')
           .select('*')
-          .eq('user_id', userId)
+          .eq('user_id', user.id)
           .order('created_at', { ascending: false })
           .limit(1)
           .single();
@@ -65,7 +66,7 @@ export default function HiringPage() {
     }
 
     loadFinancialData();
-  }, []);
+  }, [user]);
 
   const handleCalculate = async () => {
     const salary = parseFloat(annualSalary);
@@ -116,20 +117,17 @@ export default function HiringPage() {
   };
 
   const handleSave = async () => {
-    if (!result) return;
+    if (!result || !user) return;
 
     setSaving(true);
     try {
       const { getInsForgeClient } = await import("@/lib/insforge");
       const client = getInsForgeClient();
 
-      // TODO: Replace with actual auth
-      const userId = "placeholder-user-id";
-
       const { error } = await client.database
         .from('scenarios')
         .insert([{
-          user_id: userId,
+          user_id: user.id,
           scenario_type: 'hiring',
           inputs: {
             annualSalary: parseFloat(annualSalary),
