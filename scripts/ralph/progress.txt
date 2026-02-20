@@ -158,3 +158,22 @@ Feature: ProfitPulse Phase 1 - Foundation
   - Dev browser CSS loading issues: use production build (`next start`) for accurate visual testing, not dev server
   - select element needs `appearance-none` + custom chevron SVG for consistent cross-browser styling
 ---
+
+## 2026-02-19 - US-007: Auth - Password Reset & Email Verification
+Session: Ralph autonomous loop
+- Implemented forgot-password page with email input, InsForge sendResetPasswordEmail, success state
+- Implemented reset-password page with password fields, token extraction (query/hash), InsForge resetPassword
+- Created Toast component with context provider (success/error/info variants, auto-dismiss, animations)
+- Created Providers wrapper component for global context providers
+- Integrated ToastProvider into root layout
+- Fixed test issues: used getByPlaceholderText for unique selectors, getAllByText for duplicate error messages
+- Browser verified: desktop (1280px) and mobile (375px) - both pages fully responsive
+- 120 tests passing, build clean
+- Files changed: src/app/forgot-password/page.tsx, src/app/forgot-password/__tests__/page.test.tsx, src/app/reset-password/page.tsx, src/app/reset-password/__tests__/page.test.tsx, src/components/ui/Toast.tsx, src/components/ui/__tests__/Toast.test.tsx, src/components/Providers.tsx, src/app/layout.tsx, src/components/ui/index.ts, scripts/ralph/prd.json
+- **Learnings for future iterations:**
+  - Toast notifications should use context provider pattern for global access across all pages
+  - Reset password token can come from query param OR hash fragment - check both sources
+  - When testing with React Testing Library, use unique selectors (placeholders, specific text) to avoid "multiple elements" errors
+  - Providers wrapper component keeps root layout clean when adding multiple context providers
+  - InsForge auth methods work the same way via dynamic import as static import - mocks apply correctly
+---
