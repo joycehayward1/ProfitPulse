@@ -1,0 +1,176 @@
+import React from "react";
+import { render, screen, waitFor } from "@testing-library/react";
+import "@testing-library/jest-dom";
+import DashboardPage from "../page";
+
+// Mock the AppLayout component
+jest.mock("@/components/layout/AppLayout", () => ({
+  AppLayout: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="app-layout">{children}</div>
+  ),
+}));
+
+// Mock the UI components
+jest.mock("@/components/ui/HealthScoreGauge", () => ({
+  HealthScoreGauge: ({ score, size }: { score: number; size: string }) => (
+    <div data-testid="health-score-gauge" data-score={score} data-size={size}>
+      Score: {score}
+    </div>
+  ),
+}));
+
+jest.mock("@/components/ui/StatusBadge", () => ({
+  StatusBadge: ({ status }: { status: string }) => (
+    <div data-testid="status-badge" data-status={status}>
+      {status}
+    </div>
+  ),
+}));
+
+jest.mock("@/components/ui/Button", () => ({
+  Button: ({
+    children,
+    onClick,
+    variant,
+    size,
+    className,
+  }: {
+    children: React.ReactNode;
+    onClick?: () => void;
+    variant?: string;
+    size?: string;
+    className?: string;
+  }) => (
+    <button
+      data-testid="button"
+      onClick={onClick}
+      data-variant={variant}
+      data-size={size}
+      className={className}
+    >
+      {children}
+    </button>
+  ),
+}));
+
+describe("DashboardPage", () => {
+  beforeEach(() => {
+    // Mock Date to return consistent values
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date("2026-02-19T14:30:00")); // Wednesday afternoon
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it("renders the greeting with time of day", async () => {
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Good afternoon,/i)).toBeInTheDocument();
+    });
+  });
+
+  it("renders the user name in greeting", async () => {
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Jessica")).toBeInTheDocument();
+    });
+  });
+
+  it("renders the formatted date", async () => {
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Thursday, February 19, 2026/i)).toBeInTheDocument();
+    });
+  });
+
+  it("shows different greeting in morning", async () => {
+    jest.setSystemTime(new Date("2026-02-19T08:30:00")); // Morning
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Good morning,/i)).toBeInTheDocument();
+    });
+  });
+
+  it("shows different greeting in evening", async () => {
+    jest.setSystemTime(new Date("2026-02-19T20:30:00")); // Evening
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Good evening,/i)).toBeInTheDocument();
+    });
+  });
+
+  it("shows loading state initially", () => {
+    render(<DashboardPage />);
+
+    // Should show loading skeleton
+    const loadingElement = screen.getByText(/Complete Your Assessment/i).closest("div");
+    expect(loadingElement).toBeInTheDocument();
+  });
+
+  it("shows empty state when no assessment exists", async () => {
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Let's get you some clarity/i)
+      ).toBeInTheDocument();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/Complete Your Assessment/i)).toBeInTheDocument();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/Takes about 2 minutes/i)).toBeInTheDocument();
+    });
+  });
+
+  it("empty state button links to assessment page", async () => {
+    const originalLocation = window.location.href;
+
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      const button = screen.getByText(/Complete Your Assessment/i);
+      expect(button).toBeInTheDocument();
+      expect(button).toHaveAttribute("data-variant", "primary");
+      expect(button).toHaveAttribute("data-size", "lg");
+    });
+
+    // Cleanup
+    window.location.href = originalLocation;
+  });
+
+  it("wraps content in AppLayout", () => {
+    render(<DashboardPage />);
+
+    expect(screen.getByTestId("app-layout")).toBeInTheDocument();
+  });
+
+  it("applies staggered animation delays to greeting elements", async () => {
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      const greeting = screen.getByText(/Good afternoon,/i).closest("div");
+      expect(greeting).toHaveStyle({ animationDelay: "0ms" });
+    });
+  });
+
+  it("renders mobile responsive classes", async () => {
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      const heading = screen.getByText(/Good afternoon,/i);
+      // Check for responsive text size classes
+      expect(heading.className).toContain("text-");
+      expect(heading.className).toContain("md:text-");
+    });
+  });
+});

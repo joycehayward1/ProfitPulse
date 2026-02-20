@@ -245,3 +245,25 @@ Session: Ralph autonomous loop
   - Status messaging should be specific to health tier (different copy for healthy/attention/critical)
   - getHealthStatus helper keeps status logic DRY (used in both calculation and UI)
 ---
+
+## 2026-02-19 - US-014: Dashboard - Layout, Greeting & Health Score Card
+Session: Ralph autonomous loop
+- Created dashboard page with time-of-day greeting and formatted date
+- Implemented empty state: warm invitation card with orange border, decorative glow, "Complete Your Assessment" CTA
+- Placeholder for health score display (will show gauge + breakdown when assessment exists)
+- Staggered fade-in animations with animation-delay for polished reveal
+- Editorial typography: 56px Georgia headline on desktop, 42px on mobile
+- Mobile responsive: hamburger menu, stacked layout, full-width cards
+- Fixed critical SSR bug: removed mounted state check that returned null (caused blank page)
+- Browser verified via dev-browser skill: desktop 1280px + mobile 375px both perfect
+- 183 tests passing (13 new dashboard tests), build clean
+- Files: src/app/dashboard/page.tsx, __tests__/page.test.tsx, AGENTS.md
+- **Learnings for future iterations:**
+  - Never use mounted state check that returns null before mount - breaks browser rendering
+  - Time-of-day logic: < 12 = morning, < 18 = afternoon, else evening
+  - Staggered animations create polished UX: use inline style animationDelay
+  - Empty state should feel inviting, not clinical - warm copy, decorative elements
+  - Health score card will have two-column desktop layout (gauge left, context right)
+  - Delta calculation needs historical assessment data (placeholder "+5 from last week" for now)
+  - Dev-browser skill workflow: start server, reload page, wait for networkidle, take fullPage screenshots
+---
