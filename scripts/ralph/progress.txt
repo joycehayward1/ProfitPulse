@@ -221,3 +221,27 @@ Session: Ralph autonomous loop
   - InsForge auth API: placeholder user ID until credentials available, will replace with real session/user extraction
   - Dev browser testing workflow: start server on 3002, run desktop + mobile tests, take screenshots, verify visually
 ---
+
+## 2026-02-19 - US-012: Health Assessment - Score Calculation & Results
+Session: Ralph autonomous loop
+- Created health score calculation utility at src/lib/healthScore.ts
+- Implemented formula: Cash Runway 40% + Profit Margin 30% + Receivables 30%
+- Cash runway: normalized by 6 months (6+ = 100%), handles zero expenses
+- Profit margin: (revenue - expenses) / revenue * 100, clamped 0-100
+- Receivables health: inverse ratio (100 - receivables/revenue%), returns 0 when no revenue
+- Created results page at /assessment/results with large HealthScoreGauge
+- StatusBadge displays health tier (Healthy 80+, Attention 50-79, Critical 0-49)
+- Breakdown section shows all three formula components with weights and progress bars
+- Loading state with spinner, error handling redirects to assessment
+- 12 health score tests + 8 results page tests = 20 new tests
+- 172 total tests passing, build clean
+- Fixed ESLint apostrophe errors (used &apos;)
+- Files: src/lib/healthScore.ts, src/app/assessment/results/page.tsx, __tests__ for both
+- **Learnings for future iterations:**
+  - Health score edge cases: zero revenue returns 0 for receivables (not 100), zero expenses returns 0 for runway
+  - Formula breakdown UI: progress bars with component scores, weights shown as percentages
+  - Results page can't be fully browser-tested without InsForge credentials (redirects on DB error)
+  - HealthScoreGauge at "lg" size renders beautifully for prominent score display
+  - Status messaging should be specific to health tier (different copy for healthy/attention/critical)
+  - getHealthStatus helper keeps status logic DRY (used in both calculation and UI)
+---
