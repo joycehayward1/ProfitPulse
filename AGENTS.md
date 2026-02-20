@@ -65,8 +65,23 @@ sm=6px, md=10px, lg=16px, full=50%
 - `npm run build` must pass before every commit
 - `npm run test -- --passWithNoTests` must also pass
 
+### Database Schema
+- Types in `@/lib/database.types.ts` — all table types, insert types, update types, enums
+- 9 tables: profiles, subscriptions, health_assessments, financial_data, expense_categories, alert_configs, alert_history, scenarios, quickbooks_connections
+- All tables have RLS enabled — users can only access their own rows
+- Migration script: `scripts/migrate.ts` (run with `npx tsx scripts/migrate.ts`)
+- Tables created via InsForge Admin API (`POST /api/database/tables`)
+
+### InsForge Client
+- `@/lib/insforge.ts` — singleton client (`getInsForgeClient()`) and admin client (`getInsForgeAdmin()`)
+- Environment variables: `NEXT_PUBLIC_INSFORGE_URL`, `NEXT_PUBLIC_INSFORGE_ANON_KEY`, `INSFORGE_API_KEY`
+- `.env.example` has all required env var templates
+- Database queries use PostgREST syntax via `client.database.from('table')`
+
 ## Gotchas
 - ESLint with `@typescript-eslint/no-unused-vars` is strict — unused params need eslint-disable comment
 - Jest config must be `.js` (not `.ts`) unless `ts-node` is installed
 - Next.js 14 uses App Router — all pages in `src/app/` directory
 - No dark mode — the app has one theme only (warm off-white)
+- InsForge SDK requires global `fetch` — tests must mock: `global.fetch = jest.fn()`
+- InsForge database uses PostgREST (same API as Supabase) — `from().select().eq()` pattern

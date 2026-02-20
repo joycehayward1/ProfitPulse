@@ -10,6 +10,12 @@ Feature: ProfitPulse Phase 1 - Foundation
 - ESLint strict on unused vars — use eslint-disable comment for stub params
 - All UI components in `src/components/ui/`, import via barrel: `import { Button, Input, Card } from "@/components/ui"`
 - Components use forwardRef for ref forwarding
+- Database types in `src/lib/database.types.ts` — import types from here
+- InsForge client in `src/lib/insforge.ts` — `getInsForgeClient()` for browser, `getInsForgeAdmin()` for server
+- InsForge SDK requires global `fetch` — tests must mock: `global.fetch = jest.fn()`
+- InsForge database uses PostgREST pattern: `client.database.from('table').select().eq()`
+- Environment variables template in `.env.example`
+- Migration script: `scripts/migrate.ts` — run with `npx tsx scripts/migrate.ts`
 - Card with onClick gets role="button", tabIndex, keyboard handlers automatically
 - Utility functions in `src/lib/`
 - Test files in `__tests__/` directories adjacent to source
@@ -106,4 +112,27 @@ Feature: ProfitPulse Phase 1 - Foundation
   - radial-gradient with low opacity (0.08) creates subtle warmth without distraction
   - scroll-mt-[80px] offsets anchor scroll to account for sticky header
   - CTA buttons stack on mobile using flex-col sm:flex-row pattern
+---
+
+## 2026-02-19 - US-005: Database Schema & Row Level Security
+- Created TypeScript types for all 9 database tables in `src/lib/database.types.ts`
+- Types include: Profile, Subscription, HealthAssessment, FinancialData, ExpenseCategory, AlertConfig, AlertHistory, Scenario, QuickBooksConnection
+- Created Insert types (omit id/created_at) and Update types (partial, omit immutable fields)
+- Created enums: DataSource, AlertType, ScenarioType, SubscriptionStatus
+- Created TABLE_NAMES constant for type-safe table references
+- Created migration script `scripts/migrate.ts` using InsForge Admin API (POST /api/database/tables)
+- All 9 tables defined with correct column types, foreign keys, and `rlsEnabled: true`
+- Created InsForge client utility `src/lib/insforge.ts` with `getInsForgeClient()` (singleton) and `getInsForgeAdmin()` (server-only)
+- Created `.env.example` template with all required environment variables
+- Created AGENTS.md for `scripts/` directory
+- Updated root AGENTS.md and `src/lib/AGENTS.md` with database schema documentation
+- 74 tests passing (20 new: 14 database types + 6 insforge client)
+- Build passes, all tests pass
+- Files: src/lib/database.types.ts, src/lib/insforge.ts, scripts/migrate.ts, .env.example, src/lib/AGENTS.md, scripts/AGENTS.md, AGENTS.md, src/lib/__tests__/database.types.test.ts, src/lib/__tests__/insforge.test.ts
+- **Learnings:**
+  - InsForge SDK requires global `fetch` in test environment — must mock before import
+  - InsForge creates tables via REST API, not SQL migrations — use POST /api/database/tables
+  - InsForge RLS is enabled per-table with `rlsEnabled: true`, enforced via JWT user_id automatically
+  - InsForge database client uses PostgREST (same as Supabase): from().select().eq() pattern
+  - Use `jest.resetModules()` + dynamic `require()` to test singleton patterns with different env vars
 ---
