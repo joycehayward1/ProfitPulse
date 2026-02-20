@@ -69,3 +69,21 @@ Feature: ProfitPulse Phase 1 - Foundation
   - Input aria-describedby links to error/helper text IDs for screen readers
   - Showcase page is useful for visual testing all component states at once
 ---
+
+## 2026-02-19 - US-003: Health Score Gauge & Status Components
+- Created HealthScoreGauge: SVG circular gauge with dark bg, colored ring (green/amber/red), white score number
+- Created TrafficLightDot: small colored circle with optional label, pulse animation for critical
+- Created StatusBadge: pill-shaped badge with tinted bg (Healthy/Attention/Critical)
+- Created ProgressBar: orange fill on gray track, label, percentage display, accessible progressbar role
+- Updated barrel export in index.ts
+- Updated showcase page with all new components
+- 53 tests passing total (25 new tests for health/status components)
+- Verified visually via dev-browser — all gauges, dots, badges, and bars render correctly
+- Files: src/components/ui/HealthScoreGauge.tsx, TrafficLightDot.tsx, StatusBadge.tsx, ProgressBar.tsx, index.ts, __tests__/HealthScoreGauge.test.tsx, TrafficLightDot.test.tsx, StatusBadge.test.tsx, ProgressBar.test.tsx, showcase/page.tsx
+- **Learnings:**
+  - SVG stroke-dasharray/offset with -rotate-90 creates clockwise fill from top
+  - getScoreColor utility exported for reuse (health score → color mapping)
+  - HealthScoreGauge needs parent with relative positioning for centered number overlay
+  - Dev server needs restart after build (stale .next cache causes module errors)
+  - Tailwind animate-ping works well for pulse effect on critical dots
+---

@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Input, Card } from "@/components/ui";
+import {
+  Button, Input, Card,
+  HealthScoreGauge, TrafficLightDot, StatusBadge, ProgressBar,
+} from "@/components/ui";
 
 export default function ShowcasePage() {
   const [inputValue, setInputValue] = useState("");
@@ -81,6 +84,49 @@ export default function ShowcasePage() {
             <h3 className="font-display text-h3 text-text-primary mb-xs">Clickable Card</h3>
             <p className="text-text-secondary text-body">Click me — I have a hover lift effect and focus ring.</p>
           </Card>
+        </section>
+        {/* Health Score Gauges */}
+        <section className="space-y-md">
+          <h2 className="font-display text-h2 text-text-primary">Health Score Gauge</h2>
+          <div className="flex flex-wrap items-center gap-lg">
+            <div className="relative">
+              <HealthScoreGauge score={92} size="sm" />
+            </div>
+            <div className="relative">
+              <HealthScoreGauge score={67} size="md" />
+            </div>
+            <div className="relative">
+              <HealthScoreGauge score={35} size="lg" />
+            </div>
+          </div>
+        </section>
+
+        {/* Traffic Light Dots */}
+        <section className="space-y-md">
+          <h2 className="font-display text-h2 text-text-primary">Traffic Light Dots</h2>
+          <div className="flex flex-wrap gap-lg">
+            <TrafficLightDot status="healthy" label="Profit Margin" />
+            <TrafficLightDot status="attention" label="Cash Flow" />
+            <TrafficLightDot status="critical" label="Runway" />
+          </div>
+        </section>
+
+        {/* Status Badges */}
+        <section className="space-y-md">
+          <h2 className="font-display text-h2 text-text-primary">Status Badges</h2>
+          <div className="flex flex-wrap gap-sm">
+            <StatusBadge status="healthy" />
+            <StatusBadge status="attention" />
+            <StatusBadge status="critical" />
+          </div>
+        </section>
+
+        {/* Progress Bars */}
+        <section className="space-y-md">
+          <h2 className="font-display text-h2 text-text-primary">Progress Bars</h2>
+          <ProgressBar value={75} max={100} label="Revenue Goal" showPercentage />
+          <ProgressBar value={3} max={10} label="Months of Runway" showPercentage />
+          <ProgressBar value={100} max={100} label="Data Complete" showPercentage />
         </section>
       </div>
     </main>
