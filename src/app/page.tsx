@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Button, Card } from "@/components/ui";
 
@@ -215,6 +216,7 @@ function DashboardPreview() {
 
 export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const router = useRouter();
 
   return (
     <div className="min-h-screen bg-background">
@@ -244,7 +246,7 @@ export default function LandingPage() {
             >
               Pricing
             </a>
-            <Button size="sm">Get Started</Button>
+            <Button size="sm" onClick={() => router.push('/signup')}>Get Started</Button>
           </div>
 
           {/* Mobile hamburger */}
@@ -274,7 +276,7 @@ export default function LandingPage() {
             >
               Pricing
             </a>
-            <Button fullWidth size="sm">
+            <Button fullWidth size="sm" onClick={() => { setMobileMenuOpen(false); router.push('/signup'); }}>
               Get Started
             </Button>
           </div>
@@ -302,8 +304,8 @@ export default function LandingPage() {
               </p>
 
               <div className="flex flex-col sm:flex-row gap-sm">
-                <Button size="lg">See Your Health Score</Button>
-                <Button variant="secondary" size="lg">
+                <Button size="lg" onClick={() => router.push('/signup')}>See Your Health Score</Button>
+                <Button variant="secondary" size="lg" onClick={() => router.push('/scenarios')}>
                   Watch How It Works
                 </Button>
               </div>
@@ -411,6 +413,7 @@ export default function LandingPage() {
                 <Button
                   variant={tier.popular ? "primary" : "secondary"}
                   fullWidth
+                  onClick={() => router.push('/signup')}
                 >
                   {tier.cta}
                 </Button>
