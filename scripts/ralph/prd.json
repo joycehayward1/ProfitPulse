@@ -350,8 +350,8 @@
         "Verify in browser using dev-browser skill or playwright skill"
       ],
       "priority": 18,
-      "passes": false,
-      "notes": "Phase 4 - Use frontend-design skill. Reference scenario calculator mockup from design system PDF page 10."
+      "passes": true,
+      "notes": "Phase 4 - Scenario Calculator hub page complete with 4 scenario type cards, saved scenarios list, smooth animations, and mobile responsiveness. Routes to /scenarios/[type] on click."
     },
     {
       "id": "US-019",
