@@ -109,7 +109,10 @@ export default function ScenariosPage() {
               onClick={() => router.push('/dashboard')}
               className="group flex items-center gap-2 text-text-secondary hover:text-orange transition-colors mb-8"
             >
-              <ArrowLeft className="w-5 h-5 transition-transform group-hover:-translate-x-1" />
+              <Icon
+                icon="ph:arrow-left-bold"
+                className="w-5 h-5 transition-transform group-hover:-translate-x-1"
+              />
               <span className="font-body text-sm">Back to Dashboard</span>
             </button>
 
@@ -217,8 +220,11 @@ export default function ScenariosPage() {
                 }} />
 
                 <div className="relative">
-                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-background mb-6">
-                    <Hourglass className="w-8 h-8 text-text-muted" />
+                  <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-orange/10 mb-6 animate-fadeIn">
+                    <Icon
+                      icon="ph:calculator-duotone"
+                      className="w-12 h-12 text-orange/70"
+                    />
                   </div>
                   <h3 className="text-xl font-display text-text-primary mb-2">
                     No saved scenarios yet

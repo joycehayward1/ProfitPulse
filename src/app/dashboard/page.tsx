@@ -62,17 +62,113 @@ function getRunwayHealthStatus(cash: number, expenses: number): HealthStatus {
   return "critical";
 }
 
+interface AnimatedCurrencyProps {
+  value: number;
+  className?: string;
+  delay?: number;
+}
+
+function AnimatedCurrency({ value, className = "", delay = 0 }: AnimatedCurrencyProps) {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    const duration = 1500;
+    const steps = 60;
+    const increment = value / steps;
+    let currentStep = 0;
+
+    const startAnimation = () => {
+      const timer = setInterval(() => {
+        currentStep++;
+        if (currentStep >= steps) {
+          setCount(value);
+          clearInterval(timer);
+        } else {
+          setCount(Math.floor(increment * currentStep));
+        }
+      }, duration / steps);
+
+      return timer;
+    };
+
+    const timeoutId = setTimeout(startAnimation, delay);
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [value, delay]);
+
+  return <span className={className}>{formatCurrency(count)}</span>;
+}
+
 interface MetricCardProps {
   label: string;
-  value: string;
+  value: string | number;
   statusText: string;
   status: HealthStatus;
   delay: string;
   icon: string;
   iconColor: string;
+  /** If true, formats value as currency and animates the count-up */
+  animateCurrency?: boolean;
+  /** If true, animates the numeric value */
+  animateNumber?: boolean;
 }
 
-function MetricCard({ label, value, statusText, status, delay, icon, iconColor }: MetricCardProps) {
+function MetricCard({
+  label,
+  value,
+  statusText,
+  status,
+  delay,
+  icon,
+  iconColor,
+  animateCurrency = false,
+  animateNumber = false,
+}: MetricCardProps) {
+  const numericValue = typeof value === "number" ? value : 0;
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    if (!animateCurrency && !animateNumber) {
+      return;
+    }
+
+    const duration = 1500;
+    const steps = 60;
+    const increment = numericValue / steps;
+    let currentStep = 0;
+
+    // Parse delay for staggered animation
+    const delayMs = parseInt(delay) || 0;
+
+    const startAnimation = () => {
+      const timer = setInterval(() => {
+        currentStep++;
+        if (currentStep >= steps) {
+          setCount(numericValue);
+          clearInterval(timer);
+        } else {
+          setCount(Math.floor(increment * currentStep));
+        }
+      }, duration / steps);
+
+      return timer;
+    };
+
+    const timeoutId = setTimeout(startAnimation, delayMs);
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [numericValue, delay, animateCurrency, animateNumber]);
+
+  const displayValue = animateCurrency
+    ? formatCurrency(count)
+    : animateNumber
+    ? count.toString()
+    : value;
+
   return (
     <div
       className="group bg-surface rounded-xl p-lg border border-background shadow-sm hover:shadow-xl hover:border-orange/20 transition-all duration-300 animate-fadeIn cursor-pointer"
@@ -101,8 +197,8 @@ function MetricCard({ label, value, statusText, status, delay, icon, iconColor }
       </h3>
 
       {/* Value */}
-      <p className="font-display text-h1 md:text-[36px] text-text-primary mb-xs tracking-tight">
-        {value}
+      <p className="font-display text-h1 md:text-[36px] text-text-primary mb-xs tracking-tight tabular-nums">
+        {displayValue}
       </p>
 
       {/* Status Text */}
@@ -208,20 +304,11 @@ export default function DashboardPage() {
 
             <div className="relative z-10 max-w-2xl mx-auto text-center space-y-lg py-xl">
               {/* Icon */}
-              <div className="inline-flex items-center justify-center w-24 h-24 bg-orange/10 rounded-full animate-fadeIn" style={{ animationDelay: "600ms" }}>
-                <svg
-                  className="w-12 h-12 text-orange"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
+              <div className="inline-flex items-center justify-center w-32 h-32 bg-orange/10 rounded-full animate-fadeIn" style={{ animationDelay: "600ms" }}>
+                <Icon
+                  icon="ph:clipboard-text-duotone"
+                  className="w-16 h-16 text-orange"
+                />
               </div>
 
               {/* Heading */}
@@ -348,23 +435,25 @@ export default function DashboardPage() {
             {/* Profit Card */}
             <MetricCard
               label="Profit"
-              value={formatCurrency(assessment.monthly_revenue - assessment.monthly_expenses)}
+              value={assessment.monthly_revenue - assessment.monthly_expenses}
               statusText="On Track"
               status="healthy"
               delay="600ms"
               icon="ph:chart-line-bold"
               iconColor="#E65100"
+              animateCurrency
             />
 
             {/* Cash Flow Card */}
             <MetricCard
               label="Cash Flow"
-              value={formatCurrency(assessment.monthly_revenue - assessment.monthly_expenses)}
+              value={assessment.monthly_revenue - assessment.monthly_expenses}
               statusText="Healthy"
               status="healthy"
               delay="700ms"
               icon="ph:wallet-bold"
               iconColor="#43A047"
+              animateCurrency
             />
 
             {/* Runway Card */}
@@ -393,9 +482,11 @@ export default function DashboardPage() {
             <div className="space-y-2xl">
               {/* Current Cash */}
               <div className="text-center md:text-left">
-                <p className="font-display text-[56px] md:text-[72px] leading-none text-text-primary tracking-tight mb-xs">
-                  {formatCurrency(assessment.cash_on_hand)}
-                </p>
+                <AnimatedCurrency
+                  value={assessment.cash_on_hand}
+                  className="font-display text-[56px] md:text-[72px] leading-none text-text-primary tracking-tight mb-xs block tabular-nums"
+                  delay={900}
+                />
                 <p className="text-body text-text-secondary">Cash on hand right now</p>
               </div>
 
@@ -419,9 +510,11 @@ export default function DashboardPage() {
                     </svg>
                   </div>
                   <div>
-                    <p className="font-display text-h1 text-success mb-xs">
-                      {formatCurrency(assessment.monthly_revenue)}
-                    </p>
+                    <AnimatedCurrency
+                      value={assessment.monthly_revenue}
+                      className="font-display text-h1 text-success mb-xs block tabular-nums"
+                      delay={1000}
+                    />
                     <p className="text-small text-text-secondary">Money In (last month)</p>
                   </div>
                 </div>
@@ -444,9 +537,11 @@ export default function DashboardPage() {
                     </svg>
                   </div>
                   <div>
-                    <p className="font-display text-h1 text-error mb-xs">
-                      {formatCurrency(assessment.monthly_expenses)}
-                    </p>
+                    <AnimatedCurrency
+                      value={assessment.monthly_expenses}
+                      className="font-display text-h1 text-error mb-xs block tabular-nums"
+                      delay={1100}
+                    />
                     <p className="text-small text-text-secondary">Money Out (last month)</p>
                   </div>
                 </div>

@@ -16,6 +16,7 @@ const INDUSTRIES = [
 ] as const;
 
 interface FormErrors {
+  fullName?: string;
   email?: string;
   password?: string;
   confirmPassword?: string;
@@ -25,6 +26,7 @@ interface FormErrors {
 }
 
 function validateForm(fields: {
+  fullName: string;
   email: string;
   password: string;
   confirmPassword: string;
@@ -32,6 +34,10 @@ function validateForm(fields: {
   industry: string;
 }): FormErrors {
   const errors: FormErrors = {};
+
+  if (!fields.fullName.trim()) {
+    errors.fullName = "Your name is required";
+  }
 
   if (!fields.email.trim()) {
     errors.email = "Email is required";
@@ -64,6 +70,7 @@ function validateForm(fields: {
 
 export default function SignUpPage() {
   const router = useRouter();
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -78,6 +85,7 @@ export default function SignUpPage() {
     e.preventDefault();
 
     const validationErrors = validateForm({
+      fullName,
       email,
       password,
       confirmPassword,
@@ -99,13 +107,21 @@ export default function SignUpPage() {
       const { data, error } = await client.auth.signUp({
         email,
         password,
-        name: businessName,
+        name: fullName, // Use full name instead of business name
       });
 
       if (error) {
         setErrors({ general: error.message });
         setLoading(false);
         return;
+      }
+
+      // After signup, update profile with business info
+      if (data?.user) {
+        await client.database.from("profiles").update({
+          business_name: businessName,
+          industry: industry,
+        }).eq("id", data.user.id);
       }
 
       // Check if email verification is required
@@ -192,6 +208,20 @@ export default function SignUpPage() {
             <p className="text-body text-error">{errors.general}</p>
           </div>
         )}
+
+        <Input
+          label="Full name"
+          type="text"
+          placeholder="Jane Smith"
+          value={fullName}
+          onChange={(e) => {
+            setFullName(e.target.value);
+            if (errors.fullName) setErrors((prev) => ({ ...prev, fullName: undefined }));
+          }}
+          error={errors.fullName}
+          required
+          autoComplete="name"
+        />
 
         <Input
           label="Email address"
