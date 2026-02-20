@@ -2,9 +2,10 @@
 
 import { useState, FormEvent } from "react";
 import { AuthLayout } from "@/components/auth/AuthLayout";
-import { Button, Input } from "@/components/ui";
+import { Button, Input, useToast } from "@/components/ui";
 
 export default function ForgotPasswordPage() {
+  const { showToast } = useToast();
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -39,8 +40,10 @@ export default function ForgotPasswordPage() {
       }
 
       setSent(true);
+      showToast("success", "Reset link sent! Check your email.");
     } catch {
       setError("Something went wrong. Please try again.");
+      showToast("error", "Failed to send reset link. Please try again.");
       setLoading(false);
     }
   }

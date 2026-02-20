@@ -112,11 +112,17 @@ If `AGENTS.md` doesn't exist in the project root, create it with:
 **DO include:** Import patterns, component usage patterns, gotchas, sync requirements
 **Do NOT include:** Story-specific details, temporary notes, info already in progress.txt
 
-## SCOPE LIMIT: Phase 1 Only
+## SCOPE LIMIT: Phase 2 Only
 
-Ralph should ONLY work on stories US-001 through US-004 (priority 1-4).
-After US-004 passes, STOP. Do NOT continue to US-005 or beyond.
-Reply with: "Phase 1 complete. Ready for review."
+Ralph should ONLY work on stories US-005 through US-010 (priority 5-10).
+After US-010 passes, STOP. Do NOT continue to US-011 or beyond.
+Reply with: "Phase 2 complete. Ready for review."
+
+## InsForge Configuration
+- InsForge MCP is available at project level
+- API Base URL: https://8i9xnfmh.us-east.insforge.app
+- Docs: https://docs.insforge.dev/introduction
+- Store credentials in .env.local (already gitignored)
 
 ## Stripe Stubbing
 

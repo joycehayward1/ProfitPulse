@@ -71,6 +71,8 @@ export default function SignUpPage() {
   const [industry, setIndustry] = useState("");
   const [errors, setErrors] = useState<FormErrors>({});
   const [loading, setLoading] = useState(false);
+  const [showVerification, setShowVerification] = useState(false);
+  const [verificationEmail, setVerificationEmail] = useState("");
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -106,16 +108,69 @@ export default function SignUpPage() {
         return;
       }
 
-      // Create profile row after signup
-      // Profile creation will be handled by the onboarding flow
-      // For now, redirect to checkout (payment before access)
-      router.push("/checkout");
+      // Show email verification message before redirecting
+      setVerificationEmail(email);
+      setShowVerification(true);
     } catch {
       setErrors({
         general: "Something went wrong. Please try again.",
       });
       setLoading(false);
     }
+  }
+
+  // Email verification state
+  if (showVerification) {
+    return (
+      <AuthLayout
+        heading="Check your email"
+        subheading={`We sent a verification link to ${verificationEmail}. Please verify your email to continue.`}
+        footerText="Already verified?"
+        footerLinkText="Log in"
+        footerLinkHref="/login"
+      >
+        <div className="text-center space-y-md">
+          {/* Mail icon */}
+          <div className="mx-auto w-16 h-16 rounded-full bg-orange/10 flex items-center justify-center">
+            <svg
+              width="28"
+              height="28"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#E65100"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <rect width="20" height="16" x="2" y="4" rx="2" />
+              <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+            </svg>
+          </div>
+          <p className="text-body text-text-secondary">
+            Didn&apos;t get the email? Check your spam folder or click below to continue.
+          </p>
+          <div className="space-y-2">
+            <Button
+              onClick={() => router.push("/checkout")}
+              fullWidth
+              size="lg"
+            >
+              Continue to Checkout
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setShowVerification(false);
+                setLoading(false);
+              }}
+              fullWidth
+            >
+              Go back
+            </Button>
+          </div>
+        </div>
+      </AuthLayout>
+    );
   }
 
   return (

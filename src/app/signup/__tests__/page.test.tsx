@@ -151,7 +151,7 @@ describe("SignUpPage", () => {
     });
   });
 
-  it("redirects to /checkout on successful signup", async () => {
+  it("shows email verification state on successful signup", async () => {
     mockSignUp.mockResolvedValue({ data: { user: { id: "1" } }, error: null });
 
     render(<SignUpPage />);
@@ -175,8 +175,40 @@ describe("SignUpPage", () => {
     fireEvent.click(screen.getByRole("button", { name: /get started/i }));
 
     await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith("/checkout");
+      expect(screen.getByText("Check your email")).toBeInTheDocument();
+      expect(screen.getByText(/test@business.com/)).toBeInTheDocument();
     });
+  });
+
+  it("navigates to checkout from verification state", async () => {
+    mockSignUp.mockResolvedValue({ data: { user: { id: "1" } }, error: null });
+
+    render(<SignUpPage />);
+
+    fireEvent.change(screen.getByLabelText(/email address/i), {
+      target: { value: "test@business.com" },
+    });
+    fireEvent.change(screen.getByLabelText(/business name/i), {
+      target: { value: "Test Corp" },
+    });
+    fireEvent.change(screen.getByLabelText(/^industry/i), {
+      target: { value: "Engineering" },
+    });
+    fireEvent.change(screen.getByLabelText(/^password/i), {
+      target: { value: "password123" },
+    });
+    fireEvent.change(screen.getByLabelText(/confirm password/i), {
+      target: { value: "password123" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /get started/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Check your email")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /continue to checkout/i }));
+    expect(mockPush).toHaveBeenCalledWith("/checkout");
   });
 
   it("shows API error on signup failure", async () => {
