@@ -142,7 +142,7 @@ function DashboardPreview() {
 
       <div className="relative bg-surface rounded-xl shadow-xl border border-[#F0EDE8] p-6 md:p-8">
         {/* Greeting */}
-        <p className="font-body text-small text-text-muted mb-1">Good morning, Joyce</p>
+        <p className="font-body text-small text-text-muted mb-1">Good morning, Jessica</p>
         <p className="font-body text-small text-text-muted mb-5">Monday, February 19, 2026</p>
 
         {/* Health Score */}

@@ -48,14 +48,14 @@ describe("AppLayout", () => {
     expect(screen.getByRole("link", { name: "Settings" })).toBeInTheDocument();
   });
 
-  it("renders user avatar with initials", () => {
+  it("renders user avatar image", () => {
     render(
       <AppLayout>
         <div>Test content</div>
       </AppLayout>
     );
 
-    expect(screen.getByText("JH")).toBeInTheDocument();
+    expect(screen.getByAltText("Jessica Morgan")).toBeInTheDocument();
   });
 
   it("renders children content", () => {
@@ -79,8 +79,8 @@ describe("AppLayout", () => {
     fireEvent.click(userMenuButton);
 
     await waitFor(() => {
-      expect(screen.getByText("Joyce Hayward")).toBeInTheDocument();
-      expect(screen.getByText("joyce@fusion4business.com")).toBeInTheDocument();
+      expect(screen.getByText("Jessica Morgan")).toBeInTheDocument();
+      expect(screen.getByText("jessica@example.com")).toBeInTheDocument();
       expect(screen.getByRole("link", { name: /profile/i })).toBeInTheDocument();
       expect(screen.getByRole("link", { name: /billing/i })).toBeInTheDocument();
       expect(screen.getByRole("button", { name: /logout/i })).toBeInTheDocument();

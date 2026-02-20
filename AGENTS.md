@@ -1,89 +1,133 @@
-# ProfitPulse - AGENTS.md
+---
+description: Instructions building apps with MCP
+globs: *
+alwaysApply: true
+---
 
-## Project Overview
-ProfitPulse is a CEO Dashboard for service-based businesses (engineers, dentists, contractors, churches, schools). It provides financial health scoring, plain-English AI insights, scenario calculators, and alerts.
+# InsForge SDK Documentation - Overview
 
-## Tech Stack
-- **Framework:** Next.js 14 (App Router, TypeScript)
-- **Styling:** Tailwind CSS with custom design tokens
-- **Backend:** InsForge (BaaS) - auth, database, AI gateway
-- **Payments:** Stripe (stubbed for now — `getUserTier()` returns "growth")
-- **Accounting:** QuickBooks integration (future)
-- **Email:** Resend (future)
+## What is InsForge?
 
-## Design System
+Backend-as-a-service (BaaS) platform providing:
 
-### Colors (Tailwind tokens in `tailwind.config.ts`)
-| Token | Hex | Usage |
-|-------|-----|-------|
-| `orange` | #E65100 | Primary CTA, active nav, buttons |
-| `background` | #FFF8F5 | Page background (warm off-white) |
-| `surface` | #FFFFFF | Cards, panels |
-| `text-primary` | #2D2A26 | Headings, body text |
-| `text-secondary` | #6B6560 | Labels, secondary text |
-| `text-muted` | #9A948E | Timestamps, captions |
-| `accent` | #7B1FA2 | Purple — USE SPARINGLY |
-| `success` | #43A047 | Health scores ONLY (never decorative) |
-| `warning` | #F9A825 | Attention states ONLY |
-| `error` | #D32F2F | Critical alerts, form errors ONLY |
+- **Database**: PostgreSQL with PostgREST API
+- **Authentication**: Email/password + OAuth (Google, GitHub)
+- **Storage**: File upload/download
+- **AI**: Chat completions and image generation (OpenAI-compatible)
+- **Functions**: Serverless function deployment
+- **Realtime**: WebSocket pub/sub (database + client events)
 
-**Rule:** Green/Amber/Red are FUNCTIONAL ONLY — health indicators, status badges, alerts. Never decorative.
+## Installation
 
-### Typography
-- **Display:** `font-display` → Georgia, serif (headlines, scores, key metrics)
-- **Body:** `font-body` → Arial, sans-serif (body text, labels, UI elements)
-- Sizes: h1=32px, h2=24px, h3=18px, body=14px, small=12px
+The following is a step-by-step guide to installing and using the InsForge TypeScript SDK for Web applications. If you are building other types of applications, please refer to:
+- [Swift SDK documentation](/sdks/swift/overview) for iOS, macOS, tvOS, and watchOS applications.
+- [Kotlin SDK documentation](/sdks/kotlin/overview) for Android applications.
+- [REST API documentation](/sdks/rest/overview) for direct HTTP API access.
 
-### Spacing (8px grid)
-xs=8px, sm=16px, md=24px, lg=32px, xl=48px, 2xl=64px
+### 🚨 CRITICAL: Follow these steps in order
 
-### Border Radius
-sm=6px, md=10px, lg=16px, full=50%
+### Step 1: Download Template
 
-### Logo Files
-- Full logo (with text): `/public/full-logo.png`
-- Symbol only: `/public/symbol-logo.png`
+Use the `download-template` MCP tool to create a new project with your backend URL and anon key pre-configured.
 
-## Key Patterns
+### Step 2: Install SDK
 
-### Path Aliases
-- `@/*` maps to `./src/*` (configured in `tsconfig.json`)
+```bash
+npm install @insforge/sdk@latest
+```
 
-### Subscription Stub
-- `@/lib/subscription.ts` exports `getUserTier(userId)` which returns `"growth"` as default
-- Will be replaced with real Stripe integration later
-- Do NOT install Stripe packages yet
+### Step 3: Create SDK Client
 
-### Testing
-- Jest + React Testing Library
-- Config: `jest.config.js` (JS, not TS — avoids ts-node dependency)
-- Setup: `jest.setup.ts` (imports `@testing-library/jest-dom`)
-- Test files: `__tests__/` directories adjacent to source files
-- Run: `npm run test` or `npm run test -- --passWithNoTests`
+You must create a client instance using `createClient()` with your base URL and anon key:
 
-### Build
-- `npm run build` must pass before every commit
-- `npm run test -- --passWithNoTests` must also pass
+```javascript
+import { createClient } from '@insforge/sdk';
 
-### Database Schema
-- Types in `@/lib/database.types.ts` — all table types, insert types, update types, enums
-- 9 tables: profiles, subscriptions, health_assessments, financial_data, expense_categories, alert_configs, alert_history, scenarios, quickbooks_connections
-- All tables have RLS enabled — users can only access their own rows
-- Migration script: `scripts/migrate.ts` (run with `npx tsx scripts/migrate.ts`)
-- Tables created via InsForge Admin API (`POST /api/database/tables`)
+const client = createClient({
+  baseUrl: 'https://your-app.region.insforge.app',  // Your InsForge backend URL
+  anonKey: 'your-anon-key-here'       // Get this from backend metadata
+});
 
-### InsForge Client
-- `@/lib/insforge.ts` — singleton client (`getInsForgeClient()`) and admin client (`getInsForgeAdmin()`)
-- Environment variables: `NEXT_PUBLIC_INSFORGE_URL`, `NEXT_PUBLIC_INSFORGE_ANON_KEY`, `INSFORGE_API_KEY`
-- `.env.example` has all required env var templates
-- Database queries use PostgREST syntax via `client.database.from('table')`
+```
 
-## Gotchas
-- ESLint with `@typescript-eslint/no-unused-vars` is strict — unused params need eslint-disable comment
-- Jest config must be `.js` (not `.ts`) unless `ts-node` is installed
-- Next.js 14 uses App Router — all pages in `src/app/` directory
-- No dark mode — the app has one theme only (warm off-white)
-- InsForge SDK requires global `fetch` — tests must mock: `global.fetch = jest.fn()`
-- InsForge database uses PostgREST (same API as Supabase) — `from().select().eq()` pattern
-- **CRITICAL**: InsForge SDK must be dynamically imported in `"use client"` components: `const { getInsForgeClient } = await import("@/lib/insforge")` — static imports cause SSR/build failures
-- Auth pages share `AuthLayout` component from `@/components/auth/AuthLayout`
+**API BASE URL**: Your API base URL is `https://your-app.region.insforge.app`.
+
+## Getting Detailed Documentation
+
+### 🚨 CRITICAL: Always Fetch Documentation Before Writing Code
+
+InsForge provides official SDKs and REST APIs, use them to interact with InsForge services from your application code.
+
+- [TypeScript SDK](/sdks/typescript/overview) - JavaScript/TypeScript
+- [Swift SDK](/sdks/swift/overview) - iOS, macOS, tvOS, and watchOS
+- [Kotlin SDK](/sdks/kotlin/overview) - Android and Kotlin Multiplatform
+- [REST API](/sdks/rest/overview) - Direct HTTP API access
+
+Before writing or editing any InsForge integration code, you **MUST** call the `fetch-docs` or `fetch-sdk-docs` MCP tool to get the latest SDK documentation. This ensures you have accurate, up-to-date implementation patterns.
+
+### Use the InsForge `fetch-docs` MCP tool to get specific SDK documentation:
+
+Available documentation types:
+
+- `"instructions"` - Essential backend setup (START HERE)
+- `"real-time"` - Real-time pub/sub (database + client events) via WebSockets
+- `"db-sdk-typescript"` - Database operations with TypeScript SDK
+- **Authentication** - Choose based on implementation:
+  - `"auth-sdk-typescript"` - TypeScript SDK methods for custom auth flows
+  - `"auth-components-react"` - Pre-built auth UI for React+Vite (singlepage App)
+  - `"auth-components-react-router"` - Pre-built auth UI for React(Vite+React Router) (Multipage App)
+  - `"auth-components-nextjs"` - Pre-built auth UI for Nextjs (SSR App)
+- `"storage-sdk"` - File storage operations
+- `"functions-sdk"` - Serverless functions invocation
+- `"ai-integration-sdk"` - AI chat and image generation
+- `"real-time"` - Real-time pub/sub (database + client events) via WebSockets
+- `"deployment"` - Deploy frontend applications via MCP tool
+
+These documentations are mostly for TypeScript SDK. For other languages, you can also use `fetch-sdk-docs` mcp tool to get specific documentation.
+
+### Use the InsForge `fetch-sdk-docs` MCP tool to get specific SDK documentation
+
+You can fetch sdk documentation using the `fetch-sdk-docs` MCP tool with specific feature type and language.
+
+Available feature types:
+- db - Database operations
+- storage - File storage operations
+- functions - Serverless functions invocation
+- auth - User authentication
+- ai - AI chat and image generation
+- realtime - Real-time pub/sub (database + client events) via WebSockets
+
+Available languages:
+- typescript - JavaScript/TypeScript SDK
+- swift - Swift SDK (for iOS, macOS, tvOS, and watchOS)
+- kotlin - Kotlin SDK (for Android and JVM applications)
+- rest-api - REST API
+
+## When to Use SDK vs MCP Tools
+
+### Always SDK for Application Logic:
+
+- Authentication (register, login, logout, profiles)
+- Database CRUD (select, insert, update, delete)
+- Storage operations (upload, download files)
+- AI operations (chat, image generation)
+- Serverless function invocation
+
+### Use MCP Tools for Infrastructure:
+
+- Project scaffolding (`download-template`) - Download starter templates with InsForge integration
+- Backend setup and metadata (`get-backend-metadata`)
+- Database schema management (`run-raw-sql`, `get-table-schema`)
+- Storage bucket creation (`create-bucket`, `list-buckets`, `delete-bucket`)
+- Serverless function deployment (`create-function`, `update-function`, `delete-function`)
+- Frontend deployment (`create-deployment`) - Deploy frontend apps to InsForge hosting
+
+## Important Notes
+
+- For auth: use `auth-sdk` for custom UI, or framework-specific components for pre-built UI
+- SDK returns `{data, error}` structure for all operations
+- Database inserts require array format: `[{...}]`
+- Serverless functions have single endpoint (no subpaths)
+- Storage: Upload files to buckets, store URLs in database
+- AI operations are OpenAI-compatible
+- **EXTRA IMPORTANT**: Use Tailwind CSS 3.4 (do not upgrade to v4). Lock these dependencies in `package.json`

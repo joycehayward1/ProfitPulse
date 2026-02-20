@@ -23,7 +23,7 @@ export function AuthLayout({
   return (
     <div className="min-h-screen flex">
       {/* Left decorative panel — desktop only */}
-      <div className="hidden lg:flex lg:w-[480px] xl:w-[540px] relative overflow-hidden bg-[#2D2A26] flex-col justify-between p-xl">
+      <div className="hidden lg:flex lg:w-[480px] xl:w-[540px] relative overflow-hidden bg-[#F5F0EB] flex-col justify-between p-xl">
         {/* Warm abstract background */}
         <div className="absolute inset-0">
           <div className="absolute top-0 right-0 w-[600px] h-[600px] rounded-full bg-orange/10 blur-[100px] -translate-y-1/4 translate-x-1/4" />
@@ -36,31 +36,35 @@ export function AuthLayout({
           <Image
             src="/full-logo.png"
             alt="ProfitPulse"
-            width={180}
-            height={48}
-            className="h-10 w-auto brightness-0 invert"
+            width={900}
+            height={200}
+            className="h-[150px] md:h-[190px] w-auto drop-shadow-lg"
           />
         </div>
 
         <div className="relative z-10 space-y-6">
-          <blockquote className="font-display text-h2 leading-snug text-white/90">
+          <blockquote className="font-display text-h2 leading-snug text-text-primary">
             &ldquo;I finally understand where my money goes — and I didn&apos;t need an
             accounting degree to figure it out.&rdquo;
           </blockquote>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-orange/20 flex items-center justify-center">
-              <span className="font-display text-body text-orange">JH</span>
-            </div>
+          <div className="flex items-center gap-4">
+            <Image
+              src="/avatar-jessica.jpg"
+              alt="Jessica M."
+              width={200}
+              height={200}
+              className="w-16 h-16 rounded-full object-cover shadow-md"
+            />
             <div>
-              <p className="text-body font-medium text-white/80">Joyce H.</p>
-              <p className="text-small text-white/50">Business Consultant</p>
+              <p className="text-body font-medium text-text-primary">Jessica M.</p>
+              <p className="text-small text-text-muted">Dental Practice Owner</p>
             </div>
           </div>
         </div>
 
         <div className="relative z-10">
-          <p className="text-small text-white/30">
-            &copy; {new Date().getFullYear()} ProfitPulse by Fusion 4 Business
+          <p className="text-small text-text-muted">
+            &copy; {new Date().getFullYear()} ProfitPulse
           </p>
         </div>
       </div>
@@ -73,9 +77,9 @@ export function AuthLayout({
             <Image
               src="/full-logo.png"
               alt="ProfitPulse"
-              width={140}
-              height={36}
-              className="h-8 w-auto"
+              width={900}
+              height={200}
+              className="h-[150px] md:h-[190px] w-auto"
             />
           </Link>
         </div>

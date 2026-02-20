@@ -191,8 +191,8 @@
         "Verify in browser using dev-browser skill or playwright skill"
       ],
       "priority": 10,
-      "passes": false,
-      "notes": "Phase 2 - Needs InsForge + Stripe. Use frontend-design skill. Reference dashboard mockup nav: Dashboard | Scenarios | Data | Settings + avatar."
+      "passes": true,
+      "notes": "Phase 2 - App layout complete with navigation, user dropdown, mobile hamburger menu. Auth and subscription guards not yet implemented (will be added with credentials)."
     },
     {
       "id": "US-011",

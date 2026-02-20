@@ -7,7 +7,7 @@ export default function DashboardPage() {
         {/* Page Header */}
         <div>
           <h1 className="font-display text-h1 text-text-primary mb-xs">
-            Good afternoon, Joyce
+            Good afternoon, Jessica
           </h1>
           <p className="text-body text-text-secondary">
             Monday, February 19, 2026

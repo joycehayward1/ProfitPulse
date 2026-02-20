@@ -10,6 +10,7 @@
     "test": "jest"
   },
   "dependencies": {
+    "@google/genai": "^1.42.0",
     "@insforge/sdk": "^1.1.5",
     "next": "14.2.35",
     "react": "^18",

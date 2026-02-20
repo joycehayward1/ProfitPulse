@@ -29,9 +29,10 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   // Mock user data - will be replaced with real auth
   const user = {
-    name: "Joyce Hayward",
-    email: "joyce@fusion4business.com",
-    initials: "JH",
+    name: "Jessica Morgan",
+    email: "jessica@example.com",
+    initials: "JM",
+    avatar: "/avatar-jessica.jpg",
   };
 
   // Close mobile menu on route change
@@ -64,17 +65,14 @@ export function AppLayout({ children }: AppLayoutProps) {
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
-            <Link href="/dashboard" className="flex items-center gap-3 group">
+            <Link href="/dashboard" className="flex items-center group">
               <Image
-                src="/symbol-logo.png"
+                src="/full-logo.png"
                 alt="ProfitPulse"
-                width={32}
-                height={32}
-                className="transition-transform duration-300 group-hover:scale-105"
+                width={900}
+                height={200}
+                className="h-[150px] md:h-[190px] w-auto transition-transform duration-300 group-hover:scale-[1.02]"
               />
-              <span className="hidden sm:block font-display text-h3 text-text-primary">
-                ProfitPulse
-              </span>
             </Link>
 
             {/* Desktop Navigation */}
@@ -114,9 +112,13 @@ export function AppLayout({ children }: AppLayoutProps) {
                   aria-label="User menu"
                   aria-expanded={userMenuOpen}
                 >
-                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-orange to-[#BF4400] flex items-center justify-center text-white font-display font-semibold text-small shadow-md group-hover:shadow-lg transition-shadow">
-                    {user.initials}
-                  </div>
+                  <Image
+                    src={user.avatar}
+                    alt={user.name}
+                    width={36}
+                    height={36}
+                    className="w-9 h-9 rounded-full object-cover shadow-md group-hover:shadow-lg transition-shadow"
+                  />
                   <svg
                     width="16"
                     height="16"

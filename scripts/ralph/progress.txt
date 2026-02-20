@@ -177,3 +177,23 @@ Session: Ralph autonomous loop
   - Providers wrapper component keeps root layout clean when adding multiple context providers
   - InsForge auth methods work the same way via dynamic import as static import - mocks apply correctly
 ---
+
+## 2026-02-19 - US-010: Authenticated App Layout & Navigation
+Session: Ralph autonomous loop
+- Created AppLayout component with sticky top nav, logo, horizontal nav items, user avatar dropdown
+- Desktop nav: Dashboard | Scenarios | Data | Settings with orange underline for active state
+- Mobile nav: hamburger menu with slide-out panel from right, backdrop overlay, auto-close on route change
+- User dropdown: avatar with initials, Profile/Billing links, Logout button
+- Created placeholder pages: /dashboard, /scenarios, /data, /settings with AppLayout wrapper
+- Implemented responsive design: desktop (1280px) and mobile (375px)
+- Removed mounted state check to fix SSR/hydration issue (component was returning null before mount)
+- 128 tests passing (8 new AppLayout tests), build clean
+- Browser verified: navigation works, dropdown opens, mobile menu slides out
+- Files: src/components/layout/AppLayout.tsx, src/components/layout/__tests__/AppLayout.test.tsx, src/components/layout/AGENTS.md, src/app/dashboard/page.tsx, src/app/scenarios/page.tsx, src/app/data/page.tsx, src/app/settings/page.tsx, scripts/ralph/prd.json
+- **Learnings for future iterations:**
+  - Don't use mounted state check that returns null - breaks SSR and causes blank pages
+  - usePathname() for detecting active route works well for nav highlighting
+  - Close-on-outside-click pattern: useEffect with mousedown listener + cleanup
+  - Mobile menu slide-out: fixed positioning + transform animation + backdrop
+  - User dropdown should close when clicking anywhere else on page for better UX
+---

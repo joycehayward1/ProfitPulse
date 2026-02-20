@@ -112,11 +112,33 @@ If `AGENTS.md` doesn't exist in the project root, create it with:
 **DO include:** Import patterns, component usage patterns, gotchas, sync requirements
 **Do NOT include:** Story-specific details, temporary notes, info already in progress.txt
 
-## SCOPE LIMIT: Phase 2 Only
+## SCOPE LIMIT: Phase 3 Only
 
-Ralph should ONLY work on stories US-005 through US-010 (priority 5-10).
-After US-010 passes, STOP. Do NOT continue to US-011 or beyond.
-Reply with: "Phase 2 complete. Ready for review."
+Ralph should ONLY work on stories US-011 through US-017 (priority 11-17).
+SKIP US-008 and US-009 (Stripe — blocked, no credentials).
+After US-017 passes, STOP. Do NOT continue to US-018 or beyond.
+Reply with: "Phase 3 complete. Ready for review."
+
+## CRITICAL: Visual Quality Standards
+
+**The client has been unhappy with visual quality. Follow these rules strictly:**
+
+1. ALL images must render at HIGH RESOLUTION — never use width/height attributes under 200 for any image. Use large source dimensions (width={200}+ height={200}+) even if displaying smaller via CSS classes.
+2. The testimonial/avatar photo is LOCAL at `/avatar-jessica.jpg` — do NOT use Unsplash URLs.
+3. The logo is at `/full-logo.png` and must render at `h-[150px] md:h-[190px]` on ALL pages.
+4. Auth pages use `AuthLayout` with light background `#F5F0EB` — all text on this panel must be dark (text-text-primary, text-text-muted), NEVER white.
+5. Copyright must say "2026 ProfitPulse" — NO "by Fusion 4 Business" anywhere.
+6. Example user name is "Jessica" (NOT "Joyce").
+7. Every UI component must look polished and intentional. No blurry images, no text invisible against backgrounds, no broken layouts.
+8. Test at both desktop AND mobile widths before marking a story as done.
+
+## Existing Components to Reuse
+
+These components already exist — USE them, do not recreate:
+- `@/components/ui` — Button, Input, Card, HealthScoreGauge, StatusBadge, TrafficLightDot, ProgressBar, Toast/useToast
+- `@/components/auth/AuthLayout` — Auth page wrapper (login, signup, forgot-password)
+- `@/components/layout/AppLayout` — Authenticated app wrapper (dashboard, scenarios, data, settings)
+- All pages under AppLayout get the top nav bar with Dashboard | Scenarios | Data | Settings
 
 ## InsForge Configuration
 - InsForge MCP is available at project level
@@ -157,12 +179,20 @@ For the landing page, DRAFT the brand copy. The user will refine it later.
 - Follow existing code patterns
 - Mobile-first: every UI element must work at 320px
 
+## CRITICAL: Dev Server Port
+
+ALWAYS use port 3002. Before starting a dev server, kill anything on port 3002 first:
+`lsof -ti:3002 | xargs kill -9 2>/dev/null; npx next dev -p 3002`
+
+NEVER use port 3000, 3001, or any other port. ONLY 3002.
+
 ## Browser Testing (Required for Frontend Stories)
 
 For any story that changes UI:
 1. Try the `dev-browser` skill first:
-   - Start the dev server if not running
-   - Navigate to the relevant page
+   - Kill any existing server: `lsof -ti:3002 | xargs kill -9 2>/dev/null`
+   - Start the dev server on port 3002: `npx next dev -p 3002`
+   - Navigate to http://localhost:3002
    - Verify the UI changes match the design system
    - Check mobile responsiveness
 2. If `dev-browser` is not working or unavailable, fall back to the `playwright-skill`:
