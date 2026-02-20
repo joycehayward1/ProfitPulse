@@ -295,3 +295,31 @@ Session: Ralph autonomous loop
   - Mobile: all elements stack with full width
   - Empty state correctly displays when no assessment exists (shows "Complete Your Assessment" CTA)
 ---
+
+## 2026-02-19 - US-016: Data Entry - Manual Forms
+Session: Ralph autonomous loop
+- Created Data Entry page at /data with tabbed interface (Enter Manually | Upload Spreadsheet)
+- Implemented manual entry form with plain-English labels matching brand voice
+- Added CurrencyInput fields for cash, revenue, expenses, receivables
+- Added month/year period selector
+- Implemented expandable expense breakdown section with smooth height animations
+- Created history list showing previous entries with formatted currency and dates
+- Added QuickBooks connection link placeholder
+- Form validation: Save button disabled until all required fields filled
+- Form submission with loading state, success toast, automatic reset
+- Staggered fade-in animations for polished page load experience
+- 21 unit tests passing (100% coverage of user interactions)
+- Mobile responsive: single column stack, full-width inputs, 2x2 metric grid in history
+- Browser verified via dev-browser skill at 1280px (desktop) and 375px (mobile)
+- Files: src/app/data/page.tsx, __tests__/page.test.tsx, globals.css (added animations)
+- **Learnings for future iterations:**
+  - Tabs with sliding orange indicator: use absolute positioned div animated with animate-slide-in
+  - Expandable sections: overflow-hidden + max-h transition (max-h-0 collapsed, max-h-[600px] expanded)
+  - History entries should feel like ledger rows: hover shadow-lg, group-hover text color transitions
+  - Mock data pattern: useState with initial array, will be replaced with InsForge fetch once credentials available
+  - CurrencyInput from @/components/ui works perfectly for all financial inputs
+  - Expense breakdown UX: don't show by default (reduce initial cognitive load), smooth reveal on toggle click
+  - Save button state management: disabled when !isFormValid || isSubmitting, shows "Saving..." during submission
+  - Form reset after successful save: clear all inputs, collapse expense breakdown, reset period to current month
+  - Desktop 2-column grid, mobile full-width stack pattern works well for financial forms
+  - History display: period as Georgia headline, metadata as small Arial secondary text, metrics in 2x2 or 4-column grid
