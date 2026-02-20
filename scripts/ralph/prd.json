@@ -1,0 +1,609 @@
+{
+  "project": "ProfitPulse",
+  "branchName": "develop",
+  "description": "CEO Dashboard for Service-Based Businesses - Full MVP (31 user stories across 6 phases)",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Project Scaffolding & Tailwind Config",
+      "description": "As a developer, I need the Next.js project scaffolded with Tailwind CSS configured to the ProfitPulse design system tokens.",
+      "acceptanceCriteria": [
+        "Next.js 14 app created with TypeScript, Tailwind CSS, App Router",
+        "InsForge SDK (@insforge/sdk) installed",
+        "Tailwind config includes custom colors: orange #E65100, background #FFF8F5, surface #FFFFFF, text-primary #2D2A26, text-secondary #6B6560, text-muted #9A948E, accent #7B1FA2, success #43A047, warning #F9A825, error #D32F2F",
+        "Tailwind config includes font families: display (Georgia, serif), body (Arial, sans-serif)",
+        "Tailwind config includes custom spacing scale: xs/8px, sm/16px, md/24px, lg/32px, xl/48px, 2xl/64px",
+        "Tailwind config includes border radius: sm/6px, md/10px, lg/16px, full/50%",
+        "Global CSS sets background #FFF8F5, body font Arial, base font size 14px",
+        "Git repo initialized, develop branch created",
+        "npm run build passes with no errors"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "Phase 1 - No credentials needed. Foundation for all future stories."
+    },
+    {
+      "id": "US-002",
+      "title": "Core UI Components - Buttons, Inputs, Cards",
+      "description": "As a developer, I need reusable UI components matching the approved design system so all pages are visually consistent.",
+      "acceptanceCriteria": [
+        "Button component with variants: primary (filled #E65100, white text, rounded-md), secondary (outlined #E65100, orange text), cancel (gray background, dark text)",
+        "Input component with states: default (white bg, gray border), focused (orange #E65100 border), error (red #D32F2F border, red helper text below)",
+        "Card component with variants: standard (white bg, subtle shadow, rounded-lg), featured (orange #E65100 border), highlight (cream #FFF8F5 bg)",
+        "All components use Arial font-body for text labels",
+        "Generous padding and soft corners (border-radius md/10px default)",
+        "Components exported from @/components/ui directory",
+        "npm run build passes",
+        "Verify in browser using dev-browser skill or playwright skill"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Phase 1 - Use frontend-design skill. Reference design system PDF page 5 (Buttons & Inputs)."
+    },
+    {
+      "id": "US-003",
+      "title": "Health Score Gauge & Status Components",
+      "description": "As a developer, I need the health score gauge and traffic-light status components unique to ProfitPulse.",
+      "acceptanceCriteria": [
+        "HealthScoreGauge component: dark circle background, colored ring (green #43A047 for 80-100, amber #F9A825 for 50-79, red #D32F2F for 0-49), score number centered in white Georgia font-display",
+        "Gauge accepts score prop (0-100) and renders appropriate ring color",
+        "TrafficLightDot component: small colored circle (green/amber/red) with optional label text",
+        "StatusBadge component: pill-shaped badge with text (Healthy/Attention/Critical) in corresponding traffic-light color",
+        "ProgressBar component: orange #E65100 fill, gray track, accepts value and max props",
+        "Green/amber/red colors used ONLY on these status components - never on buttons, headers, or decorative elements",
+        "npm run build passes",
+        "Verify in browser using dev-browser skill or playwright skill"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "Phase 1 - Use frontend-design skill. Reference design system PDF page 3 (Health Indicators) and page 6 (Cards & Progress)."
+    },
+    {
+      "id": "US-004",
+      "title": "Landing Page",
+      "description": "As a visitor, I want to see a warm, approachable landing page that explains ProfitPulse and motivates me to sign up.",
+      "acceptanceCriteria": [
+        "Public page at / (no auth required)",
+        "ProfitPulse logo displayed using /public/full-logo.png in header/nav",
+        "Hero section: headline 'Finally understand your numbers—without the accounting degree' in Georgia font-display, subheadline in Arial font-body, primary CTA Get Started button in orange #E65100",
+        "Benefits section: 3-4 cards highlighting Health Score, Plain-English Insights, Scenario Calculator, Alerts",
+        "Pricing section: three tier cards - Starter $49/mo, Growth $99/mo, Scale $199/mo - each with feature lists and Get Started CTA",
+        "Warm color palette throughout: orange CTAs, off-white #FFF8F5 background, no cold or corporate feel",
+        "Mobile responsive: cards stack vertically, hero text scales, nav collapses to hamburger",
+        "Footer with basic links",
+        "npm run build passes",
+        "Verify in browser using dev-browser skill or playwright skill"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "Phase 1 - Use frontend-design skill. First impression for Joyce and clients. Must feel warm and inviting, NOT generic SaaS. Purple #7B1FA2 sparingly as accent."
+    },
+    {
+      "id": "US-005",
+      "title": "Database Schema & Row Level Security",
+      "description": "As a developer, I need the InsForge database tables and RLS policies created so all app data is stored securely.",
+      "acceptanceCriteria": [
+        "Tables created in InsForge: profiles (user_id FK, business_name, industry, employee_count, created_at)",
+        "Table: subscriptions (user_id FK, stripe_customer_id, stripe_subscription_id, tier, status, current_period_end)",
+        "Table: health_assessments (user_id FK, cash_on_hand, monthly_revenue, monthly_expenses, accounts_receivable, health_score, ai_summary, recommendations JSON, created_at)",
+        "Table: financial_data (user_id FK, period_date, cash_balance, revenue, expenses, receivables, data_source enum manual/spreadsheet/quickbooks, created_at)",
+        "Table: expense_categories (financial_data_id FK, category, amount)",
+        "Table: alert_configs (user_id FK, cash_threshold, expense_increase_pct, runway_threshold_months, cash_alerts_enabled, expense_alerts_enabled, weekly_summary_enabled, notification_email)",
+        "Table: alert_history (user_id FK, alert_type, message, triggered_at, read boolean)",
+        "Table: scenarios (user_id FK, scenario_type, inputs JSON, result JSON, ai_explanation, created_at)",
+        "Table: quickbooks_connections (user_id FK, access_token_encrypted, refresh_token_encrypted, realm_id, token_expires_at, last_sync_at)",
+        "Row Level Security policies on ALL tables: users can only read/write their own rows",
+        "npm run build passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "Phase 2 - BLOCKED: Needs InsForge Project URL + API Key. Schema can be prepared as migration scripts even without credentials."
+    },
+    {
+      "id": "US-006",
+      "title": "Auth Pages - Sign Up & Login",
+      "description": "As a user, I want to create an account and log in so I can access my dashboard.",
+      "acceptanceCriteria": [
+        "Sign Up page at /signup: email, password, business name, industry dropdown fields",
+        "Industry dropdown options: Engineering, Medical Services, Dental, Construction, Churches, Schools, Other",
+        "Welcoming copy: 'Let's get you some clarity' messaging",
+        "Login page at /login: email + password fields",
+        "Forgot password link on login page navigates to /forgot-password",
+        "Auth handled via InsForge Auth SDK (insforge.auth.signUp, insforge.auth.signIn)",
+        "After successful signup: create profile row, redirect to /checkout",
+        "After successful login: redirect to /dashboard",
+        "Form validation with error states matching design system (red border, red text)",
+        "Mobile responsive",
+        "npm run build passes",
+        "Verify in browser using dev-browser skill or playwright skill"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "Phase 2 - BLOCKED: Needs InsForge credentials. Use frontend-design skill for auth pages."
+    },
+    {
+      "id": "US-007",
+      "title": "Auth - Password Reset & Email Verification",
+      "description": "As a user, I want to reset my password and verify my email so my account stays secure.",
+      "acceptanceCriteria": [
+        "Forgot Password page at /forgot-password: email input, Send Reset Link button",
+        "Reset Password page at /reset-password: new password + confirm password fields",
+        "Password reset handled via InsForge Auth SDK",
+        "Email verification flow after signup via InsForge",
+        "If user not verified, show 'Check your email' message",
+        "Success/error toast messages for all auth actions",
+        "Mobile responsive",
+        "npm run build passes",
+        "Verify in browser using dev-browser skill or playwright skill"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": "Phase 2 - BLOCKED: Needs InsForge credentials."
+    },
+    {
+      "id": "US-008",
+      "title": "Stripe Checkout & Tier Selection",
+      "description": "As a new user, I want to select a subscription tier and pay so I can access the platform.",
+      "acceptanceCriteria": [
+        "Tier selection page at /checkout shown after signup",
+        "Three tier cards: Starter $49/mo, Growth $99/mo, Scale $199/mo with feature lists",
+        "Selecting a tier creates Stripe Checkout Session via API route /api/stripe/checkout",
+        "User redirected to Stripe Checkout for payment",
+        "On success: redirect to /onboarding, subscription record created in subscriptions table",
+        "On cancel: return to tier selection page",
+        "npm run build passes",
+        "Verify in browser using dev-browser skill or playwright skill"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": "Phase 2 - BLOCKED: Needs Stripe Publishable Key + Secret Key. Use frontend-design skill for tier cards."
+    },
+    {
+      "id": "US-009",
+      "title": "Stripe Webhooks & Subscription Management",
+      "description": "As a developer, I need Stripe webhooks to keep subscription status in sync and billing management.",
+      "acceptanceCriteria": [
+        "Webhook endpoint at /api/stripe/webhooks handles: checkout.session.completed, customer.subscription.updated, customer.subscription.deleted, invoice.payment_failed",
+        "Webhook verifies Stripe signature",
+        "On checkout.session.completed: update subscriptions table with tier, status, stripe IDs",
+        "On subscription change/cancel: update subscriptions table accordingly",
+        "Utility function getUserTier(userId) returns current tier or null",
+        "Stripe Customer Portal session creation at /api/stripe/portal",
+        "npm run build passes"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": "Phase 2 - BLOCKED: Needs Stripe Secret Key + Webhook Secret."
+    },
+    {
+      "id": "US-010",
+      "title": "Authenticated App Layout & Navigation",
+      "description": "As a logged-in user, I want a consistent navigation layout so I can move between dashboard sections.",
+      "acceptanceCriteria": [
+        "App layout wrapper for all authenticated pages",
+        "Top navigation bar: Dashboard | Scenarios | Data | Settings links",
+        "Active nav item highlighted with orange #E65100 underline",
+        "User avatar/initial circle in top-right with dropdown (Profile, Billing, Logout)",
+        "Mobile: hamburger menu that slides out with same nav items",
+        "Auth guard: unauthenticated users redirected to /login",
+        "Subscription guard: users without active subscription redirected to /checkout",
+        "npm run build passes",
+        "Verify in browser using dev-browser skill or playwright skill"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": "Phase 2 - Needs InsForge + Stripe. Use frontend-design skill. Reference dashboard mockup nav: Dashboard | Scenarios | Data | Settings + avatar."
+    },
+    {
+      "id": "US-011",
+      "title": "Health Assessment - Questionnaire UI",
+      "description": "As a new user, I want to answer simple questions about my business so ProfitPulse can assess my financial health.",
+      "acceptanceCriteria": [
+        "Assessment page at /assessment shown after onboarding for first-time users",
+        "Welcome message: 'Let's get you some clarity on your business.'",
+        "Step-by-step form (one question per step) with progress indicator",
+        "Questions: 'How much cash do you have in the bank right now?' (currency), 'What were your total sales last month?' (currency), 'What were your total expenses last month?' (currency), 'How much money are clients/customers currently owing you?' (currency), 'How many employees do you have?' (number), 'What's your biggest financial worry right now?' (textarea)",
+        "Next and Back navigation between steps",
+        "Currency inputs formatted with $ and commas",
+        "On submit: save to health_assessments table in InsForge",
+        "Mobile responsive",
+        "npm run build passes",
+        "Verify in browser using dev-browser skill or playwright skill"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": "Phase 3 - Use frontend-design skill. This is the first-action experience. Must feel warm and conversational, not like a form."
+    },
+    {
+      "id": "US-012",
+      "title": "Health Assessment - Score Calculation & Results",
+      "description": "As a user who completed the assessment, I want to see my health score with a clear explanation of how it was calculated.",
+      "acceptanceCriteria": [
+        "Results page at /assessment/results shown after questionnaire submission",
+        "Health Score calculated: Cash Runway 40% (cash/expenses normalized, 6+ months = 100), Profit Margin 30% ((revenue-expenses)/revenue * 100), Receivables Health 30% (lower ratio = healthier)",
+        "Score displayed using HealthScoreGauge component (dark circle, colored ring, centered number)",
+        "StatusBadge below gauge: Healthy (80-100) / Attention (50-79) / Critical (0-49)",
+        "Formula breakdown section: 'Here's how we calculated your score:' with each component shown",
+        "Score saved to health_assessments table",
+        "Continue to Dashboard button at bottom",
+        "Mobile responsive",
+        "npm run build passes",
+        "Verify in browser using dev-browser skill or playwright skill"
+      ],
+      "priority": 12,
+      "passes": false,
+      "notes": "Phase 3 - Use frontend-design skill. Score display should use the HealthScoreGauge from US-003."
+    },
+    {
+      "id": "US-013",
+      "title": "Health Assessment - AI Summary & Recommendations",
+      "description": "As a user, I want AI-generated plain-English insights about my assessment results.",
+      "acceptanceCriteria": [
+        "AI summary paragraph displayed on results page below the score",
+        "Generated via InsForge AI Gateway (GPT-4o Mini)",
+        "Prompt includes: cash on hand, revenue, expenses, receivables, employee count, biggest worry",
+        "Output: 2-3 sentences in conversational tone, no jargon",
+        "Top 3 actionable recommendations displayed as numbered cards",
+        "AI summary and recommendations saved to health_assessments table",
+        "Loading state while AI generates (skeleton text)",
+        "Graceful fallback if AI unavailable (show score without AI text)",
+        "npm run build passes",
+        "Verify in browser using dev-browser skill or playwright skill"
+      ],
+      "priority": 13,
+      "passes": false,
+      "notes": "Phase 3 - BLOCKED: Needs InsForge credentials for AI gateway."
+    },
+    {
+      "id": "US-014",
+      "title": "Dashboard - Layout, Greeting & Health Score Card",
+      "description": "As a business owner, I want to see my dashboard with a personal greeting and health score prominently displayed.",
+      "acceptanceCriteria": [
+        "Dashboard page at /dashboard (default page after login)",
+        "Greeting: 'Good morning/afternoon/evening, [First Name]' with current date formatted like 'Monday, February 11, 2026'",
+        "Health Score card (featured card with orange border): HealthScoreGauge showing current score, StatusBadge, change delta '+5 from last week'",
+        "Score pulled from most recent health_assessments or recalculated from latest financial_data",
+        "If no data: show 'Complete your assessment' prompt linking to /assessment",
+        "Mobile responsive",
+        "npm run build passes",
+        "Verify in browser using dev-browser skill or playwright skill"
+      ],
+      "priority": 14,
+      "passes": false,
+      "notes": "Phase 3 - Use frontend-design skill. Reference dashboard mockup from design system PDF page 9."
+    },
+    {
+      "id": "US-015",
+      "title": "Dashboard - Metric Cards & Cash Position",
+      "description": "As a business owner, I want to see profit, cash flow, runway, and cash position at a glance with traffic-light indicators.",
+      "acceptanceCriteria": [
+        "Three metric cards in a row: Profit (dollar amount, status text, TrafficLightDot), Cash Flow (dollar amount, status, dot), Runway (months, status, dot - green >3mo, amber 1-3mo, red <1mo)",
+        "Dollar amounts in Georgia font-display, labels in Arial font-body",
+        "Cash Position section: large dollar amount for cash on hand, Money In with down-arrow, Money Out with up-arrow",
+        "AI Insight card at bottom: lightbulb icon + plain-English sentence (placeholder text for now)",
+        "Quick action button: 'Run a Scenario' linking to /scenarios",
+        "All data from latest financial_data row in InsForge",
+        "Cards stack vertically on mobile",
+        "npm run build passes",
+        "Verify in browser using dev-browser skill or playwright skill"
+      ],
+      "priority": 15,
+      "passes": false,
+      "notes": "Phase 3 - Use frontend-design skill. Reference dashboard mockup PDF page 9 for exact layout."
+    },
+    {
+      "id": "US-016",
+      "title": "Data Entry - Manual Forms",
+      "description": "As a business owner, I want to enter financial data through simple forms so the dashboard reflects real numbers.",
+      "acceptanceCriteria": [
+        "Data Entry page at /data accessible from top nav",
+        "Two tabs: 'Enter Manually' and 'Upload Spreadsheet' (upload built in US-017)",
+        "Manual entry form: 'Cash in the bank right now' (currency $), 'Total sales this month' (currency), 'Total expenses this month' (currency), 'Money customers owe you' (currency)",
+        "Optional expandable: expense breakdown by category (rent, payroll, supplies, marketing, other)",
+        "Period selector: month/year picker",
+        "Save button stores to financial_data table with data_source 'manual'",
+        "After save: success toast, dashboard metrics auto-recalculate",
+        "History list below form showing previous entries with dates",
+        "'Or connect QuickBooks' link placeholder",
+        "Mobile responsive",
+        "npm run build passes",
+        "Verify in browser using dev-browser skill or playwright skill"
+      ],
+      "priority": 16,
+      "passes": false,
+      "notes": "Phase 3 - Use frontend-design skill. Plain-English labels, not accounting jargon."
+    },
+    {
+      "id": "US-017",
+      "title": "Data Entry - CSV Spreadsheet Upload & Parsing",
+      "description": "As a business owner, I want to drag-and-drop my CSV spreadsheet so I don't have to type everything manually.",
+      "acceptanceCriteria": [
+        "Drag-and-drop zone on Data Entry page: 'Drop your financial spreadsheet here' with file picker fallback",
+        "Accepted file type: CSV (.csv) only",
+        "File size limit: 10MB with error message if exceeded",
+        "CSV parsing via Papa Parse library",
+        "After upload: show preview table of parsed data (first 10 rows)",
+        "Column mapping UI: dropdowns to map CSV columns to fields (Revenue, Expenses, Cash Balance, Date)",
+        "Smart auto-detection: guess column mapping from header names",
+        "Import button saves mapped data to financial_data table with data_source 'spreadsheet'",
+        "Success/error states after import",
+        "npm run build passes",
+        "Verify in browser using dev-browser skill or playwright skill"
+      ],
+      "priority": 17,
+      "passes": false,
+      "notes": "Phase 3 - Use frontend-design skill. CSV only (not Excel). Papa Parse for parsing."
+    },
+    {
+      "id": "US-018",
+      "title": "Scenario Calculator - Page Layout & Type Cards",
+      "description": "As a business owner, I want to see available scenario types so I can choose what financial question to explore.",
+      "acceptanceCriteria": [
+        "Scenario Calculator page at /scenarios accessible from top nav",
+        "'What-If Calculator' header in Georgia font with back arrow to dashboard",
+        "Four scenario type cards in 2x2 grid: Break-Even (target icon), Goal Planning (flag icon), Can I Hire? (person icon), Cash Runway (hourglass icon)",
+        "Each card has title, subtitle description, and click handler",
+        "Clicking a card navigates to /scenarios/[type]",
+        "Saved scenarios list below cards (empty state: 'No saved scenarios yet')",
+        "Mobile responsive (cards stack 1 column on small screens)",
+        "npm run build passes",
+        "Verify in browser using dev-browser skill or playwright skill"
+      ],
+      "priority": 18,
+      "passes": false,
+      "notes": "Phase 4 - Use frontend-design skill. Reference scenario calculator mockup from design system PDF page 10."
+    },
+    {
+      "id": "US-019",
+      "title": "Scenario - Break-Even Calculator",
+      "description": "As a business owner, I want to calculate my break-even point so I know how many sales I need.",
+      "acceptanceCriteria": [
+        "Page at /scenarios/break-even",
+        "Input form: Monthly fixed expenses (currency, auto-fill from data if available), Average price per service/product (currency), Variable cost per service/product (currency)",
+        "Calculate: break-even units = fixed expenses / (price - variable cost)",
+        "Result in plain English: 'You need to sell [X] per month to break even'",
+        "Visual chart: bar showing current sales vs break-even threshold",
+        "AI explanation via InsForge AI Gateway (GPT-4o Mini)",
+        "Traffic-light badge: green if above break-even, amber if close, red if below",
+        "Save Scenario and Try Different Numbers buttons",
+        "Save stores to scenarios table",
+        "npm run build passes",
+        "Verify in browser using dev-browser skill or playwright skill"
+      ],
+      "priority": 19,
+      "passes": false,
+      "notes": "Phase 4 - Use frontend-design skill."
+    },
+    {
+      "id": "US-020",
+      "title": "Scenario - Goal Planning Calculator",
+      "description": "As a business owner, I want to plan how to reach my revenue goal so I know monthly targets.",
+      "acceptanceCriteria": [
+        "Page at /scenarios/goal-planning",
+        "Input form: Annual revenue goal (currency), Current monthly revenue (currency, auto-fill), Months remaining (number or auto-calc)",
+        "Calculate: required monthly = (annual goal - revenue so far) / months remaining",
+        "Result: 'To hit $X by year-end, you need $Y/month for the next Z months'",
+        "Visual: progress bar showing current progress toward goal",
+        "AI explanation (GPT-4o Mini) contextualizing feasibility",
+        "Traffic-light badge based on feasibility",
+        "Save Scenario and Try Different Numbers buttons",
+        "npm run build passes",
+        "Verify in browser using dev-browser skill or playwright skill"
+      ],
+      "priority": 20,
+      "passes": false,
+      "notes": "Phase 4 - Use frontend-design skill."
+    },
+    {
+      "id": "US-021",
+      "title": "Scenario - Hiring Readiness Calculator",
+      "description": "As a business owner, I want to know if I can afford to hire someone.",
+      "acceptanceCriteria": [
+        "Page at /scenarios/hiring",
+        "Input form matching mockup: Annual salary (currency, e.g. $45000), Benefits & overhead (auto-calc 25%, read-only), When do you want to hire? (slider: Now to 12 months with label)",
+        "Calculate: new monthly cost = (salary + benefits) / 12, new profit = current profit - new monthly cost",
+        "Result: 'Yes, you can afford to hire!' or 'Not yet—here's what needs to change'",
+        "StatusBadge: green 'Achievable' or red 'Not Yet'",
+        "Profit Comparison bar chart: Current Monthly Profit bar vs After Hiring bar",
+        "AI explanation via InsForge (Claude Sonnet 4.5 or GPT-4o for nuanced analysis)",
+        "Save Scenario and Try Different Numbers buttons",
+        "npm run build passes",
+        "Verify in browser using dev-browser skill or playwright skill"
+      ],
+      "priority": 21,
+      "passes": false,
+      "notes": "Phase 4 - Use frontend-design skill. This is the mockup reference scenario from design system PDF page 10. Must match closely."
+    },
+    {
+      "id": "US-022",
+      "title": "Scenario - Cash Runway & Shortfall Recovery",
+      "description": "As a business owner, I want to check how long my cash will last and plan recovery if I miss a target.",
+      "acceptanceCriteria": [
+        "Cash Runway at /scenarios/runway: inputs for current cash (auto-fill) and monthly burn rate (auto-fill from expenses)",
+        "Result: 'You can operate for X months at current spending'",
+        "Visual: timeline bar showing months of runway",
+        "Traffic-light badge (green >6mo, amber 3-6mo, red <3mo)",
+        "Shortfall Recovery section: inputs for missed target amount (currency) and months to recover (number)",
+        "Result: 'To make up the shortfall, you need an extra $X/month'",
+        "AI explanations for both scenarios",
+        "Save Scenario and Try Different Numbers buttons for each",
+        "npm run build passes",
+        "Verify in browser using dev-browser skill or playwright skill"
+      ],
+      "priority": 22,
+      "passes": false,
+      "notes": "Phase 4 - Use frontend-design skill."
+    },
+    {
+      "id": "US-023",
+      "title": "AI Insights Engine",
+      "description": "As a developer, I need a centralized AI service that generates plain-English explanations for dashboard, assessment, and scenarios.",
+      "acceptanceCriteria": [
+        "Service at @/lib/ai-insights.ts with functions: generateDashboardInsight(financialData), generateAssessmentSummary(assessmentData), generateScenarioExplanation(scenarioType, inputs, result)",
+        "All functions use InsForge AI Gateway (insforge.ai.chat())",
+        "GPT-4o Mini for dashboard insights and assessment",
+        "Claude Sonnet 4.5 or GPT-4o for scenario explanations",
+        "System prompts enforce: plain English, no jargon, conversational tone, actionable",
+        "Response caching: cache AI responses for 1 hour keyed by input hash",
+        "Error handling: return null if AI unavailable",
+        "Dashboard AI Insight card now uses real AI (replace placeholder from US-015)",
+        "npm run build passes"
+      ],
+      "priority": 23,
+      "passes": false,
+      "notes": "Phase 5 - BLOCKED: Needs InsForge credentials for AI gateway."
+    },
+    {
+      "id": "US-024",
+      "title": "Alert Configuration & Threshold Settings",
+      "description": "As a business owner, I want to set alert thresholds and notification preferences.",
+      "acceptanceCriteria": [
+        "Alerts Center page at /alerts",
+        "Threshold config: cash below $X (currency), expenses increase >X% (percentage), runway below X months (number)",
+        "Toggle switches for each alert type: Cash alerts, Expense alerts, Weekly summary",
+        "Notification email field (defaults to account email)",
+        "Save config to alert_configs table",
+        "Alert history list below config from alert_history table",
+        "Empty state: 'No alerts yet. We'll notify you when something needs attention.'",
+        "Mobile responsive",
+        "npm run build passes",
+        "Verify in browser using dev-browser skill or playwright skill"
+      ],
+      "priority": 24,
+      "passes": false,
+      "notes": "Phase 5 - Use frontend-design skill."
+    },
+    {
+      "id": "US-025",
+      "title": "Alert Email Sending & Threshold Checking",
+      "description": "As a system, I need to check financial data against thresholds and send alert emails when breached.",
+      "acceptanceCriteria": [
+        "Server function checks latest financial_data against user's alert_configs",
+        "If cash < threshold: trigger cash alert",
+        "If expenses increased > threshold %: trigger expense alert",
+        "If runway < threshold months: trigger runway alert",
+        "Alert email sent via Resend with ProfitPulse branding, plain-English explanation, View Dashboard CTA",
+        "Alert recorded in alert_history table",
+        "Function called whenever financial_data is updated",
+        "Duplicate prevention: don't send same alert type within 24 hours",
+        "npm run build passes"
+      ],
+      "priority": 25,
+      "passes": false,
+      "notes": "Phase 5 - BLOCKED: Needs Resend API Key."
+    },
+    {
+      "id": "US-026",
+      "title": "Weekly Email Summary",
+      "description": "As a business owner, I want a weekly email with my health score and top insights.",
+      "acceptanceCriteria": [
+        "Email template: greeting, health score, score trend, top 2-3 AI insights, View Dashboard CTA, unsubscribe link",
+        "ProfitPulse branding (orange header, warm design)",
+        "Sent via Resend",
+        "Scheduled via Vercel Cron Job every Monday at 8am or InsForge Edge Function",
+        "Only sent to users with weekly_summary_enabled true",
+        "AI insights generated per user using generateDashboardInsight()",
+        "npm run build passes"
+      ],
+      "priority": 26,
+      "passes": false,
+      "notes": "Phase 5 - BLOCKED: Needs Resend API Key."
+    },
+    {
+      "id": "US-027",
+      "title": "QuickBooks OAuth Flow & Connection",
+      "description": "As a business owner, I want to connect my QuickBooks account for automatic data sync.",
+      "acceptanceCriteria": [
+        "Connect QuickBooks button on Data Entry page and Settings page",
+        "OAuth2 initiation: API route /api/quickbooks/auth generates Intuit authorization URL",
+        "Callback handler at /api/quickbooks/callback exchanges code for tokens",
+        "Tokens stored encrypted in quickbooks_connections table",
+        "Connection status shown: 'Connected to QuickBooks' with company name or 'Not Connected'",
+        "Disconnect button removes tokens",
+        "Feature-gated: only Growth ($99) and Scale ($199) tiers",
+        "Starter tier: show upgrade prompt instead of connect button",
+        "npm run build passes",
+        "Verify in browser using dev-browser skill or playwright skill"
+      ],
+      "priority": 27,
+      "passes": false,
+      "notes": "Phase 6 - BLOCKED: Needs Intuit Developer Account (Client ID + Secret)."
+    },
+    {
+      "id": "US-028",
+      "title": "QuickBooks Data Sync",
+      "description": "As a QuickBooks user, I want my financial data to sync automatically.",
+      "acceptanceCriteria": [
+        "Sync pulls from QuickBooks: cash on hand, monthly revenue, monthly expenses, accounts receivable, expense categories",
+        "Initial sync: pull last 12 months of monthly data",
+        "Data saved to financial_data table with data_source 'quickbooks'",
+        "Sync Now button triggers on-demand refresh",
+        "Last synced timestamp indicator with refresh button",
+        "Automatic daily sync via scheduled function",
+        "Token refresh handling (QBO tokens expire after 1 hour, refresh tokens after 100 days)",
+        "Error handling: notify user if sync fails, suggest reconnecting",
+        "Dashboard and health score recalculate after sync",
+        "npm run build passes"
+      ],
+      "priority": 28,
+      "passes": false,
+      "notes": "Phase 6 - BLOCKED: Needs Intuit Developer Account."
+    },
+    {
+      "id": "US-029",
+      "title": "Subscription Tier Feature Gating",
+      "description": "As the product owner, I want features gated by tier so users upgrade.",
+      "acceptanceCriteria": [
+        "Utility function checkFeatureAccess(userId, feature) returns boolean",
+        "Starter ($49): Dashboard, manual data entry, CSV upload, weekly email, health score, break-even scenario only, max 3 saved scenarios",
+        "Growth ($99): Everything + all 5 scenario types, email alerts, AI insights, QuickBooks",
+        "Scale ($199): Everything in Growth (placeholder for v1.1)",
+        "Gated feature access: show upgrade modal with friendly message and Upgrade Now button",
+        "Upgrade Now creates Stripe Checkout session for higher tier",
+        "Core dashboard viewing never blocked",
+        "npm run build passes",
+        "Verify in browser using dev-browser skill or playwright skill"
+      ],
+      "priority": 29,
+      "passes": false,
+      "notes": "Phase 6 - Needs Stripe credentials."
+    },
+    {
+      "id": "US-030",
+      "title": "Settings & Profile Page",
+      "description": "As a user, I want to manage my business profile, connections, and account settings.",
+      "acceptanceCriteria": [
+        "Settings page at /settings accessible from top nav",
+        "Sections: Business Profile (name, industry, employees - editable), Data Connections (QuickBooks status), Subscription (current tier, Manage Billing link to Stripe Portal), Notifications (link to alerts config), Account (email, change password, logout)",
+        "Success toast on save",
+        "Mobile responsive",
+        "npm run build passes",
+        "Verify in browser using dev-browser skill or playwright skill"
+      ],
+      "priority": 30,
+      "passes": false,
+      "notes": "Phase 6 - Use frontend-design skill."
+    },
+    {
+      "id": "US-031",
+      "title": "Mobile Optimization & Final Polish",
+      "description": "As a business owner on the go, I want the entire app to work beautifully on my phone.",
+      "acceptanceCriteria": [
+        "All pages responsive from 320px to 1440px+",
+        "Dashboard metric cards stack vertically on mobile",
+        "Navigation: hamburger menu on mobile with slide-out panel",
+        "Scenario Calculator: inputs full-width on mobile, charts scale",
+        "Drag-and-drop on mobile: falls back to Choose File button",
+        "All touch targets minimum 44x44px",
+        "Loading states: skeleton screens on data-fetching pages",
+        "Error states: friendly messages with retry buttons",
+        "No horizontal scroll on any page at any viewport",
+        "npm run build passes",
+        "Verify in browser using dev-browser skill or playwright skill at 375px viewport"
+      ],
+      "priority": 31,
+      "passes": false,
+      "notes": "Phase 6 - Final polish. Test everything at mobile viewport."
+    }
+  ]
+}

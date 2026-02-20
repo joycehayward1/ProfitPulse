@@ -1,0 +1,52 @@
+# Ralph Progress Log
+Started: 2026-02-19
+Feature: ProfitPulse Phase 1 - Foundation
+
+## Codebase Patterns
+- Tailwind custom tokens in `tailwind.config.ts` under `theme.extend`
+- Path alias `@/*` → `./src/*` (tsconfig.json)
+- Jest config is `.js` (not `.ts`) — avoids needing ts-node
+- Jest setup in `jest.setup.ts` with `setupFilesAfterEnv`
+- ESLint strict on unused vars — use eslint-disable comment for stub params
+- All UI components will go in `src/components/ui/`
+- Utility functions in `src/lib/`
+- Test files in `__tests__/` directories adjacent to source
+
+## Design System Reference
+- Colors: orange=#E65100, bg=#FFF8F5, surface=#FFF, text-primary=#2D2A26, text-secondary=#6B6560, text-muted=#9A948E, accent=#7B1FA2, success=#43A047, warning=#F9A825, error=#D32F2F
+- Fonts: Georgia (display/headlines), Arial (body/labels)
+- Spacing: 8px grid (xs=8, sm=16, md=24, lg=32, xl=48, 2xl=64)
+- Radius: sm=6px, md=10px, lg=16px, full=50%
+- Green/Amber/Red = functional ONLY (health indicators, never decorative)
+- Purple = sparingly (accents only)
+- Logo files: /public/full-logo.png (with text), /public/symbol-logo.png (icon only)
+
+## Project Context
+- InsForge MCP configured at project level (.claude/settings.local.json)
+- InsForge API Base: https://8i9xnfmh.us-east.insforge.app
+- InsForge docs: https://docs.insforge.dev/introduction
+- No Sentry — skipped for now
+- Stripe: stub getUserTier() returning "growth" — real integration later
+- Unit tests: Jest + React Testing Library — install during US-001
+- Landing page copy: draft it, user will refine
+- Use frontend-design skill for ALL UI stories (US-002, US-003, US-004)
+- STOP after US-004 (Phase 1 only)
+
+---
+
+## 2026-02-19 - US-001: Project Scaffolding & Tailwind Config
+- Scaffolded Next.js 14 with TypeScript, Tailwind, App Router
+- Configured Tailwind with all ProfitPulse design tokens (colors, fonts, spacing, radius, font sizes)
+- Set global CSS: bg #FFF8F5, font Arial, base 14px
+- Installed @insforge/sdk
+- Installed Jest + React Testing Library (jest.config.js, jest.setup.ts)
+- Created subscription stub at src/lib/subscription.ts (returns "growth")
+- Created root AGENTS.md and src/lib/AGENTS.md
+- Removed Geist fonts (unused)
+- Files changed: tailwind.config.ts, src/app/globals.css, src/app/layout.tsx, src/app/page.tsx, package.json, .gitignore, jest.config.js, jest.setup.ts, src/lib/subscription.ts, src/lib/__tests__/subscription.test.ts, AGENTS.md, src/lib/AGENTS.md
+- **Learnings:**
+  - Jest config must be .js not .ts unless ts-node is installed
+  - ESLint @typescript-eslint/no-unused-vars catches underscore-prefixed params — need eslint-disable comment
+  - next/jest handles module mapping and transforms automatically
+  - The correct Jest setup key is `setupFilesAfterEnv` (not `setupFilesAfterSetup`)
+---
