@@ -5,14 +5,21 @@ import DataPage from "../page";
 
 // Mock AppLayout
 jest.mock("@/components/layout/AppLayout", () => ({
-  __esModule: true,
-  default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  AppLayout: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 
 // Mock Toast
 const mockShowToast = jest.fn();
 jest.mock("@/components/ui/Toast", () => ({
   useToast: () => ({ showToast: mockShowToast }),
+}));
+
+// Mock Papa Parse
+jest.mock("papaparse", () => ({
+  __esModule: true,
+  default: {
+    parse: jest.fn(),
+  },
 }));
 
 describe("DataPage", () => {
@@ -50,10 +57,8 @@ describe("DataPage", () => {
       const uploadTab = screen.getByText("Upload Spreadsheet");
       fireEvent.click(uploadTab);
 
-      expect(screen.getByText("Spreadsheet Upload")).toBeInTheDocument();
-      expect(
-        screen.getByText(/Drag and drop your CSV file here/i)
-      ).toBeInTheDocument();
+      expect(screen.getByText("Drop your financial spreadsheet here")).toBeInTheDocument();
+      expect(screen.getByText("Choose CSV File")).toBeInTheDocument();
     });
 
     it("switches back to manual tab when clicked", () => {
@@ -61,7 +66,7 @@ describe("DataPage", () => {
 
       // Switch to upload
       fireEvent.click(screen.getByText("Upload Spreadsheet"));
-      expect(screen.getByText("Spreadsheet Upload")).toBeInTheDocument();
+      expect(screen.getByText("Drop your financial spreadsheet here")).toBeInTheDocument();
 
       // Switch back to manual
       fireEvent.click(screen.getByText("Enter Manually"));

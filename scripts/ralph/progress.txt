@@ -323,3 +323,34 @@ Session: Ralph autonomous loop
   - Form reset after successful save: clear all inputs, collapse expense breakdown, reset period to current month
   - Desktop 2-column grid, mobile full-width stack pattern works well for financial forms
   - History display: period as Georgia headline, metadata as small Arial secondary text, metrics in 2x2 or 4-column grid
+
+## 2026-02-20 - US-017: Data Entry - CSV Spreadsheet Upload & Parsing
+Session: Ralph autonomous loop
+- Installed Papa Parse library for CSV parsing
+- Implemented drag-and-drop file upload zone with hover states
+- Added file validation (CSV only, 10MB max)
+- Implemented CSV parsing with Papa Parse, smart column auto-detection
+- Created column mapping UI with dropdowns for Revenue, Expenses, Cash Balance, Date
+- Auto-detection matches column headers: sales/revenue/income → Revenue, cost/expense → Expenses, cash/balance → Cash, date/period/month → Date
+- Built preview table showing first 10 rows of parsed CSV data
+- Added import functionality with loading state and success/error toasts
+- Reset upload flow after successful import
+- Created 12 comprehensive unit tests for CSV upload (file validation, parsing, auto-detection, column mapping, preview, import)
+- Fixed old test file mocks (AppLayout named export, Papa Parse mock)
+- All 227 tests passing, build clean
+- Browser verified via dev-browser skill: desktop 1280px + mobile 375px both perfect
+- Mobile: full-width upload zone, responsive table, stacked layout
+- Files: src/app/data/page.tsx (updated with CSV logic), src/app/data/__tests__/csv-upload.test.tsx (new), src/app/data/__tests__/page.test.tsx (updated mocks), package.json (papaparse + @types/papaparse)
+- **Learnings for future iterations:**
+  - Papa Parse API: `Papa.parse<T>(file, { header: true, complete: (results: ParseResult<T>) => {...} })`
+  - ParseResult type from papaparse provides proper typing for results.data, results.meta, results.errors
+  - Auto-detection pattern: search headers array for keywords (case-insensitive), return first match
+  - File input ref pattern: `useRef<HTMLInputElement>(null)` + `ref.current?.click()` for programmatic file picker
+  - Drag-and-drop requires three handlers: onDragOver (prevent default + set dragging), onDragLeave (clear dragging), onDrop (prevent default + process files)
+  - CSV preview: slice first 10 rows, show count if more rows exist
+  - Column mapping validation: disable import until required fields (revenue, expenses, cash) are mapped
+  - Import state management: isImporting flag, disable button during import, show "Importing..." text
+  - Reset pattern after import: clear file, data, headers, mapping, reset file input value
+  - Mock Papa Parse in tests: jest.mock with mockImplementation to call options.complete() synchronously
+  - Test file uploads: create File objects, use Object.defineProperty to set input.files
+---

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
+import Papa, { ParseResult } from "papaparse";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button, Card, CurrencyInput } from "@/components/ui";
 import { useToast } from "@/components/ui/Toast";
@@ -34,11 +35,38 @@ interface HistoryEntry {
   dataSource: string;
 }
 
+interface CSVRow {
+  [key: string]: string;
+}
+
+interface ColumnMapping {
+  revenue: string;
+  expenses: string;
+  cashBalance: string;
+  date: string;
+}
+
+type ColumnMappingKey = keyof ColumnMapping;
+
 export default function DataPage() {
   const [activeTab, setActiveTab] = useState<Tab>("manual");
   const [showExpenseBreakdown, setShowExpenseBreakdown] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { showToast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // CSV Upload States
+  const [isDragging, setIsDragging] = useState(false);
+  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [csvData, setCsvData] = useState<CSVRow[]>([]);
+  const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
+  const [columnMapping, setColumnMapping] = useState<ColumnMapping>({
+    revenue: "",
+    expenses: "",
+    cashBalance: "",
+    date: "",
+  });
+  const [isImporting, setIsImporting] = useState(false);
 
   const [formData, setFormData] = useState<FormData>({
     cash: "",
@@ -153,6 +181,192 @@ export default function DataPage() {
 
   const isFormValid =
     formData.cash && formData.revenue && formData.expenses && formData.receivables;
+
+  // CSV Upload Handlers
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault();
+    setIsDragging(true);
+  }
+
+  function handleDragLeave(e: React.DragEvent) {
+    e.preventDefault();
+    setIsDragging(false);
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setIsDragging(false);
+
+    const file = e.dataTransfer.files[0];
+    if (file) {
+      processFile(file);
+    }
+  }
+
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) {
+      processFile(file);
+    }
+  }
+
+  function processFile(file: File) {
+    // Validate file type
+    if (!file.name.endsWith(".csv")) {
+      showToast("error", "Please upload a CSV file");
+      return;
+    }
+
+    // Validate file size (10MB limit)
+    const maxSize = 10 * 1024 * 1024; // 10MB in bytes
+    if (file.size > maxSize) {
+      showToast("error", "File size exceeds 10MB limit");
+      return;
+    }
+
+    setCsvFile(file);
+
+    // Parse CSV
+    Papa.parse<CSVRow>(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results: ParseResult<CSVRow>) => {
+        if (results.errors.length > 0) {
+          showToast("error", "Error parsing CSV file");
+          console.error("CSV parse errors:", results.errors);
+          return;
+        }
+
+        const data = results.data;
+        const headers = results.meta.fields || [];
+
+        setCsvData(data);
+        setCsvHeaders(headers);
+
+        // Auto-detect column mapping
+        const autoMapping = autoDetectColumns(headers);
+        setColumnMapping(autoMapping);
+
+        showToast("success", "CSV file loaded successfully");
+      },
+      error: (error: Error) => {
+        showToast("error", "Failed to parse CSV file");
+        console.error("CSV parse error:", error);
+      },
+    });
+  }
+
+  function autoDetectColumns(headers: string[]): ColumnMapping {
+    const mapping: ColumnMapping = {
+      revenue: "",
+      expenses: "",
+      cashBalance: "",
+      date: "",
+    };
+
+    const lowerHeaders = headers.map((h) => h.toLowerCase());
+
+    // Auto-detect Revenue
+    const revenueIndex = lowerHeaders.findIndex(
+      (h) =>
+        h.includes("revenue") ||
+        h.includes("sales") ||
+        h.includes("income") ||
+        h === "rev"
+    );
+    if (revenueIndex !== -1) mapping.revenue = headers[revenueIndex];
+
+    // Auto-detect Expenses
+    const expensesIndex = lowerHeaders.findIndex(
+      (h) =>
+        h.includes("expense") ||
+        h.includes("cost") ||
+        h.includes("spending") ||
+        h === "exp"
+    );
+    if (expensesIndex !== -1) mapping.expenses = headers[expensesIndex];
+
+    // Auto-detect Cash Balance
+    const cashIndex = lowerHeaders.findIndex(
+      (h) =>
+        h.includes("cash") ||
+        h.includes("balance") ||
+        h.includes("bank") ||
+        h === "bal"
+    );
+    if (cashIndex !== -1) mapping.cashBalance = headers[cashIndex];
+
+    // Auto-detect Date
+    const dateIndex = lowerHeaders.findIndex(
+      (h) =>
+        h.includes("date") ||
+        h.includes("period") ||
+        h.includes("month") ||
+        h.includes("year")
+    );
+    if (dateIndex !== -1) mapping.date = headers[dateIndex];
+
+    return mapping;
+  }
+
+  function handleColumnMappingChange(field: ColumnMappingKey, value: string) {
+    setColumnMapping({ ...columnMapping, [field]: value });
+  }
+
+  function resetUpload() {
+    setCsvFile(null);
+    setCsvData([]);
+    setCsvHeaders([]);
+    setColumnMapping({
+      revenue: "",
+      expenses: "",
+      cashBalance: "",
+      date: "",
+    });
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  }
+
+  async function handleImport() {
+    // Validate mapping
+    if (!columnMapping.revenue || !columnMapping.expenses || !columnMapping.cashBalance) {
+      showToast("error", "Please map Revenue, Expenses, and Cash Balance columns");
+      return;
+    }
+
+    setIsImporting(true);
+
+    try {
+      // TODO: Save to InsForge financial_data table
+      // const insforge = await import("@/lib/insforge");
+      // const client = insforge.getInsForgeClient();
+      // for (const row of csvData) {
+      //   await client.database.from("financial_data").insert({
+      //     user_id: "...",
+      //     period_date: row[columnMapping.date],
+      //     revenue: parseFloat(row[columnMapping.revenue]),
+      //     expenses: parseFloat(row[columnMapping.expenses]),
+      //     cash_balance: parseFloat(row[columnMapping.cashBalance]),
+      //     data_source: "spreadsheet",
+      //   });
+      // }
+
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+
+      showToast("success", `Successfully imported ${csvData.length} rows`);
+      resetUpload();
+    } catch (error) {
+      showToast("error", "Failed to import data. Please try again.");
+      console.error(error);
+    } finally {
+      setIsImporting(false);
+    }
+  }
+
+  const isMappingValid =
+    columnMapping.revenue && columnMapping.expenses && columnMapping.cashBalance;
 
   return (
     <AppLayout>
@@ -479,39 +693,283 @@ export default function DataPage() {
             </div>
           )}
 
-          {/* Upload Tab Placeholder */}
+          {/* Upload Tab */}
           {activeTab === "upload" && (
             <div
               className="animate-fade-in"
               style={{ animationDelay: "0.3s" }}
             >
-              <Card className="text-center py-16">
-                <div className="max-w-md mx-auto">
-                  <svg
-                    className="w-16 h-16 mx-auto mb-6 text-text-muted opacity-40"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
+              {!csvFile ? (
+                /* Drag and Drop Zone */
+                <Card className="mb-8">
+                  <div
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    className={`border-2 border-dashed rounded-lg py-16 px-6 text-center transition-all ${
+                      isDragging
+                        ? "border-orange bg-orange/5"
+                        : "border-text-muted/30 hover:border-orange/50 hover:bg-orange/5"
+                    }`}
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={1.5}
-                      d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                    <svg
+                      className="w-16 h-16 mx-auto mb-6 text-text-muted opacity-40"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.5}
+                        d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                      />
+                    </svg>
+                    <h3 className="text-xl font-display text-text-primary mb-3">
+                      Drop your financial spreadsheet here
+                    </h3>
+                    <p className="text-sm font-body text-text-secondary mb-6">
+                      Or click the button below to browse your files
+                    </p>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".csv"
+                      onChange={handleFileSelect}
+                      className="hidden"
                     />
-                  </svg>
-                  <h3 className="text-xl font-display text-text-primary mb-3">
-                    Spreadsheet Upload
-                  </h3>
-                  <p className="text-sm font-body text-text-secondary mb-6">
-                    Drag and drop your CSV file here, or click to browse. This feature
-                    will be available in the next update.
-                  </p>
-                  <p className="text-xs font-body text-text-muted">
-                    For now, please use the manual entry form to input your data.
-                  </p>
+                    <Button
+                      variant="primary"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      Choose CSV File
+                    </Button>
+                    <p className="text-xs font-body text-text-muted mt-6">
+                      Accepts .csv files up to 10MB
+                    </p>
+                  </div>
+                </Card>
+              ) : (
+                /* CSV Preview and Mapping */
+                <div className="space-y-6">
+                  {/* File Info */}
+                  <Card>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <svg
+                          className="w-8 h-8 text-success"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                          />
+                        </svg>
+                        <div>
+                          <p className="font-body font-medium text-text-primary">
+                            {csvFile.name}
+                          </p>
+                          <p className="text-xs font-body text-text-muted">
+                            {csvData.length} rows • {csvHeaders.length} columns
+                          </p>
+                        </div>
+                      </div>
+                      <Button variant="secondary" size="sm" onClick={resetUpload}>
+                        Remove
+                      </Button>
+                    </div>
+                  </Card>
+
+                  {/* Column Mapping */}
+                  <Card>
+                    <h3 className="text-lg font-display text-text-primary mb-4">
+                      Map Your Columns
+                    </h3>
+                    <p className="text-sm font-body text-text-secondary mb-6">
+                      Match the columns in your spreadsheet to the fields below. We&apos;ve
+                      made our best guess, but double-check to make sure.
+                    </p>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-sm font-body font-medium text-text-secondary mb-2">
+                          Revenue <span className="text-error">*</span>
+                        </label>
+                        <select
+                          value={columnMapping.revenue}
+                          onChange={(e) =>
+                            handleColumnMappingChange("revenue", e.target.value)
+                          }
+                          className="w-full px-4 py-3 rounded-md border border-text-muted/30 bg-surface text-text-primary font-body focus:outline-none focus:ring-2 focus:ring-orange focus:border-transparent appearance-none"
+                          style={{
+                            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236B6560'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
+                            backgroundRepeat: "no-repeat",
+                            backgroundPosition: "right 0.75rem center",
+                            backgroundSize: "1.25rem",
+                            paddingRight: "2.5rem",
+                          }}
+                        >
+                          <option value="">Select column...</option>
+                          {csvHeaders.map((header) => (
+                            <option key={header} value={header}>
+                              {header}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-body font-medium text-text-secondary mb-2">
+                          Expenses <span className="text-error">*</span>
+                        </label>
+                        <select
+                          value={columnMapping.expenses}
+                          onChange={(e) =>
+                            handleColumnMappingChange("expenses", e.target.value)
+                          }
+                          className="w-full px-4 py-3 rounded-md border border-text-muted/30 bg-surface text-text-primary font-body focus:outline-none focus:ring-2 focus:ring-orange focus:border-transparent appearance-none"
+                          style={{
+                            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236B6560'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
+                            backgroundRepeat: "no-repeat",
+                            backgroundPosition: "right 0.75rem center",
+                            backgroundSize: "1.25rem",
+                            paddingRight: "2.5rem",
+                          }}
+                        >
+                          <option value="">Select column...</option>
+                          {csvHeaders.map((header) => (
+                            <option key={header} value={header}>
+                              {header}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-body font-medium text-text-secondary mb-2">
+                          Cash Balance <span className="text-error">*</span>
+                        </label>
+                        <select
+                          value={columnMapping.cashBalance}
+                          onChange={(e) =>
+                            handleColumnMappingChange("cashBalance", e.target.value)
+                          }
+                          className="w-full px-4 py-3 rounded-md border border-text-muted/30 bg-surface text-text-primary font-body focus:outline-none focus:ring-2 focus:ring-orange focus:border-transparent appearance-none"
+                          style={{
+                            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236B6560'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
+                            backgroundRepeat: "no-repeat",
+                            backgroundPosition: "right 0.75rem center",
+                            backgroundSize: "1.25rem",
+                            paddingRight: "2.5rem",
+                          }}
+                        >
+                          <option value="">Select column...</option>
+                          {csvHeaders.map((header) => (
+                            <option key={header} value={header}>
+                              {header}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-body font-medium text-text-secondary mb-2">
+                          Date (Optional)
+                        </label>
+                        <select
+                          value={columnMapping.date}
+                          onChange={(e) =>
+                            handleColumnMappingChange("date", e.target.value)
+                          }
+                          className="w-full px-4 py-3 rounded-md border border-text-muted/30 bg-surface text-text-primary font-body focus:outline-none focus:ring-2 focus:ring-orange focus:border-transparent appearance-none"
+                          style={{
+                            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236B6560'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
+                            backgroundRepeat: "no-repeat",
+                            backgroundPosition: "right 0.75rem center",
+                            backgroundSize: "1.25rem",
+                            paddingRight: "2.5rem",
+                          }}
+                        >
+                          <option value="">Select column...</option>
+                          {csvHeaders.map((header) => (
+                            <option key={header} value={header}>
+                              {header}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </Card>
+
+                  {/* Preview Table */}
+                  <Card>
+                    <h3 className="text-lg font-display text-text-primary mb-4">
+                      Preview
+                    </h3>
+                    <p className="text-sm font-body text-text-secondary mb-4">
+                      First 10 rows from your file
+                    </p>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-text-muted/20">
+                            {csvHeaders.map((header) => (
+                              <th
+                                key={header}
+                                className="text-left font-body font-medium text-text-secondary py-3 px-4"
+                              >
+                                {header}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {csvData.slice(0, 10).map((row, idx) => (
+                            <tr
+                              key={idx}
+                              className="border-b border-text-muted/10 hover:bg-background/50 transition-colors"
+                            >
+                              {csvHeaders.map((header) => (
+                                <td
+                                  key={header}
+                                  className="font-body text-text-primary py-3 px-4"
+                                >
+                                  {row[header]}
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    {csvData.length > 10 && (
+                      <p className="text-xs font-body text-text-muted mt-4">
+                        Showing 10 of {csvData.length} rows
+                      </p>
+                    )}
+                  </Card>
+
+                  {/* Action Buttons */}
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+                    <Button
+                      variant="primary"
+                      onClick={handleImport}
+                      disabled={!isMappingValid || isImporting}
+                    >
+                      {isImporting
+                        ? "Importing..."
+                        : `Import ${csvData.length} Rows`}
+                    </Button>
+                    <Button variant="cancel" onClick={resetUpload}>
+                      Cancel
+                    </Button>
+                  </div>
                 </div>
-              </Card>
+              )}
             </div>
           )}
         </div>

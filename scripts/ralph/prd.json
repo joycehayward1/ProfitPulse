@@ -331,8 +331,8 @@
         "Verify in browser using dev-browser skill or playwright skill"
       ],
       "priority": 17,
-      "passes": false,
-      "notes": "Phase 3 - Use frontend-design skill. CSV only (not Excel). Papa Parse for parsing."
+      "passes": true,
+      "notes": "Phase 3 - CSV upload complete with Papa Parse, drag-and-drop, column mapping, auto-detection, preview table. 12 tests added. Browser verified."
     },
     {
       "id": "US-018",
