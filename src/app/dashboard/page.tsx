@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { Icon } from "@iconify/react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { HealthScoreGauge } from "@/components/ui/HealthScoreGauge";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -67,21 +68,37 @@ interface MetricCardProps {
   statusText: string;
   status: HealthStatus;
   delay: string;
+  icon: string;
+  iconColor: string;
 }
 
-function MetricCard({ label, value, statusText, status, delay }: MetricCardProps) {
+function MetricCard({ label, value, statusText, status, delay, icon, iconColor }: MetricCardProps) {
   return (
     <div
-      className="bg-surface rounded-xl p-lg border border-background shadow-sm hover:shadow-md transition-shadow duration-300 animate-fadeIn"
+      className="group bg-surface rounded-xl p-lg border border-background shadow-sm hover:shadow-xl hover:border-orange/20 transition-all duration-300 animate-fadeIn cursor-pointer"
       style={{ animationDelay: delay }}
     >
-      {/* Label with Traffic Light */}
+      {/* Icon and Traffic Light */}
       <div className="flex items-center justify-between mb-md">
-        <h3 className="font-body text-small tracking-[0.1em] uppercase text-text-muted">
-          {label}
-        </h3>
+        <div
+          className={`w-12 h-12 rounded-full flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6`}
+          style={{
+            background: `linear-gradient(135deg, ${iconColor}15, ${iconColor}05)`,
+          }}
+        >
+          <Icon
+            icon={icon}
+            className="w-6 h-6 transition-colors duration-300"
+            style={{ color: iconColor }}
+          />
+        </div>
         <TrafficLightDot status={status} />
       </div>
+
+      {/* Label */}
+      <h3 className="font-body text-small tracking-[0.1em] uppercase text-text-muted mb-sm">
+        {label}
+      </h3>
 
       {/* Value */}
       <p className="font-display text-h1 md:text-[36px] text-text-primary mb-xs tracking-tight">
@@ -335,6 +352,8 @@ export default function DashboardPage() {
               statusText="On Track"
               status="healthy"
               delay="600ms"
+              icon="ph:chart-line-bold"
+              iconColor="#E65100"
             />
 
             {/* Cash Flow Card */}
@@ -344,6 +363,8 @@ export default function DashboardPage() {
               statusText="Healthy"
               status="healthy"
               delay="700ms"
+              icon="ph:wallet-bold"
+              iconColor="#43A047"
             />
 
             {/* Runway Card */}
@@ -353,6 +374,8 @@ export default function DashboardPage() {
               statusText={getRunwayStatus(assessment.cash_on_hand, assessment.monthly_expenses)}
               status={getRunwayHealthStatus(assessment.cash_on_hand, assessment.monthly_expenses)}
               delay="800ms"
+              icon="ph:timer-bold"
+              iconColor="#7B1FA2"
             />
           </div>
         )}

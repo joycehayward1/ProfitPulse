@@ -2,14 +2,8 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Icon } from "@iconify/react";
 import { AppLayout } from "@/components/layout/AppLayout";
-import {
-  ArrowLeft,
-  Target,
-  Flag,
-  User,
-  Hourglass
-} from "lucide-react";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 
 interface SavedScenario {
@@ -26,28 +20,28 @@ const scenarioTypes = [
     id: "break-even",
     title: "Break-Even",
     description: "Calculate the exact level you need to hit",
-    icon: Target,
+    icon: "ph:equals-bold",
     color: "#E65100",
   },
   {
     id: "goal-planning",
     title: "Goal Planning",
     description: "Plan your revenue targets and monthly goals",
-    icon: Flag,
+    icon: "ph:flag-banner-bold",
     color: "#7B1FA2",
   },
   {
     id: "hiring",
     title: "Can I Hire?",
     description: "See if you can afford to hire new help",
-    icon: User,
+    icon: "ph:user-plus-bold",
     color: "#E65100",
   },
   {
     id: "runway",
     title: "Cash Runway",
     description: "Check how long your cash will last",
-    icon: Hourglass,
+    icon: "ph:timer-bold",
     color: "#7B1FA2",
   },
 ];
@@ -136,7 +130,6 @@ export default function ScenariosPage() {
           {/* Scenario Type Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 lg:gap-8 mb-16">
             {scenarioTypes.map((scenario, index) => {
-              const Icon = scenario.icon;
               return (
                 <button
                   key={scenario.id}
@@ -160,6 +153,7 @@ export default function ScenariosPage() {
                       }}
                     >
                       <Icon
+                        icon={scenario.icon}
                         className="w-7 h-7 transition-colors duration-300"
                         style={{ color: scenario.color }}
                       />

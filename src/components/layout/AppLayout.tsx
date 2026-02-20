@@ -4,6 +4,7 @@ import { useState, useEffect, ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
+import { Icon } from "@iconify/react";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface AppLayoutProps {
@@ -13,13 +14,14 @@ interface AppLayoutProps {
 interface NavItem {
   label: string;
   href: string;
+  icon: string;
 }
 
 const navItems: NavItem[] = [
-  { label: "Dashboard", href: "/dashboard" },
-  { label: "Scenarios", href: "/scenarios" },
-  { label: "Data", href: "/data" },
-  { label: "Settings", href: "/settings" },
+  { label: "Dashboard", href: "/dashboard", icon: "ph:gauge-bold" },
+  { label: "Scenarios", href: "/scenarios", icon: "ph:calculator-bold" },
+  { label: "Data", href: "/data", icon: "ph:database-bold" },
+  { label: "Settings", href: "/settings", icon: "ph:gear-six-bold" },
 ];
 
 export function AppLayout({ children }: AppLayoutProps) {
@@ -88,12 +90,19 @@ export function AppLayout({ children }: AppLayoutProps) {
                     key={item.href}
                     href={item.href}
                     className={[
-                      "relative px-4 py-2 font-body text-body font-medium transition-colors duration-200",
+                      "relative px-4 py-2 font-body text-body font-medium transition-all duration-200 flex items-center gap-2 rounded-lg hover:bg-background/50",
                       isActive
                         ? "text-orange"
                         : "text-text-secondary hover:text-text-primary",
                     ].join(" ")}
                   >
+                    <Icon
+                      icon={item.icon}
+                      className={[
+                        "w-5 h-5 transition-transform duration-200",
+                        isActive ? "" : "group-hover:scale-110"
+                      ].join(" ")}
+                    />
                     {item.label}
                     {isActive && (
                       <span
@@ -265,13 +274,14 @@ export function AppLayout({ children }: AppLayoutProps) {
                       key={item.href}
                       href={item.href}
                       className={[
-                        "flex items-center justify-between px-6 py-3.5 font-body text-body font-medium transition-colors",
+                        "flex items-center gap-3 px-6 py-3.5 font-body text-body font-medium transition-colors",
                         isActive
                           ? "text-orange bg-orange/5 border-l-4 border-orange"
                           : "text-text-secondary hover:text-text-primary hover:bg-background/50",
                       ].join(" ")}
                     >
-                      {item.label}
+                      <Icon icon={item.icon} className="w-5 h-5" />
+                      <span className="flex-1">{item.label}</span>
                       {isActive && (
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <path d="m9 18 6-6-6-6" />
