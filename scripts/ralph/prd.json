@@ -37,7 +37,7 @@
         "Verify in browser using dev-browser skill or playwright skill"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": "Phase 1 - Use frontend-design skill. Reference design system PDF page 5 (Buttons & Inputs)."
     },
     {

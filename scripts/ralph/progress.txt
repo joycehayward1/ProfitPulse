@@ -8,7 +8,9 @@ Feature: ProfitPulse Phase 1 - Foundation
 - Jest config is `.js` (not `.ts`) — avoids needing ts-node
 - Jest setup in `jest.setup.ts` with `setupFilesAfterEnv`
 - ESLint strict on unused vars — use eslint-disable comment for stub params
-- All UI components will go in `src/components/ui/`
+- All UI components in `src/components/ui/`, import via barrel: `import { Button, Input, Card } from "@/components/ui"`
+- Components use forwardRef for ref forwarding
+- Card with onClick gets role="button", tabIndex, keyboard handlers automatically
 - Utility functions in `src/lib/`
 - Test files in `__tests__/` directories adjacent to source
 
@@ -49,4 +51,21 @@ Feature: ProfitPulse Phase 1 - Foundation
   - ESLint @typescript-eslint/no-unused-vars catches underscore-prefixed params — need eslint-disable comment
   - next/jest handles module mapping and transforms automatically
   - The correct Jest setup key is `setupFilesAfterEnv` (not `setupFilesAfterSetup`)
+---
+
+## 2026-02-19 - US-002: Core UI Components - Buttons, Inputs, Cards
+- Created Button component: primary/secondary/cancel variants, sm/md/lg sizes, loading/disabled/fullWidth
+- Created Input component: label, error, helperText, required asterisk, accessible aria attributes
+- Created Card component: standard/featured/highlight variants, clickable with keyboard support
+- Created barrel export at src/components/ui/index.ts
+- Created showcase page at /showcase for visual verification
+- Created AGENTS.md for src/components/ui/
+- 28 tests passing (10 Button + 8 Input + 8 Card + 2 subscription)
+- Verified visually in browser via dev-browser skill — all variants render correctly
+- Files: src/components/ui/Button.tsx, Input.tsx, Card.tsx, index.ts, AGENTS.md, __tests__/Button.test.tsx, Input.test.tsx, Card.test.tsx, src/app/showcase/page.tsx
+- **Learnings:**
+  - forwardRef pattern works well for all UI components
+  - Card clickable pattern: role="button" + tabIndex + onKeyDown for Enter/Space
+  - Input aria-describedby links to error/helper text IDs for screen readers
+  - Showcase page is useful for visual testing all component states at once
 ---
