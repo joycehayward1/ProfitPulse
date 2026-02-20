@@ -267,3 +267,31 @@ Session: Ralph autonomous loop
   - Delta calculation needs historical assessment data (placeholder "+5 from last week" for now)
   - Dev-browser skill workflow: start server, reload page, wait for networkidle, take fullPage screenshots
 ---
+
+## 2026-02-19 - US-015: Dashboard - Metric Cards & Cash Position
+Session: Ralph autonomous loop
+- Created MetricCard component with label, value, status text, and TrafficLightDot
+- Implemented three metric cards: Profit, Cash Flow, Runway with conditional status colors
+- Added utility functions: formatCurrency (Intl.NumberFormat with $), formatRunway (handles months/infinity), getRunwayStatus (text), getRunwayHealthStatus (traffic-light color)
+- Runway thresholds: green >3mo, amber 1-3mo, red <1mo
+- Cash Position section: large Georgia display font for cash amount, grid with Money In (green down arrow) and Money Out (red up arrow)
+- AI Insight card: orange gradient background, lightbulb icon, placeholder conversational text
+- Quick action "Run a Scenario" button (primary variant, links to /scenarios)
+- All sections conditionally rendered only when assessment data exists (empty state shows otherwise)
+- Mobile responsive: metric cards stack vertically, cash position grid stacks, AI insight + button stack
+- 11 new utility function tests added (total 194 tests passing)
+- Browser verified via dev-browser skill: desktop 1280px + mobile 375px
+- Empty state displays correctly (metric cards hidden until assessment completed)
+- Files changed: src/app/dashboard/page.tsx, __tests__/utils.test.tsx, __tests__/page.test.tsx, scripts/ralph/prd.json
+- **Learnings for future iterations:**
+  - Metric cards use conditional rendering with `{!loading && assessment && healthScore &&` pattern
+  - formatCurrency uses Intl.NumberFormat for clean $XX,XXX formatting (no decimals)
+  - Runway calculation: months = cash / expenses, handle zero expenses edge case
+  - Traffic-light thresholds aligned with health score: 3mo = healthy, 1-3mo = attention, <1mo = critical
+  - Cash Position uses large editorial typography (72px Georgia on desktop, 56px mobile)
+  - Money In/Out icons: down arrow for income (money coming in), up arrow for expenses (money going out)
+  - AI Insight card uses orange/5 gradient background with orange/20 border for subtle branded feel
+  - Desktop grid: 3-column metric cards, 2-column money in/out, side-by-side AI insight + button
+  - Mobile: all elements stack with full width
+  - Empty state correctly displays when no assessment exists (shows "Complete Your Assessment" CTA)
+---
