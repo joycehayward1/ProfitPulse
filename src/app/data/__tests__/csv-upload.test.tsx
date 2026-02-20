@@ -21,7 +21,7 @@ const mockParse = jest.fn();
 jest.mock("papaparse", () => ({
   __esModule: true,
   default: {
-    parse: (file: File, options: any) => {
+    parse: (file: File, options: unknown) => {
       mockParse(file, options);
     },
   },
@@ -93,7 +93,7 @@ describe("CSV Upload Functionality", () => {
     const file = new File([csvContent], "test.csv", { type: "text/csv" });
 
     // Mock Papa Parse to call complete callback
-    mockParse.mockImplementation((f: File, options: any) => {
+    mockParse.mockImplementation((f: File, options: unknown) => {
       options.complete({
         data: [
           { Revenue: "1000", Expenses: "500", Cash: "2000", Date: "2026-01" },
@@ -132,7 +132,7 @@ describe("CSV Upload Functionality", () => {
     const csvContent = "Monthly Sales,Total Costs,Bank Balance,Period\n1000,500,2000,2026-01";
     const file = new File([csvContent], "test.csv", { type: "text/csv" });
 
-    mockParse.mockImplementation((f: File, options: any) => {
+    mockParse.mockImplementation((f: File, options: unknown) => {
       options.complete({
         data: [
           {
@@ -184,7 +184,7 @@ describe("CSV Upload Functionality", () => {
     const csvContent = "Col1,Col2,Col3,Col4\n1000,500,2000,2026-01";
     const file = new File([csvContent], "test.csv", { type: "text/csv" });
 
-    mockParse.mockImplementation((f: File, options: any) => {
+    mockParse.mockImplementation((f: File, options: unknown) => {
       options.complete({
         data: [{ Col1: "1000", Col2: "500", Col3: "2000", Col4: "2026-01" }],
         meta: {
@@ -236,7 +236,7 @@ describe("CSV Upload Functionality", () => {
 
     const file = new File(["csv content"], "test.csv", { type: "text/csv" });
 
-    mockParse.mockImplementation((f: File, options: any) => {
+    mockParse.mockImplementation((f: File, options: unknown) => {
       options.complete({
         data,
         meta: {
@@ -270,7 +270,7 @@ describe("CSV Upload Functionality", () => {
 
     const file = new File(["csv"], "test.csv", { type: "text/csv" });
 
-    mockParse.mockImplementation((f: File, options: any) => {
+    mockParse.mockImplementation((f: File, options: unknown) => {
       options.complete({
         data: [{ Col1: "100", Col2: "50" }],
         meta: { fields: ["Col1", "Col2"] },
@@ -303,7 +303,7 @@ describe("CSV Upload Functionality", () => {
 
     const file = new File(["csv"], "test.csv", { type: "text/csv" });
 
-    mockParse.mockImplementation((f: File, options: any) => {
+    mockParse.mockImplementation((f: File, options: unknown) => {
       options.complete({
         data: [{ Revenue: "1000", Expenses: "500", Cash: "2000" }],
         meta: { fields: ["Revenue", "Expenses", "Cash"] },
@@ -337,7 +337,7 @@ describe("CSV Upload Functionality", () => {
 
     const file = new File(["csv"], "test.csv", { type: "text/csv" });
 
-    mockParse.mockImplementation((f: File, options: any) => {
+    mockParse.mockImplementation((f: File, options: unknown) => {
       options.complete({
         data: [
           { Revenue: "1000", Expenses: "500", Cash: "2000" },
@@ -386,7 +386,7 @@ describe("CSV Upload Functionality", () => {
 
     const file = new File(["csv"], "test.csv", { type: "text/csv" });
 
-    mockParse.mockImplementation((f: File, options: any) => {
+    mockParse.mockImplementation((f: File, options: unknown) => {
       options.complete({
         data: [{ Revenue: "1000", Expenses: "500", Cash: "2000" }],
         meta: { fields: ["Revenue", "Expenses", "Cash"] },
@@ -422,7 +422,7 @@ describe("CSV Upload Functionality", () => {
 
     const file = new File(["invalid csv"], "test.csv", { type: "text/csv" });
 
-    mockParse.mockImplementation((f: File, options: any) => {
+    mockParse.mockImplementation((f: File, options: unknown) => {
       options.complete({
         data: [],
         meta: { fields: [] },

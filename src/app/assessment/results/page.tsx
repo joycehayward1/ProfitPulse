@@ -7,12 +7,17 @@ import { HealthScoreGauge } from "@/components/ui/HealthScoreGauge";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { calculateHealthScore, getHealthStatus, type HealthScoreBreakdown } from "@/lib/healthScore";
 import { useToast } from "@/components/ui/Toast";
+import { generateAssessmentSummary } from "@/lib/ai-insights";
+import type { Recommendation } from "@/lib/database.types";
 
 export default function AssessmentResultsPage() {
   const router = useRouter();
   const { showToast } = useToast();
   const [breakdown, setBreakdown] = useState<HealthScoreBreakdown | null>(null);
   const [loading, setLoading] = useState(true);
+  const [aiSummary, setAiSummary] = useState<string | null>(null);
+  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+  const [aiLoading, setAiLoading] = useState(false);
 
   useEffect(() => {
     async function loadResults() {
@@ -62,6 +67,37 @@ export default function AssessmentResultsPage() {
         if (updateError) {
           console.error('Error updating health score:', updateError);
         }
+
+        // Generate AI summary and recommendations
+        setAiLoading(true);
+        const aiResult = await generateAssessmentSummary({
+          cash_on_hand: data.cash_on_hand,
+          monthly_revenue: data.monthly_revenue,
+          monthly_expenses: data.monthly_expenses,
+          accounts_receivable: data.accounts_receivable,
+          employee_count: data.employee_count,
+          biggest_worry: data.biggest_worry,
+          health_score: scoreBreakdown.totalScore,
+        });
+
+        if (aiResult) {
+          setAiSummary(aiResult.summary);
+          setRecommendations(aiResult.recommendations);
+
+          // Save AI insights to database
+          const { error: aiUpdateError } = await client.database
+            .from('health_assessments')
+            .update({
+              ai_summary: aiResult.summary,
+              recommendations: aiResult.recommendations,
+            })
+            .eq('id', data.id);
+
+          if (aiUpdateError) {
+            console.error('Error saving AI insights:', aiUpdateError);
+          }
+        }
+        setAiLoading(false);
       } catch (error) {
         console.error('Error loading assessment results:', error);
         showToast('error', 'Failed to load results. Please try again.');
@@ -217,6 +253,71 @@ export default function AssessmentResultsPage() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* AI Summary & Recommendations */}
+        <div className="bg-white rounded-lg shadow-lg p-8 md:p-12 mb-8">
+          <h2 className="text-2xl font-display text-text-primary mb-6">
+            What this means for your business
+          </h2>
+
+          {/* AI Summary */}
+          {aiLoading ? (
+            <div className="mb-8 animate-pulse">
+              <div className="h-4 bg-gray-200 rounded w-full mb-3"></div>
+              <div className="h-4 bg-gray-200 rounded w-5/6"></div>
+            </div>
+          ) : aiSummary ? (
+            <p className="text-lg text-text-primary font-body mb-8 leading-relaxed">
+              {aiSummary}
+            </p>
+          ) : (
+            <p className="text-lg text-text-secondary font-body mb-8 italic">
+              AI insights temporarily unavailable. Your score is calculated and saved.
+            </p>
+          )}
+
+          {/* Recommendations */}
+          {recommendations.length > 0 && (
+            <>
+              <h3 className="text-xl font-display text-text-primary mb-4">
+                Top recommendations for you:
+              </h3>
+              <div className="space-y-4">
+                {recommendations.map((rec, index) => (
+                  <div
+                    key={index}
+                    className="bg-background border-l-4 border-orange p-6 rounded-md"
+                  >
+                    <div className="flex items-start gap-4">
+                      <span className="flex-shrink-0 w-8 h-8 bg-orange text-white rounded-full flex items-center justify-center font-display font-semibold">
+                        {index + 1}
+                      </span>
+                      <div className="flex-1">
+                        <h4 className="text-lg font-body font-semibold text-text-primary mb-2">
+                          {rec.title}
+                        </h4>
+                        <p className="text-text-secondary font-body">
+                          {rec.description}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {aiLoading && recommendations.length === 0 && (
+            <div className="space-y-4 animate-pulse">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="bg-background p-6 rounded-md">
+                  <div className="h-4 bg-gray-200 rounded w-3/4 mb-3"></div>
+                  <div className="h-4 bg-gray-200 rounded w-full"></div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Continue Button */}
