@@ -5,6 +5,8 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { HealthScoreGauge } from "@/components/ui/HealthScoreGauge";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Button } from "@/components/ui/Button";
+import { TrafficLightDot } from "@/components/ui/TrafficLightDot";
+import type { HealthStatus } from "@/components/ui/TrafficLightDot";
 import { calculateHealthScore, getHealthStatus } from "@/lib/healthScore";
 import type { HealthAssessment } from "@/lib/database.types";
 
@@ -24,6 +26,71 @@ function getFormattedDate(): string {
     day: "numeric",
   };
   return date.toLocaleDateString("en-US", options);
+}
+
+function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
+function formatRunway(cash: number, expenses: number): string {
+  if (expenses <= 0) return "∞ months";
+  const months = Math.floor(cash / expenses);
+  return `${months} month${months !== 1 ? "s" : ""}`;
+}
+
+function getRunwayStatus(cash: number, expenses: number): string {
+  if (expenses <= 0) return "Excellent";
+  const months = cash / expenses;
+  if (months >= 6) return "Excellent";
+  if (months >= 3) return "Healthy";
+  if (months >= 1) return "Needs Attention";
+  return "Critical";
+}
+
+function getRunwayHealthStatus(cash: number, expenses: number): HealthStatus {
+  if (expenses <= 0) return "healthy";
+  const months = cash / expenses;
+  if (months >= 3) return "healthy";
+  if (months >= 1) return "attention";
+  return "critical";
+}
+
+interface MetricCardProps {
+  label: string;
+  value: string;
+  statusText: string;
+  status: HealthStatus;
+  delay: string;
+}
+
+function MetricCard({ label, value, statusText, status, delay }: MetricCardProps) {
+  return (
+    <div
+      className="bg-surface rounded-xl p-lg border border-background shadow-sm hover:shadow-md transition-shadow duration-300 animate-fadeIn"
+      style={{ animationDelay: delay }}
+    >
+      {/* Label with Traffic Light */}
+      <div className="flex items-center justify-between mb-md">
+        <h3 className="font-body text-small tracking-[0.1em] uppercase text-text-muted">
+          {label}
+        </h3>
+        <TrafficLightDot status={status} />
+      </div>
+
+      {/* Value */}
+      <p className="font-display text-h1 md:text-[36px] text-text-primary mb-xs tracking-tight">
+        {value}
+      </p>
+
+      {/* Status Text */}
+      <p className="text-small text-text-secondary">{statusText}</p>
+    </div>
+  );
 }
 
 export default function DashboardPage() {
@@ -248,19 +315,165 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Placeholder for future metric cards */}
+        {/* Metric Cards - Profit, Cash Flow, Runway */}
+        {!loading && assessment && healthScore && (
+          <div
+            className="grid gap-md md:grid-cols-3 animate-fadeIn"
+            style={{ animationDelay: "500ms" }}
+          >
+            {/* Profit Card */}
+            <MetricCard
+              label="Profit"
+              value={formatCurrency(assessment.monthly_revenue - assessment.monthly_expenses)}
+              statusText="On Track"
+              status="healthy"
+              delay="600ms"
+            />
+
+            {/* Cash Flow Card */}
+            <MetricCard
+              label="Cash Flow"
+              value={formatCurrency(assessment.monthly_revenue - assessment.monthly_expenses)}
+              statusText="Healthy"
+              status="healthy"
+              delay="700ms"
+            />
+
+            {/* Runway Card */}
+            <MetricCard
+              label="Runway"
+              value={formatRunway(assessment.cash_on_hand, assessment.monthly_expenses)}
+              statusText={getRunwayStatus(assessment.cash_on_hand, assessment.monthly_expenses)}
+              status={getRunwayHealthStatus(assessment.cash_on_hand, assessment.monthly_expenses)}
+              delay="800ms"
+            />
+          </div>
+        )}
+
+        {/* Cash Position Section */}
         {!loading && assessment && (
-          <div className="opacity-40 pointer-events-none">
-            <p className="text-small text-text-muted mb-md">Coming soon: Detailed metrics</p>
-            <div className="grid gap-md md:grid-cols-3">
-              {[1, 2, 3].map((i) => (
-                <div
-                  key={i}
-                  className="bg-surface rounded-lg p-lg border border-background shadow-sm"
-                >
-                  <div className="h-32 bg-background/50 rounded-md" />
+          <div
+            className="bg-surface rounded-xl p-2xl border border-background shadow-sm animate-fadeIn"
+            style={{ animationDelay: "900ms" }}
+          >
+            <h2 className="font-body text-small tracking-[0.1em] uppercase text-text-muted mb-lg">
+              Cash Position
+            </h2>
+
+            <div className="space-y-2xl">
+              {/* Current Cash */}
+              <div className="text-center md:text-left">
+                <p className="font-display text-[56px] md:text-[72px] leading-none text-text-primary tracking-tight mb-xs">
+                  {formatCurrency(assessment.cash_on_hand)}
+                </p>
+                <p className="text-body text-text-secondary">Cash on hand right now</p>
+              </div>
+
+              {/* Money In/Out Grid */}
+              <div className="grid md:grid-cols-2 gap-xl pt-md border-t border-background">
+                {/* Money In */}
+                <div className="flex items-start gap-md">
+                  <div className="flex-shrink-0 w-12 h-12 rounded-full bg-success/10 flex items-center justify-center">
+                    <svg
+                      className="w-6 h-6 text-success"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={2.5}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M19 14l-7 7m0 0l-7-7m7 7V3"
+                      />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="font-display text-h1 text-success mb-xs">
+                      {formatCurrency(assessment.monthly_revenue)}
+                    </p>
+                    <p className="text-small text-text-secondary">Money In (last month)</p>
+                  </div>
                 </div>
-              ))}
+
+                {/* Money Out */}
+                <div className="flex items-start gap-md">
+                  <div className="flex-shrink-0 w-12 h-12 rounded-full bg-error/10 flex items-center justify-center">
+                    <svg
+                      className="w-6 h-6 text-error"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={2.5}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M5 10l7-7m0 0l7 7m-7-7v18"
+                      />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="font-display text-h1 text-error mb-xs">
+                      {formatCurrency(assessment.monthly_expenses)}
+                    </p>
+                    <p className="text-small text-text-secondary">Money Out (last month)</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* AI Insight Card + Quick Action */}
+        {!loading && assessment && (
+          <div
+            className="grid md:grid-cols-[1fr,auto] gap-md items-start animate-fadeIn"
+            style={{ animationDelay: "1000ms" }}
+          >
+            {/* AI Insight */}
+            <div className="bg-gradient-to-br from-orange/5 via-surface to-surface rounded-xl p-xl border border-orange/20 shadow-sm">
+              <div className="flex items-start gap-md">
+                {/* Lightbulb Icon */}
+                <div className="flex-shrink-0 w-14 h-14 rounded-full bg-orange/10 flex items-center justify-center">
+                  <svg
+                    className="w-7 h-7 text-orange"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+                    />
+                  </svg>
+                </div>
+
+                {/* Insight Text */}
+                <div className="flex-1 pt-xs">
+                  <h3 className="font-body text-body font-semibold text-orange mb-sm tracking-wide">
+                    AI Insight
+                  </h3>
+                  <p className="text-[15px] leading-relaxed text-text-primary">
+                    Your profit margin improved 8% this month. Slow week keeping expenses steady while revenue grew.
+                    Consider setting aside extra cash to build your runway.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Action Button */}
+            <div className="flex md:items-center h-full">
+              <Button
+                variant="primary"
+                size="lg"
+                onClick={() => (window.location.href = "/scenarios")}
+                className="w-full md:w-auto whitespace-nowrap text-[15px] px-xl py-lg shadow-lg hover:shadow-xl transition-all duration-300"
+              >
+                Run a Scenario
+              </Button>
             </div>
           </div>
         )}

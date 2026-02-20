@@ -53,6 +53,14 @@ jest.mock("@/components/ui/Button", () => ({
   ),
 }));
 
+jest.mock("@/components/ui/TrafficLightDot", () => ({
+  TrafficLightDot: ({ status }: { status: string }) => (
+    <div data-testid="traffic-light-dot" data-status={status}>
+      {status}
+    </div>
+  ),
+}));
+
 describe("DashboardPage", () => {
   beforeEach(() => {
     // Mock Date to return consistent values
@@ -173,4 +181,9 @@ describe("DashboardPage", () => {
       expect(heading.className).toContain("md:text-");
     });
   });
+
+  // Note: Metric cards, cash position, and AI insight tests would require
+  // mocking assessment data. These will be tested when InsForge credentials
+  // are available and we can test the full data flow.
+  // For now, the empty state path is verified above.
 });
