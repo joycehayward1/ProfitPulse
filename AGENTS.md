@@ -85,3 +85,5 @@ sm=6px, md=10px, lg=16px, full=50%
 - No dark mode — the app has one theme only (warm off-white)
 - InsForge SDK requires global `fetch` — tests must mock: `global.fetch = jest.fn()`
 - InsForge database uses PostgREST (same API as Supabase) — `from().select().eq()` pattern
+- **CRITICAL**: InsForge SDK must be dynamically imported in `"use client"` components: `const { getInsForgeClient } = await import("@/lib/insforge")` — static imports cause SSR/build failures
+- Auth pages share `AuthLayout` component from `@/components/auth/AuthLayout`

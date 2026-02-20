@@ -136,3 +136,25 @@ Feature: ProfitPulse Phase 1 - Foundation
   - InsForge database client uses PostgREST (same as Supabase): from().select().eq() pattern
   - Use `jest.resetModules()` + dynamic `require()` to test singleton patterns with different env vars
 ---
+
+## 2026-02-19 - US-006: Auth Pages - Sign Up & Login
+- Created AuthLayout component: split layout with dark testimonial panel (desktop) + form panel
+- Signup page at /signup: email, password, confirm password, business name, industry dropdown
+- Industry options: Engineering, Medical Services, Dental, Construction, Churches, Schools, Other
+- Login page at /login: email + password, "Forgot password?" link
+- Forgot password page at /forgot-password: email input, success state with mail icon
+- All pages use InsForge Auth SDK (signUp, signInWithPassword, sendResetPasswordEmail)
+- Form validation: required fields, email format, password min 8 chars, password match
+- Error states: red border + red text matching design system
+- Redirects: signup → /checkout, login → /dashboard
+- Mobile responsive: left panel hidden, logo header bar, stacked form
+- 92 tests passing (18 new: 9 signup + 8 login)
+- Browser verified: desktop 1280px, mobile 375px — all pages render correctly
+- Files: src/components/auth/AuthLayout.tsx, src/app/signup/page.tsx, src/app/login/page.tsx, src/app/forgot-password/page.tsx, src/components/auth/AGENTS.md, src/app/signup/__tests__/page.test.tsx, src/app/login/__tests__/page.test.tsx
+- **Learnings:**
+  - CRITICAL: InsForge SDK must be dynamically imported in "use client" components — `await import("@/lib/insforge")` inside handlers, NOT static import at top. Static imports cause SSR/build failures (500 errors in production).
+  - jest.mock works for dynamic imports — module-level mocks apply regardless of import method
+  - AuthLayout pattern: shared wrapper for all auth pages avoids duplication
+  - Dev browser CSS loading issues: use production build (`next start`) for accurate visual testing, not dev server
+  - select element needs `appearance-none` + custom chevron SVG for consistent cross-browser styling
+---

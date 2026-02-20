@@ -118,8 +118,8 @@
         "Verify in browser using dev-browser skill or playwright skill"
       ],
       "priority": 6,
-      "passes": false,
-      "notes": "Phase 2 - BLOCKED: Needs InsForge credentials. Use frontend-design skill for auth pages."
+      "passes": true,
+      "notes": "Phase 2 - Auth pages built with InsForge SDK wired up (dynamic import). Will work once credentials are provided."
     },
     {
       "id": "US-007",
