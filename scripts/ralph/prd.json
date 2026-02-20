@@ -251,8 +251,8 @@
         "Verify in browser using dev-browser skill or playwright skill"
       ],
       "priority": 13,
-      "passes": false,
-      "notes": "Phase 3 - BLOCKED: Needs InsForge credentials for AI gateway."
+      "passes": true,
+      "notes": "Phase 3 - AI summary and recommendations complete. Uses InsForge AI Gateway (GPT-4o Mini). Generates warm, plain-English insights with actionable recommendations."
     },
     {
       "id": "US-014",
@@ -450,8 +450,8 @@
         "npm run build passes"
       ],
       "priority": 23,
-      "passes": false,
-      "notes": "Phase 5 - BLOCKED: Needs InsForge credentials for AI gateway."
+      "passes": true,
+      "notes": "Phase 5 - AI Insights Engine complete. Centralized service with 3 functions: generateDashboardInsight, generateAssessmentSummary, generateScenarioExplanation. Uses GPT-4o Mini and Claude Sonnet 4.5. 1-hour caching implemented."
     },
     {
       "id": "US-024",
