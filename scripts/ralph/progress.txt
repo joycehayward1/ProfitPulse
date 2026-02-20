@@ -87,3 +87,23 @@ Feature: ProfitPulse Phase 1 - Foundation
   - Dev server needs restart after build (stale .next cache causes module errors)
   - Tailwind animate-ping works well for pulse effect on critical dots
 ---
+
+## 2026-02-19 - US-004: Landing Page
+- Built complete landing page at / replacing placeholder
+- Header: sticky nav with logo (full-logo.png), Features/Pricing anchors, Get Started CTA, mobile hamburger menu
+- Hero: Georgia headline, subheadline, dual CTAs (Get Started + See How It Works), subtle orange gradient orb
+- Benefits: 2x2 grid of Card components with SVG icons — Health Score, Plain-English Insights, What-If Calculator, Smart Alerts
+- Pricing: 3-tier cards — Starter $49, Growth $99 (featured + "Most Popular" badge), Scale $199 — checkmark feature lists
+- Footer: symbol-logo.png, copyright "© 2026 ProfitPulse by Fusion 4 Business", nav links
+- Mobile responsive: hamburger menu, stacked cards, full-width CTAs — verified at 375px
+- Desktop verified at 1280px
+- Uses existing Button and Card components from @/components/ui
+- 53 tests pass, build clean
+- Files: src/app/page.tsx, scripts/ralph/prd.json, scripts/ralph/progress.txt
+- **Learnings:**
+  - next/image needs explicit width/height, use className for h-auto sizing
+  - sticky header with backdrop-blur-sm + bg-background/95 looks polished
+  - radial-gradient with low opacity (0.08) creates subtle warmth without distraction
+  - scroll-mt-[80px] offsets anchor scroll to account for sticky header
+  - CTA buttons stack on mobile using flex-col sm:flex-row pattern
+---
