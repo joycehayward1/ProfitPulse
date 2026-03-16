@@ -110,6 +110,7 @@ CREATE TABLE IF NOT EXISTS quickbooks_connections (
   realm_id TEXT NOT NULL,
   token_expires_at TIMESTAMPTZ NOT NULL,
   last_sync_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE(user_id)
 );
 

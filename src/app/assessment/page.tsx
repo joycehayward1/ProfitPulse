@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
-import Papa from "papaparse";
 import * as XLSX from "xlsx";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/Button";
@@ -19,19 +18,88 @@ interface ExtractedData {
   revenue: string;
   expenses: string;
   receivables: string;
+  payables: string;
+  ytdRevenue: string;
+  ytdExpenses: string;
+  inventoryValue: string;
   sources: {
     cash?: string;
     revenue?: string;
     expenses?: string;
     receivables?: string;
+    payables?: string;
+    ytdRevenue?: string;
+    ytdExpenses?: string;
+    inventoryValue?: string;
   };
 }
 
+interface QuickBooksSyncMetrics {
+  cash: number;
+  revenue: number;
+  expenses: number;
+  receivables: number;
+  payables: number;
+  ytdRevenue: number;
+  ytdExpenses: number;
+  inventoryValue: number;
+}
+
+interface QuickBooksSyncResponse {
+  success: boolean;
+  realmId?: string;
+  pulledAt?: string;
+  periods?: {
+    monthlyStart: string;
+    monthlyEnd: string;
+    ytdStart: string;
+    ytdEnd: string;
+  };
+  metrics?: QuickBooksSyncMetrics;
+  error?: string;
+}
+
+interface DatabaseErrorLike {
+  code?: string;
+  message?: string;
+}
+
+function isMissingAssessmentColumnError(error: unknown): boolean {
+  const dbError = error as DatabaseErrorLike | null;
+  const message = (dbError?.message || "").toLowerCase();
+  if (dbError?.code === "PGRST204") return true;
+
+  return (
+    message.includes("accounts_payable") ||
+    message.includes("ytd_revenue") ||
+    message.includes("ytd_expenses") ||
+    message.includes("inventory_value") ||
+    message.includes("expense_breakdown")
+  );
+}
+
+function isMissingFinancialDataColumnError(error: unknown): boolean {
+  const dbError = error as DatabaseErrorLike | null;
+  const message = (dbError?.message || "").toLowerCase();
+  if (dbError?.code === "PGRST204") return true;
+
+  return (
+    message.includes("payables") ||
+    message.includes("ytd_revenue") ||
+    message.includes("ytd_expenses") ||
+    message.includes("inventory_value") ||
+    message.includes("expense_breakdown")
+  );
+}
+
 export default function AssessmentPage() {
-  const { user } = useRequireAuth();
+  const { user, loading: authLoading } = useRequireAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { showToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const handledQbResultRef = useRef<string | null>(null);
+  const autoQuickBooksSyncTriggeredRef = useRef(false);
 
   // State
   const [currentStep, setCurrentStep] = useState<Step>("choose-source");
@@ -39,6 +107,13 @@ export default function AssessmentPage() {
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [qbConnected, setQbConnected] = useState(false);
+  const [qbRealmId, setQbRealmId] = useState<string | null>(null);
+  const [qbConnecting, setQbConnecting] = useState(false);
+  const [qbSyncing, setQbSyncing] = useState(false);
+  const [qbSyncedAt, setQbSyncedAt] = useState<string | null>(null);
+  const [qbSyncPeriodText, setQbSyncPeriodText] = useState<string | null>(null);
+  const [checkingExistingAssessment, setCheckingExistingAssessment] = useState(true);
 
   // Extracted data from AI
   const [extractedData, setExtractedData] = useState<ExtractedData>({
@@ -46,6 +121,10 @@ export default function AssessmentPage() {
     revenue: "",
     expenses: "",
     receivables: "",
+    payables: "",
+    ytdRevenue: "",
+    ytdExpenses: "",
+    inventoryValue: "",
     sources: {},
   });
 
@@ -55,9 +134,230 @@ export default function AssessmentPage() {
     revenue: "",
     expenses: "",
     receivables: "",
+    payables: "",
+    ytdRevenue: "",
+    ytdExpenses: "",
+    inventoryValue: "",
     employeeCount: "",
     biggestWorry: "",
   });
+
+  // Expense breakdown (optional)
+  const [showExpenseBreakdown, setShowExpenseBreakdown] = useState(false);
+  const [expenseBreakdown, setExpenseBreakdown] = useState({
+    rent: "",
+    payroll: "",
+    supplies: "",
+    marketing: "",
+    other: "",
+  });
+
+  const getAuthHeaders = useCallback(async (): Promise<Record<string, string> | null> => {
+    const { getInsForgeClient } = await import("@/lib/insforge");
+    const client = getInsForgeClient();
+    const { data, error } = await client.auth.getCurrentSession();
+
+    if (error || !data?.session?.accessToken) {
+      return null;
+    }
+
+    return {
+      Authorization: `Bearer ${data.session.accessToken}`,
+    };
+  }, []);
+
+  const checkQbStatus = useCallback(async () => {
+    const authHeaders = await getAuthHeaders();
+    if (!authHeaders) return;
+
+    const res = await fetch("/api/quickbooks/status", {
+      headers: authHeaders,
+    });
+    if (!res.ok) return;
+
+    const data = await res.json();
+    setQbConnected(Boolean(data.connected));
+    setQbRealmId(data.realmId || null);
+  }, [getAuthHeaders]);
+
+  const formatMetricForInput = (value: number): string => {
+    if (!Number.isFinite(value) || value <= 0) return "";
+    return Math.round(value).toLocaleString("en-US");
+  };
+
+  const syncFromQuickBooks = useCallback(async (): Promise<boolean> => {
+    const authHeaders = await getAuthHeaders();
+    if (!authHeaders) {
+      showToast("error", "Your session expired. Please log in again.");
+      return false;
+    }
+
+    setQbSyncing(true);
+    try {
+      const res = await fetch("/api/quickbooks/assessment-data", {
+        method: "GET",
+        headers: authHeaders,
+      });
+
+      const payload = (await res.json()) as QuickBooksSyncResponse;
+      if (!res.ok || !payload.success || !payload.metrics) {
+        showToast("error", payload.error || "Failed to sync QuickBooks data.");
+        return false;
+      }
+
+      const metrics = payload.metrics;
+
+      setFormData((prev) => ({
+        ...prev,
+        cash: formatMetricForInput(metrics.cash),
+        revenue: formatMetricForInput(metrics.revenue),
+        expenses: formatMetricForInput(metrics.expenses),
+        receivables: formatMetricForInput(metrics.receivables),
+        payables: formatMetricForInput(metrics.payables),
+        ytdRevenue: formatMetricForInput(metrics.ytdRevenue),
+        ytdExpenses: formatMetricForInput(metrics.ytdExpenses),
+        inventoryValue: formatMetricForInput(metrics.inventoryValue),
+      }));
+
+      setExtractedData((prev) => ({
+        ...prev,
+        cash: metrics.cash > 0 ? metrics.cash.toString() : "",
+        revenue: metrics.revenue > 0 ? metrics.revenue.toString() : "",
+        expenses: metrics.expenses > 0 ? metrics.expenses.toString() : "",
+        receivables: metrics.receivables > 0 ? metrics.receivables.toString() : "",
+        payables: metrics.payables > 0 ? metrics.payables.toString() : "",
+        ytdRevenue: metrics.ytdRevenue > 0 ? metrics.ytdRevenue.toString() : "",
+        ytdExpenses: metrics.ytdExpenses > 0 ? metrics.ytdExpenses.toString() : "",
+        inventoryValue: metrics.inventoryValue > 0 ? metrics.inventoryValue.toString() : "",
+        sources: {
+          ...(metrics.cash > 0 ? { cash: "QuickBooks" } : {}),
+          ...(metrics.revenue > 0 ? { revenue: "QuickBooks" } : {}),
+          ...(metrics.expenses > 0 ? { expenses: "QuickBooks" } : {}),
+          ...(metrics.receivables > 0 ? { receivables: "QuickBooks" } : {}),
+          ...(metrics.payables > 0 ? { payables: "QuickBooks" } : {}),
+          ...(metrics.ytdRevenue > 0 ? { ytdRevenue: "QuickBooks" } : {}),
+          ...(metrics.ytdExpenses > 0 ? { ytdExpenses: "QuickBooks" } : {}),
+          ...(metrics.inventoryValue > 0 ? { inventoryValue: "QuickBooks" } : {}),
+        },
+      }));
+
+      setQbSyncedAt(payload.pulledAt || new Date().toISOString());
+      if (payload.periods) {
+        setQbSyncPeriodText(
+          `${payload.periods.monthlyStart} to ${payload.periods.monthlyEnd} (monthly), ${payload.periods.ytdStart} to ${payload.periods.ytdEnd} (YTD)`
+        );
+      }
+
+      showToast("success", "QuickBooks data synced. Review and continue.");
+      return true;
+    } catch (err) {
+      console.error("Failed to sync QuickBooks assessment data:", err);
+      showToast("error", "Failed to sync QuickBooks data.");
+      return false;
+    } finally {
+      setQbSyncing(false);
+    }
+  }, [getAuthHeaders, showToast]);
+
+  useEffect(() => {
+    if (!user) return;
+    checkQbStatus();
+  }, [user, checkQbStatus]);
+
+  useEffect(() => {
+    if (!user) return;
+    const userId = user.id;
+
+    let cancelled = false;
+
+    async function checkExistingAssessment() {
+      try {
+        const { getInsForgeClient } = await import("@/lib/insforge");
+        const client = getInsForgeClient();
+        const { data, error } = await client.database
+          .from("health_assessments")
+          .select("id")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single();
+
+        if (!cancelled) {
+          if (!error && data?.id) {
+            router.replace("/dashboard");
+            return;
+          }
+          setCheckingExistingAssessment(false);
+        }
+      } catch (err) {
+        console.error("Failed to check existing assessment:", err);
+        if (!cancelled) {
+          setCheckingExistingAssessment(false);
+        }
+      }
+    }
+
+    checkExistingAssessment();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user, router]);
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      setCheckingExistingAssessment(false);
+    }
+  }, [authLoading, user]);
+
+  useEffect(() => {
+    const source = searchParams.get("source");
+    if (source === "quickbooks") {
+      setDataSource("quickbooks");
+      if (qbConnected) {
+        setCurrentStep("review");
+      }
+    }
+  }, [searchParams, qbConnected]);
+
+  useEffect(() => {
+    if (dataSource !== "quickbooks" || currentStep !== "review" || !qbConnected) {
+      return;
+    }
+    if (autoQuickBooksSyncTriggeredRef.current) {
+      return;
+    }
+
+    autoQuickBooksSyncTriggeredRef.current = true;
+    void syncFromQuickBooks();
+  }, [dataSource, currentStep, qbConnected, syncFromQuickBooks]);
+
+  useEffect(() => {
+    const qbResult = searchParams.get("qb");
+    if (!qbResult || handledQbResultRef.current === qbResult) {
+      return;
+    }
+
+    handledQbResultRef.current = qbResult;
+
+    if (qbResult === "success") {
+      setQbConnected(true);
+      setDataSource("quickbooks");
+      setCurrentStep("review");
+      autoQuickBooksSyncTriggeredRef.current = false;
+      showToast("success", "QuickBooks connected successfully!");
+      checkQbStatus();
+    } else if (qbResult === "error") {
+      showToast("error", "Failed to connect QuickBooks. Please try again.");
+    } else if (qbResult === "auth_required") {
+      showToast("error", "Please log in before connecting QuickBooks.");
+    }
+
+    const url = new URL(window.location.href);
+    url.searchParams.delete("qb");
+    const query = url.searchParams.toString();
+    window.history.replaceState({}, "", `${url.pathname}${query ? `?${query}` : ""}`);
+  }, [searchParams, showToast, checkQbStatus]);
 
   // Choose Data Source
   function handleChooseSource(source: DataSource) {
@@ -68,6 +368,55 @@ export default function AssessmentPage() {
       setCurrentStep("review");
     }
     // QuickBooks will be handled when credentials available
+  }
+
+  async function handleQuickBooksConnect() {
+    if (qbConnected) {
+      if (!qbSyncedAt) {
+        autoQuickBooksSyncTriggeredRef.current = false;
+      }
+      setDataSource("quickbooks");
+      setCurrentStep("review");
+      return;
+    }
+
+    if (!user?.id) {
+      showToast("error", "Please log in before connecting QuickBooks.");
+      return;
+    }
+
+    setQbConnecting(true);
+    try {
+      const authHeaders = await getAuthHeaders();
+      if (!authHeaders) {
+        showToast("error", "Your session expired. Please log in again.");
+        return;
+      }
+
+      const res = await fetch("/api/connect/quickbooks", {
+        method: "POST",
+        headers: {
+          ...authHeaders,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          returnTo: "/assessment?source=quickbooks",
+        }),
+      });
+
+      const payload = await res.json();
+      if (!res.ok || !payload?.authUrl) {
+        showToast("error", payload?.error || "Failed to start QuickBooks connection.");
+        return;
+      }
+
+      window.location.href = payload.authUrl;
+    } catch (err) {
+      console.error("Error initiating QuickBooks OAuth:", err);
+      showToast("error", "Failed to start QuickBooks connection.");
+    } finally {
+      setQbConnecting(false);
+    }
   }
 
   // File Upload Handlers
@@ -117,11 +466,15 @@ export default function AssessmentPage() {
     const { getInsForgeClient } = await import("@/lib/insforge");
     const client = getInsForgeClient();
 
-    let extracted: ExtractedData = {
+    const extracted: ExtractedData = {
       cash: "",
       revenue: "",
       expenses: "",
       receivables: "",
+      payables: "",
+      ytdRevenue: "",
+      ytdExpenses: "",
+      inventoryValue: "",
       sources: {},
     };
 
@@ -154,12 +507,16 @@ export default function AssessmentPage() {
                 messages: [
                   {
                     role: "user",
-                    content: `Analyze this financial spreadsheet and extract these 4 metrics (if present):
+                    content: `Analyze this financial spreadsheet and extract these 8 metrics (if present):
 
 1. **Current Cash Balance** - The amount of cash the business has right now
 2. **Monthly Revenue** - Average monthly sales/income
 3. **Monthly Expenses** - Average monthly costs/spending
 4. **Accounts Receivable** - Money owed to the business by customers
+5. **Accounts Payable** - Money the business owes to vendors/suppliers
+6. **Year-to-Date Revenue** - Total revenue earned so far this fiscal year
+7. **Year-to-Date Expenses** - Total expenses incurred so far this fiscal year
+8. **Inventory Value** - Current value of inventory on hand (if applicable)
 
 Spreadsheet data:
 ${csvText}
@@ -169,7 +526,11 @@ Return ONLY a JSON object with these exact keys (use empty string "" if not foun
   "cash": "number only, no $ or commas",
   "revenue": "number only, no $ or commas",
   "expenses": "number only, no $ or commas",
-  "receivables": "number only, no $ or commas"
+  "receivables": "number only, no $ or commas",
+  "payables": "number only, no $ or commas",
+  "ytdRevenue": "number only, no $ or commas",
+  "ytdExpenses": "number only, no $ or commas",
+  "inventoryValue": "number only, no $ or commas"
 }`,
                   },
                 ],
@@ -201,6 +562,22 @@ Return ONLY a JSON object with these exact keys (use empty string "" if not foun
                 if (aiData.receivables && !extracted.receivables) {
                   extracted.receivables = aiData.receivables;
                   extracted.sources.receivables = file.name;
+                }
+                if (aiData.payables && !extracted.payables) {
+                  extracted.payables = aiData.payables;
+                  extracted.sources.payables = file.name;
+                }
+                if (aiData.ytdRevenue && !extracted.ytdRevenue) {
+                  extracted.ytdRevenue = aiData.ytdRevenue;
+                  extracted.sources.ytdRevenue = file.name;
+                }
+                if (aiData.ytdExpenses && !extracted.ytdExpenses) {
+                  extracted.ytdExpenses = aiData.ytdExpenses;
+                  extracted.sources.ytdExpenses = file.name;
+                }
+                if (aiData.inventoryValue && !extracted.inventoryValue) {
+                  extracted.inventoryValue = aiData.inventoryValue;
+                  extracted.sources.inventoryValue = file.name;
                 }
 
                 console.log(`✅ Extracted from ${file.name}:`, aiData);
@@ -236,6 +613,10 @@ Return ONLY a JSON object with these exact keys (use empty string "" if not foun
       revenue: extracted.revenue || prev.revenue,
       expenses: extracted.expenses || prev.expenses,
       receivables: extracted.receivables || prev.receivables,
+      payables: extracted.payables || prev.payables,
+      ytdRevenue: extracted.ytdRevenue || prev.ytdRevenue,
+      ytdExpenses: extracted.ytdExpenses || prev.ytdExpenses,
+      inventoryValue: extracted.inventoryValue || prev.inventoryValue,
     }));
 
     setIsProcessing(false);
@@ -246,13 +627,18 @@ Return ONLY a JSON object with these exact keys (use empty string "" if not foun
       extracted.revenue,
       extracted.expenses,
       extracted.receivables,
+      extracted.payables,
+      extracted.ytdRevenue,
+      extracted.ytdExpenses,
+      extracted.inventoryValue,
     ].filter(Boolean).length;
 
-    console.log(`✅ Found ${foundCount} of 4 metrics`);
+    const totalMetrics = 8;
+    console.log(`✅ Found ${foundCount} of ${totalMetrics} metrics`);
 
     showToast(
       "success",
-      `Found ${foundCount} of 4 financial metrics in your files!`
+      `Found ${foundCount} financial metrics in your files!`
     );
   }
 
@@ -272,6 +658,17 @@ Return ONLY a JSON object with these exact keys (use empty string "" if not foun
       const expenses = parseFloat(formData.expenses.replace(/,/g, "")) || 0;
       const receivables =
         parseFloat(formData.receivables.replace(/,/g, "")) || 0;
+      const payables = parseFloat(formData.payables.replace(/,/g, "")) || 0;
+      const ytdRevenue = parseFloat(formData.ytdRevenue.replace(/,/g, "")) || 0;
+      const ytdExpenses = parseFloat(formData.ytdExpenses.replace(/,/g, "")) || 0;
+      const inventoryValue = parseFloat(formData.inventoryValue.replace(/,/g, "")) || 0;
+
+      // Parse expense breakdown
+      const payrollAmount = parseFloat(expenseBreakdown.payroll.replace(/,/g, "")) || 0;
+      const rentAmount = parseFloat(expenseBreakdown.rent.replace(/,/g, "")) || 0;
+      const suppliesAmount = parseFloat(expenseBreakdown.supplies.replace(/,/g, "")) || 0;
+      const marketingAmount = parseFloat(expenseBreakdown.marketing.replace(/,/g, "")) || 0;
+      const otherAmount = parseFloat(expenseBreakdown.other.replace(/,/g, "")) || 0;
 
       // Calculate health score
       const healthScore = calculateHealthScore(
@@ -281,25 +678,122 @@ Return ONLY a JSON object with these exact keys (use empty string "" if not foun
         receivables
       );
 
-      // Save assessment
-      const { data, error } = await client.database
+      const basePayload = {
+        user_id: user.id,
+        cash_on_hand: cash,
+        monthly_revenue: revenue,
+        monthly_expenses: expenses,
+        accounts_receivable: receivables,
+        employee_count: parseInt(formData.employeeCount) || 0,
+        biggest_worry: formData.biggestWorry || null,
+        health_score: healthScore,
+      };
+
+      const extendedPayload = {
+        ...basePayload,
+        accounts_payable: payables,
+        ytd_revenue: ytdRevenue,
+        ytd_expenses: ytdExpenses,
+        inventory_value: inventoryValue,
+        expense_breakdown:
+          payrollAmount || rentAmount || suppliesAmount || marketingAmount || otherAmount
+            ? {
+                rent: rentAmount,
+                payroll: payrollAmount,
+                supplies: suppliesAmount,
+                marketing: marketingAmount,
+                other: otherAmount,
+              }
+            : null,
+      };
+
+      const sourceForFinancialData =
+        dataSource === "quickbooks"
+          ? "quickbooks"
+          : dataSource === "upload"
+          ? "spreadsheet"
+          : "manual";
+
+      const now = new Date();
+      const periodDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+
+      const financialBasePayload = {
+        user_id: user.id,
+        period_date: periodDate,
+        cash_balance: cash,
+        revenue,
+        expenses,
+        receivables,
+        data_source: sourceForFinancialData,
+      };
+
+      const financialExtendedPayload = {
+        ...financialBasePayload,
+        payables,
+        ytd_revenue: ytdRevenue,
+        ytd_expenses: ytdExpenses,
+        inventory_value: inventoryValue,
+        expense_breakdown:
+          payrollAmount || rentAmount || suppliesAmount || marketingAmount || otherAmount
+            ? {
+                rent: rentAmount,
+                payroll: payrollAmount,
+                supplies: suppliesAmount,
+                marketing: marketingAmount,
+                other: otherAmount,
+              }
+            : null,
+      };
+
+      // Save assessment (with backward compatibility for older schemas)
+      let { error } = await client.database
         .from("health_assessments")
-        .insert({
-          user_id: user.id,
-          cash_on_hand: cash,
-          monthly_revenue: revenue,
-          monthly_expenses: expenses,
-          accounts_receivable: receivables,
-          employee_count: parseInt(formData.employeeCount) || 0,
-          biggest_worry: formData.biggestWorry || null,
-          health_score: healthScore,
-        })
-        .select()
-        .single();
+        .insert(extendedPayload);
+
+      if (error && isMissingAssessmentColumnError(error)) {
+        console.warn("health_assessments missing newer columns; falling back to legacy insert", error);
+        const retry = await client.database
+          .from("health_assessments")
+          .insert(basePayload);
+        error = retry.error;
+      }
 
       if (error) {
         console.error("Error saving assessment:", error);
-        showToast("error", "Failed to save assessment");
+        const dbError = error as DatabaseErrorLike;
+        showToast(
+          "error",
+          dbError.message
+            ? `Failed to save assessment: ${dbError.message}`
+            : "Failed to save assessment"
+        );
+        return;
+      }
+
+      // Save matching snapshot so Data and Scenarios stay in sync with assessment answers.
+      let financialInsert = await client.database
+        .from("financial_data")
+        .insert(financialExtendedPayload);
+
+      if (financialInsert.error && isMissingFinancialDataColumnError(financialInsert.error)) {
+        console.warn(
+          "financial_data missing newer columns; falling back to legacy insert",
+          financialInsert.error
+        );
+        financialInsert = await client.database
+          .from("financial_data")
+          .insert(financialBasePayload);
+      }
+
+      if (financialInsert.error) {
+        console.error("Error saving financial snapshot:", financialInsert.error);
+        const dbError = financialInsert.error as DatabaseErrorLike;
+        showToast(
+          "error",
+          dbError.message
+            ? `Assessment saved, but data snapshot failed: ${dbError.message}`
+            : "Assessment saved, but data snapshot failed."
+        );
         return;
       }
 
@@ -311,14 +805,25 @@ Return ONLY a JSON object with these exact keys (use empty string "" if not foun
           monthly_revenue: revenue,
           monthly_expenses: expenses,
           accounts_receivable: receivables,
+          accounts_payable: payables,
+          ytd_revenue: ytdRevenue,
+          ytd_expenses: ytdExpenses,
+          inventory_value: inventoryValue,
+          expense_breakdown: payrollAmount || rentAmount || suppliesAmount || marketingAmount || otherAmount ? {
+            rent: rentAmount,
+            payroll: payrollAmount,
+            supplies: suppliesAmount,
+            marketing: marketingAmount,
+            other: otherAmount,
+          } : null,
           employee_count: parseInt(formData.employeeCount) || 0,
           biggest_worry: formData.biggestWorry,
           health_score: healthScore,
         })
       );
 
-      // Redirect to results
-      router.push("/assessment/results");
+      showToast("success", "Assessment completed. Your dashboard is ready.");
+      router.push("/dashboard");
     } catch (error) {
       console.error("Assessment error:", error);
       showToast("error", "Failed to complete assessment");
@@ -366,6 +871,16 @@ Return ONLY a JSON object with these exact keys (use empty string "" if not foun
   const canProceedToContext =
     formData.cash && formData.revenue && formData.expenses;
 
+  if (authLoading || checkingExistingAssessment) {
+    return (
+      <AppLayout>
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <div className="inline-block h-10 w-10 animate-spin rounded-full border-4 border-solid border-orange border-r-transparent align-[-0.125em]" />
+        </div>
+      </AppLayout>
+    );
+  }
+
   return (
     <AppLayout>
       <div className="min-h-screen bg-background py-8">
@@ -375,7 +890,7 @@ Return ONLY a JSON object with these exact keys (use empty string "" if not foun
             <div className="animate-fade-in">
               <div className="text-center mb-12">
                 <h1 className="text-4xl sm:text-5xl font-display text-text-primary mb-4">
-                  Let's get you some clarity on your business.
+                  Let&apos;s get you some clarity on your business.
                 </h1>
                 <p className="text-lg text-text-secondary font-body">
                   How would you like to connect your financial data?
@@ -432,8 +947,16 @@ Return ONLY a JSON object with these exact keys (use empty string "" if not foun
                   </div>
                 </button>
 
-                {/* QuickBooks (Coming Soon) */}
-                <div className="relative p-8 bg-surface/50 rounded-xl border-2 border-text-muted/10 opacity-60">
+                {/* QuickBooks */}
+                <button
+                  onClick={handleQuickBooksConnect}
+                  disabled={qbConnecting}
+                  className={`group relative p-8 rounded-xl border-2 transition-all text-left ${
+                    qbConnected
+                      ? "bg-[#2CA01C]/[0.03] border-[#2CA01C] shadow-sm"
+                      : "bg-surface border-text-muted/20 hover:border-[#2CA01C] hover:shadow-md"
+                  } ${qbConnecting ? "opacity-70 cursor-not-allowed" : ""}`}
+                >
                   <div className="flex items-start gap-4">
                     <div className="w-12 h-12 flex items-center justify-center flex-shrink-0">
                       <Image
@@ -445,19 +968,45 @@ Return ONLY a JSON object with these exact keys (use empty string "" if not foun
                       />
                     </div>
                     <div className="flex-1">
-                      <h3 className="text-xl font-display text-text-primary mb-2">
+                      <h3 className="text-xl font-display text-text-primary mb-2 group-hover:text-[#2CA01C] transition-colors">
                         Connect QuickBooks
                       </h3>
                       <p className="text-body text-text-secondary font-body">
                         Automatically sync your QuickBooks data for instant
                         insights.
                       </p>
-                      <div className="mt-3 inline-block px-3 py-1 bg-purple/10 text-purple text-xs font-medium rounded-full">
-                        Coming Soon
+                      {qbConnected && (
+                        <div className="mt-3 space-y-2">
+                          <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#2CA01C]/10 rounded-full">
+                            <div className="w-2 h-2 rounded-full bg-[#2CA01C]" />
+                            <span className="text-xs font-semibold text-[#1E7A14]">Connected to QuickBooks</span>
+                          </div>
+                          {qbRealmId && (
+                            <p className="text-xs text-text-secondary font-body">
+                              Company ID: {qbRealmId}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                      <div className="mt-3 inline-flex items-center gap-2 text-sm text-[#2CA01C] font-semibold">
+                        <span>{qbConnecting ? "Connecting..." : qbConnected ? "Continue to assessment" : "Connect now"}</span>
+                        <svg
+                          className="w-4 h-4 group-hover:translate-x-1 transition-transform"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2.5}
+                            d="M13 7l5 5m0 0l-5 5m5-5H6"
+                          />
+                        </svg>
                       </div>
                     </div>
                   </div>
-                </div>
+                </button>
 
                 {/* Enter Manually */}
                 <button
@@ -656,14 +1205,56 @@ Return ONLY a JSON object with these exact keys (use empty string "" if not foun
                 <h1 className="text-3xl sm:text-4xl font-display text-text-primary mb-3">
                   {dataSource === "upload"
                     ? "Review Your Financial Data"
+                    : dataSource === "quickbooks"
+                    ? "Review Your QuickBooks Data"
                     : "Enter Your Financial Data"}
                 </h1>
                 <p className="text-base text-text-secondary font-body">
                   {dataSource === "upload"
                     ? "Check what we found and fill in any missing details."
+                    : dataSource === "quickbooks"
+                    ? "You are connected to QuickBooks. Confirm your key numbers to complete your assessment."
                     : "Enter your current financial numbers."}
                 </p>
               </div>
+
+              {dataSource === "quickbooks" && (
+                <div className="mb-8 p-5 bg-[#2CA01C]/[0.05] border border-[#2CA01C]/30 rounded-xl">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-[#1E7A14]">
+                        {qbSyncing ? "Syncing data from QuickBooks..." : "QuickBooks sync ready"}
+                      </p>
+                      {qbRealmId && (
+                        <p className="text-xs text-text-secondary font-body mt-1">
+                          Company ID: {qbRealmId}
+                        </p>
+                      )}
+                      {qbSyncPeriodText && (
+                        <p className="text-xs text-text-secondary font-body mt-1">
+                          Synced periods: {qbSyncPeriodText}
+                        </p>
+                      )}
+                      {qbSyncedAt && (
+                        <p className="text-xs text-text-secondary font-body mt-1">
+                          Last synced: {new Date(qbSyncedAt).toLocaleString("en-US")}
+                        </p>
+                      )}
+                    </div>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={async () => {
+                        autoQuickBooksSyncTriggeredRef.current = true;
+                        await syncFromQuickBooks();
+                      }}
+                      disabled={qbSyncing}
+                    >
+                      {qbSyncing ? "Syncing..." : "Refresh from QuickBooks"}
+                    </Button>
+                  </div>
+                </div>
+              )}
 
               {/* AI Extraction Results */}
               {dataSource === "upload" &&
@@ -671,7 +1262,10 @@ Return ONLY a JSON object with these exact keys (use empty string "" if not foun
                 (extractedData.cash ||
                   extractedData.revenue ||
                   extractedData.expenses ||
-                  extractedData.receivables) && (
+                  extractedData.receivables ||
+                  extractedData.payables ||
+                  extractedData.ytdRevenue ||
+                  extractedData.ytdExpenses) && (
                 <div className="mb-8 p-6 bg-success/5 border border-success/20 rounded-xl">
                   <div className="flex items-start gap-3 mb-4">
                     <div className="w-10 h-10 rounded-full bg-success flex items-center justify-center flex-shrink-0">
@@ -724,6 +1318,42 @@ Return ONLY a JSON object with these exact keys (use empty string "" if not foun
                             {parseFloat(extractedData.receivables).toLocaleString()}{" "}
                             <span className="text-text-muted">
                               (from {extractedData.sources.receivables})
+                            </span>
+                          </p>
+                        )}
+                        {extractedData.payables && (
+                          <p>
+                            ✓ Payables: $
+                            {parseFloat(extractedData.payables).toLocaleString()}{" "}
+                            <span className="text-text-muted">
+                              (from {extractedData.sources.payables})
+                            </span>
+                          </p>
+                        )}
+                        {extractedData.ytdRevenue && (
+                          <p>
+                            ✓ YTD Revenue: $
+                            {parseFloat(extractedData.ytdRevenue).toLocaleString()}{" "}
+                            <span className="text-text-muted">
+                              (from {extractedData.sources.ytdRevenue})
+                            </span>
+                          </p>
+                        )}
+                        {extractedData.ytdExpenses && (
+                          <p>
+                            ✓ YTD Expenses: $
+                            {parseFloat(extractedData.ytdExpenses).toLocaleString()}{" "}
+                            <span className="text-text-muted">
+                              (from {extractedData.sources.ytdExpenses})
+                            </span>
+                          </p>
+                        )}
+                        {extractedData.inventoryValue && (
+                          <p>
+                            ✓ Inventory: $
+                            {parseFloat(extractedData.inventoryValue).toLocaleString()}{" "}
+                            <span className="text-text-muted">
+                              (from {extractedData.sources.inventoryValue})
                             </span>
                           </p>
                         )}
@@ -802,9 +1432,168 @@ Return ONLY a JSON object with these exact keys (use empty string "" if not foun
                       </p>
                     ) : (
                       <p className="text-xs text-text-muted mt-1 font-body">
-                        Couldn't find this in your files - enter if you have it
+                        Couldn&apos;t find this in your files - enter if you have it
                       </p>
                     )}
+                  </div>
+
+                  <div>
+                    <CurrencyInput
+                      label="Accounts payable (money you owe)"
+                      value={formData.payables}
+                      onChange={(value) =>
+                        setFormData({ ...formData, payables: value })
+                      }
+                      placeholder="0"
+                    />
+                    {extractedData.payables ? (
+                      <p className="text-xs text-success mt-1 font-body">
+                        ✓ Auto-filled from {extractedData.sources.payables}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-text-muted mt-1 font-body">
+                        Bills, vendor invoices, or loans due
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <CurrencyInput
+                      label="Year-to-date revenue"
+                      value={formData.ytdRevenue}
+                      onChange={(value) =>
+                        setFormData({ ...formData, ytdRevenue: value })
+                      }
+                      placeholder="0"
+                    />
+                    {extractedData.ytdRevenue ? (
+                      <p className="text-xs text-success mt-1 font-body">
+                        ✓ Auto-filled from {extractedData.sources.ytdRevenue}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-text-muted mt-1 font-body">
+                        Total revenue earned so far this fiscal year
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <CurrencyInput
+                      label="Year-to-date expenses"
+                      value={formData.ytdExpenses}
+                      onChange={(value) =>
+                        setFormData({ ...formData, ytdExpenses: value })
+                      }
+                      placeholder="0"
+                    />
+                    {extractedData.ytdExpenses ? (
+                      <p className="text-xs text-success mt-1 font-body">
+                        ✓ Auto-filled from {extractedData.sources.ytdExpenses}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-text-muted mt-1 font-body">
+                        Total expenses incurred so far this fiscal year
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <CurrencyInput
+                      label="Inventory value (if applicable)"
+                      value={formData.inventoryValue}
+                      onChange={(value) =>
+                        setFormData({ ...formData, inventoryValue: value })
+                      }
+                      placeholder="0"
+                    />
+                    {extractedData.inventoryValue ? (
+                      <p className="text-xs text-success mt-1 font-body">
+                        ✓ Auto-filled from {extractedData.sources.inventoryValue}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-text-muted mt-1 font-body">
+                        Skip if your business doesn&apos;t carry inventory
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Expense Breakdown Toggle */}
+                <div className="pt-4 border-t border-text-muted/20">
+                  <button
+                    type="button"
+                    onClick={() => setShowExpenseBreakdown(!showExpenseBreakdown)}
+                    className="flex items-center justify-between w-full text-left group"
+                  >
+                    <span className="text-sm font-body font-medium text-text-secondary group-hover:text-orange transition-colors">
+                      Add expense breakdown by category (optional)
+                    </span>
+                    <svg
+                      className={`w-5 h-5 text-text-muted transition-transform ${
+                        showExpenseBreakdown ? "rotate-180" : ""
+                      }`}
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 9l-7 7-7-7"
+                      />
+                    </svg>
+                  </button>
+
+                  <div
+                    className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                      showExpenseBreakdown
+                        ? "max-h-[600px] opacity-100 mt-6"
+                        : "max-h-0 opacity-0"
+                    }`}
+                  >
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-background/50 p-4 sm:p-6 rounded-lg border border-text-muted/10">
+                      <CurrencyInput
+                        label="Rent"
+                        value={expenseBreakdown.rent}
+                        onChange={(value) =>
+                          setExpenseBreakdown({ ...expenseBreakdown, rent: value })
+                        }
+                        placeholder="0"
+                      />
+                      <CurrencyInput
+                        label="Payroll"
+                        value={expenseBreakdown.payroll}
+                        onChange={(value) =>
+                          setExpenseBreakdown({ ...expenseBreakdown, payroll: value })
+                        }
+                        placeholder="0"
+                      />
+                      <CurrencyInput
+                        label="Supplies"
+                        value={expenseBreakdown.supplies}
+                        onChange={(value) =>
+                          setExpenseBreakdown({ ...expenseBreakdown, supplies: value })
+                        }
+                        placeholder="0"
+                      />
+                      <CurrencyInput
+                        label="Marketing"
+                        value={expenseBreakdown.marketing}
+                        onChange={(value) =>
+                          setExpenseBreakdown({ ...expenseBreakdown, marketing: value })
+                        }
+                        placeholder="0"
+                      />
+                      <CurrencyInput
+                        label="Other"
+                        value={expenseBreakdown.other}
+                        onChange={(value) =>
+                          setExpenseBreakdown({ ...expenseBreakdown, other: value })
+                        }
+                        placeholder="0"
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -835,7 +1624,7 @@ Return ONLY a JSON object with these exact keys (use empty string "" if not foun
 
                     <div>
                       <label className="block text-sm font-body font-medium text-text-secondary mb-2">
-                        What's your biggest financial worry right now?
+                        What&apos;s your biggest financial worry right now?
                       </label>
                       <textarea
                         value={formData.biggestWorry}

@@ -20,6 +20,8 @@ export default function AssessmentResultsPage() {
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [aiLoading, setAiLoading] = useState(false);
+  const [payrollPercent, setPayrollPercent] = useState<number | null>(null);
+  const [payrollRevenuePercent, setPayrollRevenuePercent] = useState<number | null>(null);
 
   useEffect(() => {
     async function loadResults() {
@@ -71,6 +73,16 @@ export default function AssessmentResultsPage() {
         });
 
         setBreakdown(scoreBreakdown);
+
+        // Calculate payroll percentage if expense breakdown available
+        if (assessmentData.expense_breakdown?.payroll && assessmentData.monthly_expenses > 0) {
+          const payrollPct = (assessmentData.expense_breakdown.payroll / assessmentData.monthly_expenses) * 100;
+          setPayrollPercent(payrollPct);
+        }
+        if (assessmentData.expense_breakdown?.payroll && assessmentData.monthly_revenue > 0) {
+          const payrollRevPct = (assessmentData.expense_breakdown.payroll / assessmentData.monthly_revenue) * 100;
+          setPayrollRevenuePercent(payrollRevPct);
+        }
 
         // Try to update database if we have an ID (means it came from DB)
         if (assessmentData.id) {
@@ -252,7 +264,7 @@ export default function AssessmentResultsPage() {
             </div>
 
             {/* Receivables Health */}
-            <div className="pb-2">
+            <div className={payrollPercent !== null ? "border-b border-gray-200 pb-6" : "pb-2"}>
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-lg font-body font-semibold text-text-primary">
                   Receivables Health
@@ -276,6 +288,42 @@ export default function AssessmentResultsPage() {
                 </span>
               </div>
             </div>
+
+            {/* Payroll as % of Expenses/Revenue */}
+            {payrollPercent !== null && (
+              <div className="pb-2">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-lg font-body font-semibold text-text-primary">
+                    Payroll Ratio
+                  </h3>
+                  <span className="text-text-muted font-body text-sm">
+                    Insight
+                  </span>
+                </div>
+                <p className="text-text-secondary font-body mb-3">
+                  Payroll makes up <span className="font-semibold text-text-primary">{payrollPercent.toFixed(1)}%</span> of your total expenses
+                  {payrollRevenuePercent !== null && (
+                    <> and <span className="font-semibold text-text-primary">{payrollRevenuePercent.toFixed(1)}%</span> of your revenue</>
+                  )}.
+                  {payrollPercent > 50
+                    ? " This is on the higher side — typical for service businesses, but worth monitoring."
+                    : payrollPercent > 30
+                    ? " This is in a healthy range for most businesses."
+                    : " This is relatively lean — make sure you have enough capacity to grow."}
+                </p>
+                <div className="flex items-center gap-4">
+                  <div className="flex-1 bg-gray-200 rounded-full h-3 overflow-hidden">
+                    <div
+                      className="bg-purple h-full rounded-full transition-all duration-700"
+                      style={{ width: `${Math.min(payrollPercent, 100)}%` }}
+                    />
+                  </div>
+                  <span className="text-text-primary font-display text-xl font-semibold min-w-[50px] text-right">
+                    {payrollPercent.toFixed(0)}%
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

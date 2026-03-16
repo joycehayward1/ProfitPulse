@@ -78,19 +78,6 @@ const tiers = [
       "QuickBooks auto-sync",
     ],
   },
-  {
-    name: "Scale",
-    price: 199,
-    popular: false,
-    cta: "Go Hands-Free",
-    features: [
-      "Everything in Growth",
-      "Priority support",
-      "Custom reports (coming soon)",
-      "White-glove account setup",
-      "First access to new features",
-    ],
-  },
 ];
 
 function CheckIcon() {
@@ -305,9 +292,6 @@ export default function LandingPage() {
 
               <div className="flex flex-col sm:flex-row gap-sm">
                 <Button size="lg" onClick={() => router.push('/signup')}>See Your Health Score</Button>
-                <Button variant="secondary" size="lg" onClick={() => router.push('/scenarios')}>
-                  Watch How It Works
-                </Button>
               </div>
             </div>
 
@@ -371,7 +355,7 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-md max-w-4xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-md max-w-3xl mx-auto">
             {tiers.map((tier) => (
               <Card
                 key={tier.name}

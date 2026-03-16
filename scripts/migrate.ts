@@ -164,6 +164,7 @@ const tables: TableDefinition[] = [
       { name: "realm_id", type: "string", nullable: false },
       { name: "token_expires_at", type: "datetime", nullable: false },
       { name: "last_sync_at", type: "datetime", nullable: true },
+      { name: "created_at", type: "datetime", nullable: false },
     ],
   },
 ];

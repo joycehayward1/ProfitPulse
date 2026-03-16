@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import { Icon } from "@iconify/react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/Button";
@@ -39,6 +40,31 @@ export default function SettingsPage() {
     industry: "",
   });
 
+  // QuickBooks connection state
+  const [qbConnected, setQbConnected] = useState(false);
+  const [qbConnectedAt, setQbConnectedAt] = useState<string | null>(null);
+  const [qbLastSync, setQbLastSync] = useState<string | null>(null);
+  const [qbLoading, setQbLoading] = useState(false);
+  const [qbDisconnecting, setQbDisconnecting] = useState(false);
+  const [qbTestResult, setQbTestResult] = useState<any>(null);
+  const [qbTesting, setQbTesting] = useState(false);
+  const searchParams = useSearchParams();
+  const handledQbResultRef = useRef<string | null>(null);
+
+  const getAuthHeaders = useCallback(async (): Promise<Record<string, string> | null> => {
+    const { getInsForgeClient } = await import("@/lib/insforge");
+    const client = getInsForgeClient();
+    const { data, error } = await client.auth.getCurrentSession();
+
+    if (error || !data?.session?.accessToken) {
+      return null;
+    }
+
+    return {
+      Authorization: `Bearer ${data.session.accessToken}`,
+    };
+  }, []);
+
   // Notification preferences
   const [emailNotifications, setEmailNotifications] = useState({
     weekly_summary: true,
@@ -46,6 +72,166 @@ export default function SettingsPage() {
     scenario_results: false,
     product_updates: true,
   });
+
+  // Handle QB OAuth callback results from URL params
+  useEffect(() => {
+    const qbResult = searchParams.get("qb");
+    const tab = searchParams.get("tab");
+
+    if (tab === "integrations") {
+      setActiveTab("integrations");
+    }
+
+    if (!qbResult || handledQbResultRef.current === qbResult) {
+      return;
+    }
+
+    handledQbResultRef.current = qbResult;
+
+    if (qbResult === "success") {
+      showToast("success", "QuickBooks connected successfully!");
+      // Clean up URL
+      window.history.replaceState({}, "", "/settings?tab=integrations");
+    } else if (qbResult === "error") {
+      showToast("error", "Failed to connect QuickBooks. Please try again.");
+      window.history.replaceState({}, "", "/settings?tab=integrations");
+    } else if (qbResult === "auth_required") {
+      showToast("error", "Please log in before connecting QuickBooks.");
+      window.history.replaceState({}, "", "/settings?tab=integrations");
+    }
+  }, [searchParams, showToast]);
+
+  // Check QuickBooks connection status
+  useEffect(() => {
+    async function checkQbStatus() {
+      if (!user) return;
+      try {
+        const authHeaders = await getAuthHeaders();
+        if (!authHeaders) return;
+
+        const res = await fetch("/api/quickbooks/status", {
+          headers: authHeaders,
+        });
+        if (!res.ok) return;
+
+        const data = await res.json();
+        setQbConnected(Boolean(data.connected));
+        setQbConnectedAt(data.connectedAt || null);
+        setQbLastSync(data.lastSyncAt || null);
+      } catch (err) {
+        console.error("Error checking QB status:", err);
+      }
+    }
+    checkQbStatus();
+  }, [user, getAuthHeaders]);
+
+  async function handleConnectQuickBooks() {
+    if (!user?.id) {
+      showToast("error", "Please log in before connecting QuickBooks.");
+      return;
+    }
+
+    setQbLoading(true);
+    try {
+      const authHeaders = await getAuthHeaders();
+      if (!authHeaders) {
+        showToast("error", "Your session expired. Please log in again.");
+        return;
+      }
+
+      const res = await fetch("/api/connect/quickbooks", {
+        method: "POST",
+        headers: {
+          ...authHeaders,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          returnTo: "/settings?tab=integrations",
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data?.authUrl) {
+        showToast("error", data?.error || "Failed to start QuickBooks connection.");
+        return;
+      }
+
+      window.location.href = data.authUrl;
+    } catch (err) {
+      console.error("Error initiating QB OAuth:", err);
+      showToast("error", "Failed to start QuickBooks connection.");
+    } finally {
+      setQbLoading(false);
+    }
+  }
+
+  async function handleTestQuickBooks() {
+    if (!user) return;
+    setQbTesting(true);
+    setQbTestResult(null);
+    try {
+      const authHeaders = await getAuthHeaders();
+      if (!authHeaders) {
+        showToast("error", "Your session expired. Please log in again.");
+        return;
+      }
+
+      const res = await fetch("/api/quickbooks/test", {
+        headers: authHeaders,
+      });
+      const data = await res.json();
+      setQbTestResult(data);
+      if (data.success) {
+        showToast("success", "QuickBooks P&L report retrieved successfully!");
+      } else {
+        showToast("error", data.error || "Test failed");
+      }
+    } catch (err) {
+      showToast("error", "Failed to test QuickBooks connection");
+    } finally {
+      setQbTesting(false);
+    }
+  }
+
+  async function handleDisconnectQuickBooks() {
+    if (!user) return;
+
+    const confirmed = window.confirm(
+      "Disconnect QuickBooks for this account? Manual and spreadsheet entry will be enabled again."
+    );
+    if (!confirmed) return;
+
+    setQbDisconnecting(true);
+    try {
+      const authHeaders = await getAuthHeaders();
+      if (!authHeaders) {
+        showToast("error", "Your session expired. Please log in again.");
+        return;
+      }
+
+      const res = await fetch("/api/quickbooks/disconnect", {
+        method: "DELETE",
+        headers: authHeaders,
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data?.success) {
+        showToast("error", data?.error || "Failed to disconnect QuickBooks.");
+        return;
+      }
+
+      setQbConnected(false);
+      setQbConnectedAt(null);
+      setQbLastSync(null);
+      setQbTestResult(null);
+      showToast("success", "QuickBooks disconnected.");
+    } catch (err) {
+      console.error("Error disconnecting QuickBooks:", err);
+      showToast("error", "Failed to disconnect QuickBooks.");
+    } finally {
+      setQbDisconnecting(false);
+    }
+  }
 
   // Load user data
   useEffect(() => {
@@ -309,17 +495,94 @@ export default function SettingsPage() {
                       <p className="text-small text-text-secondary mb-md">
                         Automatically sync your financial data from QuickBooks to ProfitPulse
                       </p>
-                      <div className="inline-flex items-center gap-2 px-md py-xs bg-background rounded-full">
-                        <div className="w-2 h-2 rounded-full bg-text-muted" />
-                        <span className="text-small font-body text-text-muted">Not Connected</span>
-                      </div>
+                      {qbConnected ? (
+                        <div className="space-y-2">
+                          <div className="inline-flex items-center gap-2 px-md py-xs bg-success/10 rounded-full">
+                            <div className="w-2 h-2 rounded-full bg-success" />
+                            <span className="text-small font-body text-success">Connected</span>
+                          </div>
+                          {qbConnectedAt && (
+                            <p className="text-xs text-text-muted font-body">
+                              Connected {new Date(qbConnectedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                            </p>
+                          )}
+                          {qbLastSync && (
+                            <p className="text-xs text-text-muted font-body">
+                              Last synced {new Date(qbLastSync).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="inline-flex items-center gap-2 px-md py-xs bg-background rounded-full">
+                          <div className="w-2 h-2 rounded-full bg-text-muted" />
+                          <span className="text-small font-body text-text-muted">Not Connected</span>
+                        </div>
+                      )}
                     </div>
                   </div>
-                  <Button variant="primary" size="sm">
-                    <Icon icon="ph:link-bold" className="w-4 h-4 mr-2" />
-                    Connect
-                  </Button>
+                  <div className="flex flex-col gap-2">
+                    {qbConnected ? (
+                      <>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={handleTestQuickBooks}
+                          disabled={qbTesting}
+                        >
+                          <Icon icon="ph:play-bold" className="w-4 h-4 mr-2" />
+                          {qbTesting ? "Testing..." : "Test Connection"}
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={handleConnectQuickBooks}
+                          disabled={qbLoading || qbDisconnecting}
+                        >
+                          <Icon icon="ph:arrows-clockwise-bold" className="w-4 h-4 mr-2" />
+                          Reconnect
+                        </Button>
+                        <Button
+                          variant="cancel"
+                          size="sm"
+                          onClick={handleDisconnectQuickBooks}
+                          disabled={qbDisconnecting || qbLoading || qbTesting}
+                        >
+                          <Icon icon="ph:link-break-bold" className="w-4 h-4 mr-2" />
+                          {qbDisconnecting ? "Disconnecting..." : "Disconnect"}
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={handleConnectQuickBooks}
+                        disabled={qbLoading}
+                      >
+                        <Icon icon="ph:link-bold" className="w-4 h-4 mr-2" />
+                        {qbLoading ? "Connecting..." : "Connect"}
+                      </Button>
+                    )}
+                  </div>
                 </div>
+
+                {/* Test Result Display */}
+                {qbTestResult && (
+                  <div className={`mt-md p-md rounded-lg border ${qbTestResult.success ? "bg-success/5 border-success/20" : "bg-critical/5 border-critical/20"}`}>
+                    <h4 className="text-sm font-display font-semibold mb-2 text-text-primary">
+                      {qbTestResult.success ? "Connection Test Passed" : "Connection Test Failed"}
+                    </h4>
+                    {qbTestResult.success ? (
+                      <div className="text-xs font-body text-text-secondary space-y-1">
+                        <p>Realm ID: {qbTestResult.realmId}</p>
+                        <p>Report: {qbTestResult.report?.header?.ReportName || "Profit and Loss"}</p>
+                        <p>Period: {qbTestResult.report?.header?.StartPeriod} to {qbTestResult.report?.header?.EndPeriod}</p>
+                        <p>Rows: {qbTestResult.report?.rowCount}</p>
+                      </div>
+                    ) : (
+                      <p className="text-xs font-body text-critical">{qbTestResult.error}</p>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Integration Requests */}

@@ -278,9 +278,9 @@ AUTHORIZENET_TRANSACTION_KEY=your-transaction-key
 AUTHORIZENET_SIGNATURE_KEY=your-signature-key
 
 # QuickBooks / Intuit (Accounting Integration)
-QUICKBOOKS_CLIENT_ID=your-client-id
-QUICKBOOKS_CLIENT_SECRET=your-client-secret
-QUICKBOOKS_REDIRECT_URI=https://your-domain.com/api/quickbooks/callback
+INTUIT_CLIENT_ID=your-client-id
+INTUIT_CLIENT_SECRET=your-client-secret
+INTUIT_REDIRECT_URI=http://localhost:3000/api/callback/quickbooks
 ```
 
 **How to get Authorize.net credentials:**

@@ -60,11 +60,25 @@ export default function RunwayPage() {
           .limit(1)
           .single();
 
-        if (error) throw error;
-
         if (data) {
           setCurrentCash(data.cash_balance.toString());
           setMonthlyBurn(data.expenses.toString());
+          return;
+        }
+
+        const { data: assessment } = await client.database
+          .from('health_assessments')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+
+        if (assessment) {
+          setCurrentCash((assessment.cash_on_hand || 0).toString());
+          setMonthlyBurn((assessment.monthly_expenses || 0).toString());
+        } else if (error) {
+          throw error;
         }
       } catch (error) {
         console.error('Error loading financial data:', error);

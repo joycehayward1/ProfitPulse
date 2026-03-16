@@ -49,10 +49,23 @@ export default function BreakEvenPage() {
           .limit(1)
           .single();
 
-        if (error) throw error;
-
         if (data) {
           setFixedExpenses(data.expenses.toString());
+          return;
+        }
+
+        const { data: assessment } = await client.database
+          .from('health_assessments')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+
+        if (assessment) {
+          setFixedExpenses((assessment.monthly_expenses || 0).toString());
+        } else if (error) {
+          throw error;
         }
       } catch (error) {
         console.error('Error loading financial data:', error);

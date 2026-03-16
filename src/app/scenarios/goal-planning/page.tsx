@@ -13,8 +13,13 @@ import { useRequireAuth } from "@/hooks/useRequireAuth";
 interface GoalResult {
   annualGoal: number;
   currentMonthlyRevenue: number;
+  currentMonthlyExpenses: number;
+  ytdRevenue: number;
+  ytdExpenses: number;
   monthsRemaining: number;
   requiredMonthly: number;
+  currentMonthlyProfit: number;
+  ytdProfit: number;
   progressPercent: number;
   status: "healthy" | "attention" | "critical";
   explanation: string | null;
@@ -28,6 +33,9 @@ export default function GoalPlanningPage() {
   // Form inputs
   const [annualGoal, setAnnualGoal] = useState("");
   const [currentMonthly, setCurrentMonthly] = useState("");
+  const [currentMonthlyExpenses, setCurrentMonthlyExpenses] = useState("");
+  const [ytdRevenue, setYtdRevenue] = useState("");
+  const [ytdExpenses, setYtdExpenses] = useState("");
   const [monthsRemaining, setMonthsRemaining] = useState(0);
 
   // Results
@@ -51,17 +59,36 @@ export default function GoalPlanningPage() {
           .limit(1)
           .single();
 
-        if (error) throw error;
-
         if (data) {
-          setCurrentMonthly(data.revenue.toString());
+          if (data.revenue) setCurrentMonthly(data.revenue.toString());
+          if (data.expenses) setCurrentMonthlyExpenses(data.expenses.toString());
+          if (data.ytd_revenue) setYtdRevenue(data.ytd_revenue.toString());
+          if (data.ytd_expenses) setYtdExpenses(data.ytd_expenses.toString());
+          return;
+        }
+
+        const { data: assessment } = await client.database
+          .from('health_assessments')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+
+        if (assessment) {
+          if (assessment.monthly_revenue) setCurrentMonthly(assessment.monthly_revenue.toString());
+          if (assessment.monthly_expenses) setCurrentMonthlyExpenses(assessment.monthly_expenses.toString());
+          if (assessment.ytd_revenue) setYtdRevenue(assessment.ytd_revenue.toString());
+          if (assessment.ytd_expenses) setYtdExpenses(assessment.ytd_expenses.toString());
+        } else if (error) {
+          throw error;
         }
       } catch (error) {
         console.error('Error loading financial data:', error);
       }
     }
 
-    // Calculate months remaining to year-end
+    // Calculate months remaining in fiscal year (defaults to calendar year-end)
     const now = new Date();
     const yearEnd = new Date(now.getFullYear(), 11, 31);
     const monthsLeft = Math.max(1, Math.ceil((yearEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30)));
@@ -73,6 +100,9 @@ export default function GoalPlanningPage() {
   const handleCalculate = async () => {
     const goal = parseFloat(annualGoal);
     const monthly = parseFloat(currentMonthly);
+    const monthlyExpenses = parseFloat(currentMonthlyExpenses) || 0;
+    const ytdRev = parseFloat(ytdRevenue) || 0;
+    const ytdExp = parseFloat(ytdExpenses) || 0;
     const months = monthsRemaining;
 
     if (!goal || goal <= 0) {
@@ -90,14 +120,16 @@ export default function GoalPlanningPage() {
       return;
     }
 
-    // Calculate current year-to-date progress
+    // Use actual YTD revenue if provided, otherwise estimate from monthly
     const currentMonth = new Date().getMonth() + 1;
     const monthsElapsed = currentMonth;
-    const revenueSoFar = monthly * monthsElapsed;
+    const revenueSoFar = ytdRev > 0 ? ytdRev : monthly * monthsElapsed;
     const remaining = goal - revenueSoFar;
     const requiredMonthly = Math.max(0, remaining / months);
 
     const progressPercent = Math.min((revenueSoFar / goal) * 100, 100);
+    const currentMonthlyProfit = monthly - monthlyExpenses;
+    const ytdProfit = ytdRev > 0 && ytdExp > 0 ? ytdRev - ytdExp : currentMonthlyProfit * monthsElapsed;
 
     // Determine status based on required growth
     const growthRequired = ((requiredMonthly - monthly) / monthly) * 100;
@@ -114,8 +146,13 @@ export default function GoalPlanningPage() {
     setResult({
       annualGoal: goal,
       currentMonthlyRevenue: monthly,
+      currentMonthlyExpenses: monthlyExpenses,
+      ytdRevenue: revenueSoFar,
+      ytdExpenses: ytdExp > 0 ? ytdExp : monthlyExpenses * monthsElapsed,
       monthsRemaining: months,
       requiredMonthly,
+      currentMonthlyProfit,
+      ytdProfit,
       progressPercent,
       status,
       explanation: null,
@@ -128,12 +165,17 @@ export default function GoalPlanningPage() {
       {
         annualGoal: goal,
         currentMonthlyRevenue: monthly,
+        currentMonthlyExpenses: monthlyExpenses,
+        ytdRevenue: revenueSoFar,
+        ytdExpenses: ytdExp > 0 ? ytdExp : monthlyExpenses * monthsElapsed,
         monthsRemaining: months,
       },
       {
         requiredMonthly,
         progressPercent,
         growthRequired,
+        currentMonthlyProfit,
+        ytdProfit,
       }
     );
 
@@ -143,6 +185,9 @@ export default function GoalPlanningPage() {
 
   const handleReset = () => {
     setAnnualGoal("");
+    setCurrentMonthlyExpenses("");
+    setYtdRevenue("");
+    setYtdExpenses("");
     setResult(null);
   };
 
@@ -162,11 +207,16 @@ export default function GoalPlanningPage() {
           inputs: {
             annualGoal: result.annualGoal,
             currentMonthlyRevenue: result.currentMonthlyRevenue,
+            currentMonthlyExpenses: result.currentMonthlyExpenses,
+            ytdRevenue: result.ytdRevenue,
+            ytdExpenses: result.ytdExpenses,
             monthsRemaining: result.monthsRemaining,
           },
           result: {
             requiredMonthly: result.requiredMonthly,
             progressPercent: result.progressPercent,
+            currentMonthlyProfit: result.currentMonthlyProfit,
+            ytdProfit: result.ytdProfit,
             status: result.status,
             summary: `To hit $${result.annualGoal.toLocaleString()} by year-end, you need $${Math.round(result.requiredMonthly).toLocaleString()}/month`,
           },
@@ -252,7 +302,7 @@ export default function GoalPlanningPage() {
                     />
                   </div>
                   <p className="text-xs text-text-muted font-body mt-1">
-                    Where you want to be by year-end
+                    Where you want to be by fiscal year-end
                   </p>
                 </div>
 
@@ -278,10 +328,76 @@ export default function GoalPlanningPage() {
                   </p>
                 </div>
 
-                {/* Months Remaining */}
+                {/* Current Monthly Expenses */}
                 <div>
                   <label className="block text-sm font-body font-medium text-text-primary mb-2">
-                    Months remaining in year
+                    Current monthly expenses
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted font-display text-lg">
+                      $
+                    </span>
+                    <input
+                      type="number"
+                      value={currentMonthlyExpenses}
+                      onChange={(e) => setCurrentMonthlyExpenses(e.target.value)}
+                      className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg font-body text-text-primary focus:outline-none focus:ring-2 focus:ring-orange focus:border-transparent transition-all"
+                      placeholder="20,000"
+                    />
+                  </div>
+                  <p className="text-xs text-text-muted font-body mt-1">
+                    Your total monthly operating costs
+                  </p>
+                </div>
+
+                {/* YTD Revenue */}
+                <div>
+                  <label className="block text-sm font-body font-medium text-text-primary mb-2">
+                    Year-to-date revenue
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted font-display text-lg">
+                      $
+                    </span>
+                    <input
+                      type="number"
+                      value={ytdRevenue}
+                      onChange={(e) => setYtdRevenue(e.target.value)}
+                      className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg font-body text-text-primary focus:outline-none focus:ring-2 focus:ring-orange focus:border-transparent transition-all"
+                      placeholder="70,000"
+                    />
+                  </div>
+                  <p className="text-xs text-text-muted font-body mt-1">
+                    Total revenue earned so far this fiscal year
+                  </p>
+                </div>
+
+                {/* YTD Expenses */}
+                <div>
+                  <label className="block text-sm font-body font-medium text-text-primary mb-2">
+                    Year-to-date expenses
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted font-display text-lg">
+                      $
+                    </span>
+                    <input
+                      type="number"
+                      value={ytdExpenses}
+                      onChange={(e) => setYtdExpenses(e.target.value)}
+                      className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg font-body text-text-primary focus:outline-none focus:ring-2 focus:ring-orange focus:border-transparent transition-all"
+                      placeholder="40,000"
+                    />
+                  </div>
+                  <p className="text-xs text-text-muted font-body mt-1">
+                    Total expenses incurred so far this fiscal year
+                  </p>
+                </div>
+
+                {/* Months Remaining in Fiscal Year */}
+                <div>
+                  <label className="block text-sm font-body font-medium text-text-primary mb-2">
+                    Months remaining in fiscal year
                   </label>
                   <input
                     type="number"
@@ -293,7 +409,7 @@ export default function GoalPlanningPage() {
                     placeholder="6"
                   />
                   <p className="text-xs text-text-muted font-body mt-1">
-                    Auto-calculated to year-end (you can adjust)
+                    Auto-calculated to calendar year-end (adjust for your fiscal year)
                   </p>
                 </div>
 
@@ -364,12 +480,38 @@ export default function GoalPlanningPage() {
                         </div>
                       </div>
 
-                      {/* Comparison */}
+                      {/* Financial Snapshot */}
                       <div className="grid grid-cols-2 gap-4">
                         <div className="bg-background rounded-lg p-3">
-                          <p className="text-xs font-body text-text-muted mb-1">Current pace</p>
+                          <p className="text-xs font-body text-text-muted mb-1">Monthly revenue</p>
                           <p className="text-lg font-display text-text-primary">
                             {formatCurrency(result.currentMonthlyRevenue)}
+                            <span className="text-xs font-body text-text-secondary">/mo</span>
+                          </p>
+                        </div>
+                        <div className="bg-background rounded-lg p-3">
+                          <p className="text-xs font-body text-text-muted mb-1">Monthly expenses</p>
+                          <p className="text-lg font-display text-text-primary">
+                            {formatCurrency(result.currentMonthlyExpenses)}
+                            <span className="text-xs font-body text-text-secondary">/mo</span>
+                          </p>
+                        </div>
+                        <div className="bg-background rounded-lg p-3">
+                          <p className="text-xs font-body text-text-muted mb-1">YTD revenue</p>
+                          <p className="text-lg font-display text-text-primary">
+                            {formatCurrency(result.ytdRevenue)}
+                          </p>
+                        </div>
+                        <div className="bg-background rounded-lg p-3">
+                          <p className="text-xs font-body text-text-muted mb-1">YTD expenses</p>
+                          <p className="text-lg font-display text-text-primary">
+                            {formatCurrency(result.ytdExpenses)}
+                          </p>
+                        </div>
+                        <div className="bg-background rounded-lg p-3">
+                          <p className="text-xs font-body text-text-muted mb-1">Monthly profit</p>
+                          <p className={`text-lg font-display ${result.currentMonthlyProfit >= 0 ? 'text-success' : 'text-critical'}`}>
+                            {formatCurrency(result.currentMonthlyProfit)}
                             <span className="text-xs font-body text-text-secondary">/mo</span>
                           </p>
                         </div>
