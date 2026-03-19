@@ -197,7 +197,7 @@ export async function GET(request: NextRequest) {
     const { start: monthlyStart, end: monthlyEnd } = getLastMonthRange(now);
     const ytdStart = getYtdStart(now);
 
-    const [monthlyPnlRaw, ytdPnlRaw, balanceSheetRaw] = await Promise.all([
+    const [monthlyPnlRaw, ytdPnlRaw, balanceSheetRaw, cashFlowRaw] = await Promise.all([
       quickbooksGet(
         accessToken,
         realmId,
@@ -213,15 +213,131 @@ export async function GET(request: NextRequest) {
         realmId,
         `/reports/BalanceSheet?end_date=${today}`
       ),
+      quickbooksGet(
+        accessToken,
+        realmId,
+        `/reports/CashFlow?start_date=${monthlyStart}&end_date=${monthlyEnd}`
+      ),
     ]);
 
     const monthlyPnl = monthlyPnlRaw as QuickBooksReportPayload;
     const ytdPnl = ytdPnlRaw as QuickBooksReportPayload;
     const balanceSheet = balanceSheetRaw as QuickBooksReportPayload;
+    const cashFlowReport = cashFlowRaw as QuickBooksReportPayload;
 
     const monthly = extractIncomeExpense(monthlyPnl);
     const ytd = extractIncomeExpense(ytdPnl);
     const bs = extractBalanceSheetMetrics(balanceSheet);
+
+    // Collect full line-item maps for detail storage
+    const plValues = new Map<string, number>();
+    collectRowValues(monthlyPnl.Rows?.Row, plValues);
+
+    const bsValues = new Map<string, number>();
+    collectRowValues(balanceSheet.Rows?.Row, bsValues);
+
+    const cfValues = new Map<string, number>();
+    collectRowValues(cashFlowReport.Rows?.Row, cfValues);
+
+    // Extract balance sheet category totals
+    const currentAssets = firstMatchingValue(bsValues, [
+      "Total Current Assets",
+      "Current Assets",
+    ]);
+    const fixedAssets = firstMatchingValue(bsValues, [
+      "Total Fixed Assets",
+      "Fixed Assets",
+      "Total Property, Plant and Equipment",
+    ]);
+    const totalAssets = firstMatchingValue(bsValues, [
+      "TOTAL ASSETS",
+      "Total Assets",
+    ]);
+    const currentLiabilities = firstMatchingValue(bsValues, [
+      "Total Current Liabilities",
+      "Current Liabilities",
+    ]);
+    const longTermLiabilities = firstMatchingValue(bsValues, [
+      "Total Long-Term Liabilities",
+      "Long-Term Liabilities",
+      "Total Non-Current Liabilities",
+    ]);
+    const equity = firstMatchingValue(bsValues, [
+      "Total Equity",
+      "Equity",
+      "Total Stockholders Equity",
+    ]);
+
+    // Extract cash flow category totals
+    const operatingActivities = firstMatchingValue(cfValues, [
+      "Net cash provided by operating activities",
+      "OPERATING ACTIVITIES",
+      "Total Operating Activities",
+    ]);
+    const investingActivities = firstMatchingValue(cfValues, [
+      "Net cash provided by investing activities",
+      "INVESTING ACTIVITIES",
+      "Total Investing Activities",
+    ]);
+    const financingActivities = firstMatchingValue(cfValues, [
+      "Net cash provided by financing activities",
+      "FINANCING ACTIVITIES",
+      "Total Financing Activities",
+    ]);
+
+    // Extract net operating income from P&L
+    const netOperatingIncome = firstMatchingValue(plValues, [
+      "Net Operating Income",
+      "Net Income",
+      "Net Profit",
+    ]);
+
+    // Derived fields with divide-by-zero guards
+    const totalIncome = monthly.income;
+    const totalExpenses = monthly.expenses;
+    const grossProfit = totalIncome - totalExpenses;
+    const netProfit = netOperatingIncome;
+    const grossProfitMargin = totalIncome !== 0 ? grossProfit / totalIncome : null;
+    const netProfitMargin = totalIncome !== 0 ? netProfit / totalIncome : null;
+    const workingCapital = currentAssets - currentLiabilities;
+    const currentRatio = currentLiabilities !== 0 ? currentAssets / currentLiabilities : null;
+    const netCashFlow = operatingActivities + investingActivities + financingActivities;
+    const roa = totalAssets !== 0 ? netProfit / totalAssets : null;
+    const roe = equity !== 0 ? netProfit / equity : null;
+
+    // Convert maps to plain objects for JSON storage
+    const plDetail: Record<string, number> = Object.fromEntries(plValues);
+    const bsDetail: Record<string, number> = Object.fromEntries(bsValues);
+    const cfDetail: Record<string, number> = Object.fromEntries(cfValues);
+
+    const richSnapshot = {
+      period_date: monthlyEnd,
+      data_source: "quickbooks",
+      total_income: totalIncome,
+      gross_profit: grossProfit,
+      total_expenses: totalExpenses,
+      net_operating_income: netOperatingIncome,
+      net_profit: netProfit,
+      gross_profit_margin: grossProfitMargin,
+      net_profit_margin: netProfitMargin,
+      current_assets: currentAssets,
+      fixed_assets: fixedAssets,
+      total_assets: totalAssets,
+      current_liabilities: currentLiabilities,
+      long_term_liabilities: longTermLiabilities,
+      equity,
+      operating_activities: operatingActivities,
+      investing_activities: investingActivities,
+      financing_activities: financingActivities,
+      net_cash_flow: netCashFlow,
+      current_ratio: currentRatio,
+      working_capital: workingCapital,
+      roa,
+      roe,
+      pl_detail: plDetail,
+      bs_detail: bsDetail,
+      cf_detail: cfDetail,
+    };
 
     const metrics: ExtractedMetrics = {
       cash: bs.cash,
@@ -251,6 +367,7 @@ export async function GET(request: NextRequest) {
         ytdEnd: today,
       },
       metrics,
+      richSnapshot,
     });
   } catch (err) {
     const error = err as Error;

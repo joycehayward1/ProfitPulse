@@ -17,11 +17,34 @@ interface NavItem {
   icon: string;
 }
 
-const navItems: NavItem[] = [
-  { label: "Dashboard", href: "/dashboard", icon: "ph:gauge-bold" },
-  { label: "Scenarios", href: "/scenarios", icon: "ph:calculator-bold" },
-  { label: "Data", href: "/data", icon: "ph:database-bold" },
-  { label: "Settings", href: "/settings", icon: "ph:gear-six-bold" },
+interface NavSection {
+  title: string;
+  items: NavItem[];
+}
+
+const navSections: NavSection[] = [
+  {
+    title: "OVERVIEW",
+    items: [
+      { label: "Dashboard", href: "/dashboard", icon: "ph:gauge-bold" },
+      { label: "Scenarios", href: "/scenarios", icon: "ph:calculator-bold" },
+    ],
+  },
+  {
+    title: "FINANCIALS",
+    items: [
+      { label: "P&L", href: "/reports/pl", icon: "ph:chart-line-up-bold" },
+      { label: "Cash Flow", href: "/reports/cashflow", icon: "ph:currency-circle-dollar-bold" },
+      { label: "Balance Sheet", href: "/reports/balance-sheet", icon: "ph:scales-bold" },
+    ],
+  },
+  {
+    title: "SETTINGS",
+    items: [
+      { label: "Data", href: "/data", icon: "ph:database-bold" },
+      { label: "Settings", href: "/settings", icon: "ph:gear-six-bold" },
+    ],
+  },
 ];
 
 export function AppLayout({ children }: AppLayoutProps) {
@@ -31,7 +54,6 @@ export function AppLayout({ children }: AppLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
-  // Get user initials for placeholder avatar
   const userInitials = user?.name
     ? user.name
         .split(" ")
@@ -41,12 +63,10 @@ export function AppLayout({ children }: AppLayoutProps) {
         .slice(0, 2)
     : user?.email?.[0]?.toUpperCase() || "U";
 
-  // Close mobile menu on route change
   useEffect(() => {
     setMobileMenuOpen(false);
   }, [pathname]);
 
-  // Close menus on outside click
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       const target = event.target as HTMLElement;
@@ -61,263 +81,292 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   async function handleLogout() {
     await signOut();
-    // signOut already redirects to /login
   }
+
+  const isActive = (href: string) => pathname === href || pathname?.startsWith(href + "/");
+
+  const renderNavItem = (item: NavItem) => {
+    const active = isActive(item.href);
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        className={[
+          "group flex items-center gap-3 px-3 py-2.5 text-[13px] font-medium transition-all duration-200 rounded-xl mx-2",
+          active
+            ? "bg-gradient-to-r from-orange to-orange-light text-white shadow-glow-orange"
+            : "text-text-secondary hover:text-text-primary hover:bg-black/[0.04]",
+        ].join(" ")}
+      >
+        <Icon
+          icon={item.icon}
+          className={[
+            "w-[18px] h-[18px] flex-shrink-0 transition-transform duration-200",
+            active ? "" : "group-hover:scale-110"
+          ].join(" ")}
+        />
+        <span>{item.label}</span>
+      </Link>
+    );
+  };
+
+  const renderNavSection = (section: NavSection) => (
+    <div key={section.title} className="mb-6">
+      <h3 className="px-4 mb-2 text-[10px] font-semibold uppercase tracking-widest text-text-muted/70">
+        {section.title}
+      </h3>
+      <nav className="flex flex-col gap-1">
+        {section.items.map(renderNavItem)}
+      </nav>
+    </div>
+  );
+
+  const UserProfile = ({ onMobile = false }: { onMobile?: boolean }) => (
+    <div className="relative user-menu-container">
+      <button
+        onClick={() => setUserMenuOpen(!userMenuOpen)}
+        className="w-full flex items-center gap-3 p-3 rounded-xl transition-all duration-200 hover:bg-black/[0.04] group"
+        aria-label="User menu"
+        aria-expanded={userMenuOpen}
+      >
+        {user?.profile?.avatar_url ? (
+          <Image
+            src={user.profile.avatar_url}
+            alt={user.name || "User"}
+            width={40}
+            height={40}
+            className="w-10 h-10 rounded-xl object-cover ring-2 ring-border-light group-hover:ring-orange/30 transition-all"
+          />
+        ) : (
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange to-orange-light flex items-center justify-center shadow-soft">
+            <span className="text-sm font-semibold text-white">
+              {userInitials}
+            </span>
+          </div>
+        )}
+        <div className="flex-1 text-left min-w-0">
+          <p className="text-[13px] font-medium text-text-primary truncate">
+            {user?.name || "User"}
+          </p>
+          <p className="text-[11px] text-text-muted truncate">{user?.email}</p>
+        </div>
+        <Icon
+          icon="ph:caret-up-down-bold"
+          className="w-4 h-4 text-text-muted flex-shrink-0"
+        />
+      </button>
+
+      {userMenuOpen && (
+        <div
+          className="absolute bottom-full left-0 right-0 mb-2 bg-white rounded-xl shadow-elevated border border-border-light overflow-hidden"
+          style={{ animation: "dropdownFadeUp 0.2s ease-out" }}
+        >
+          <div className="py-1.5">
+            <Link
+              href="/settings"
+              className="flex items-center gap-3 px-4 py-2.5 text-[13px] text-text-secondary hover:text-text-primary hover:bg-black/[0.04] transition-colors"
+              onClick={() => {
+                setUserMenuOpen(false);
+                if (onMobile) setMobileMenuOpen(false);
+              }}
+            >
+              <Icon icon="ph:user-bold" className="w-[18px] h-[18px]" />
+              Profile
+            </Link>
+            <Link
+              href="/settings#billing"
+              className="flex items-center gap-3 px-4 py-2.5 text-[13px] text-text-secondary hover:text-text-primary hover:bg-black/[0.04] transition-colors"
+              onClick={() => {
+                setUserMenuOpen(false);
+                if (onMobile) setMobileMenuOpen(false);
+              }}
+            >
+              <Icon icon="ph:credit-card-bold" className="w-[18px] h-[18px]" />
+              Billing
+            </Link>
+          </div>
+
+          <div className="border-t border-border-light py-1.5">
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-[13px] text-error hover:bg-error/5 transition-colors"
+            >
+              <Icon icon="ph:sign-out-bold" className="w-[18px] h-[18px]" />
+              Log out
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Top Navigation */}
-      <nav className="sticky top-0 z-40 bg-surface/95 backdrop-blur-sm border-b border-[#F0EDE8] shadow-sm">
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            {/* Logo */}
-            <Link href="/dashboard" className="flex items-center group">
-              <Image
-                src="/full-logo.png"
-                alt="ProfitPulse"
-                width={900}
-                height={200}
-                className="h-[150px] md:h-[190px] w-auto transition-transform duration-300 group-hover:scale-[1.02]"
-              />
-            </Link>
+      {/* Desktop Sidebar */}
+      <aside className="hidden md:flex md:flex-col md:fixed md:inset-y-0 md:left-0 md:w-[240px] bg-white border-r border-border z-40">
+        {/* Logo */}
+        <div className="mt-5 h-20 overflow-hidden flex items-center justify-center">
+          <Link href="/dashboard" className="flex items-center group">
+            <Image
+              src="/full-logo.png"
+              alt="ProfitPulse"
+              width={900}
+              height={200}
+              className="w-[200px] scale-[1.05] transition-all duration-300 group-hover:scale-[1.07]"
+            />
+          </Link>
+        </div>
 
-            {/* Desktop Navigation */}
-            <div className="hidden md:flex items-center gap-1">
-              {navItems.map((item) => {
-                const isActive = pathname === item.href || pathname?.startsWith(item.href + "/");
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={[
-                      "relative px-4 py-2 font-body text-body font-medium transition-all duration-200 flex items-center gap-2 rounded-lg hover:bg-background/50",
-                      isActive
-                        ? "text-orange"
-                        : "text-text-secondary hover:text-text-primary",
-                    ].join(" ")}
-                  >
-                    <Icon
-                      icon={item.icon}
-                      className={[
-                        "w-5 h-5 transition-transform duration-200",
-                        isActive ? "" : "group-hover:scale-110"
-                      ].join(" ")}
-                    />
-                    {item.label}
-                    {isActive && (
-                      <span
-                        className="absolute bottom-0 left-0 right-0 h-[2px] bg-orange rounded-t-full"
-                        style={{ animation: "slideIn 0.3s ease-out" }}
-                      />
-                    )}
-                  </Link>
-                );
-              })}
-            </div>
+        {/* Navigation */}
+        <div className="flex-1 overflow-y-auto py-4">
+          {navSections.map(renderNavSection)}
+        </div>
 
-            {/* User Menu & Mobile Menu Button */}
+        {/* User Profile - Bottom of Sidebar */}
+        <div className="p-3 border-t border-border">
+          <UserProfile />
+        </div>
+      </aside>
+
+      {/* Main Content Area */}
+      <div className="md:ml-[240px] min-h-screen flex flex-col">
+        {/* Top Bar - Mobile only */}
+        <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-border md:hidden">
+          <div className="flex items-center justify-between h-14 px-4">
+            {/* Mobile Logo & Hamburger */}
             <div className="flex items-center gap-3">
-              {/* User Avatar Dropdown */}
-              <div className="relative user-menu-container">
-                <button
-                  onClick={() => setUserMenuOpen(!userMenuOpen)}
-                  className="flex items-center gap-3 p-1.5 rounded-lg transition-all duration-200 hover:bg-background group"
-                  aria-label="User menu"
-                  aria-expanded={userMenuOpen}
-                >
-                  {user?.profile?.avatar_url ? (
-                    <Image
-                      src={user.profile.avatar_url}
-                      alt={user.name || "User"}
-                      width={36}
-                      height={36}
-                      className="w-9 h-9 rounded-full object-cover shadow-md group-hover:shadow-lg transition-shadow"
-                    />
-                  ) : (
-                    <div className="w-9 h-9 rounded-full bg-orange/10 flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow">
-                      <span className="text-sm font-semibold text-orange">
-                        {userInitials}
-                      </span>
-                    </div>
-                  )}
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className={[
-                      "hidden sm:block text-text-muted transition-transform duration-200",
-                      userMenuOpen ? "rotate-180" : "",
-                    ].join(" ")}
-                  >
-                    <path d="m6 9 6 6 6-6" />
-                  </svg>
-                </button>
-
-                {/* User Dropdown */}
-                {userMenuOpen && (
-                  <div
-                    className="absolute right-0 mt-2 w-64 bg-surface rounded-lg shadow-xl border border-[#F0EDE8] overflow-hidden"
-                    style={{ animation: "dropdownFadeIn 0.2s ease-out" }}
-                  >
-                    {/* User Info */}
-                    <div className="px-4 py-3 border-b border-[#F0EDE8] bg-background/30">
-                      <p className="text-body font-medium text-text-primary truncate">
-                        {user?.name || "User"}
-                      </p>
-                      <p className="text-small text-text-muted truncate">{user?.email}</p>
-                    </div>
-
-                    {/* Menu Items */}
-                    <div className="py-2">
-                      <Link
-                        href="/settings"
-                        className="flex items-center gap-3 px-4 py-2.5 text-body text-text-secondary hover:text-text-primary hover:bg-background/50 transition-colors"
-                        onClick={() => setUserMenuOpen(false)}
-                      >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
-                          <circle cx="12" cy="7" r="4" />
-                        </svg>
-                        Profile
-                      </Link>
-                      <Link
-                        href="/settings#billing"
-                        className="flex items-center gap-3 px-4 py-2.5 text-body text-text-secondary hover:text-text-primary hover:bg-background/50 transition-colors"
-                        onClick={() => setUserMenuOpen(false)}
-                      >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <rect width="20" height="14" x="2" y="5" rx="2" />
-                          <path d="M2 10h20" />
-                        </svg>
-                        Billing
-                      </Link>
-                    </div>
-
-                    {/* Logout */}
-                    <div className="border-t border-[#F0EDE8] py-2">
-                      <button
-                        onClick={handleLogout}
-                        className="w-full flex items-center gap-3 px-4 py-2.5 text-body text-error hover:bg-error/5 transition-colors"
-                      >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                          <polyline points="16 17 21 12 16 7" />
-                          <line x1="21" x2="9" y1="12" y2="12" />
-                        </svg>
-                        Logout
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Mobile Menu Button */}
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="md:hidden p-2 rounded-md text-text-secondary hover:text-text-primary hover:bg-background transition-colors"
+                className="p-2 -ml-2 rounded-xl text-text-secondary hover:text-text-primary hover:bg-black/[0.04] transition-colors"
                 aria-label="Toggle menu"
                 aria-expanded={mobileMenuOpen}
               >
-                <svg
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  {mobileMenuOpen ? (
-                    <>
-                      <line x1="18" y1="6" x2="6" y2="18" />
-                      <line x1="6" y1="6" x2="18" y2="18" />
-                    </>
-                  ) : (
-                    <>
-                      <line x1="4" y1="12" x2="20" y2="12" />
-                      <line x1="4" y1="6" x2="20" y2="6" />
-                      <line x1="4" y1="18" x2="20" y2="18" />
-                    </>
-                  )}
-                </svg>
+                <Icon
+                  icon={mobileMenuOpen ? "ph:x-bold" : "ph:list-bold"}
+                  className="w-5 h-5"
+                />
               </button>
+              <Link href="/dashboard" className="flex items-center">
+                <Image
+                  src="/full-logo.png"
+                  alt="ProfitPulse"
+                  width={900}
+                  height={200}
+                  className="h-10 w-auto"
+                />
+              </Link>
             </div>
-          </div>
-        </div>
 
-        {/* Mobile Navigation Slide-out */}
+            {/* Mobile User Avatar */}
+            <button
+              onClick={() => setMobileMenuOpen(true)}
+              className="p-1"
+            >
+              {user?.profile?.avatar_url ? (
+                <Image
+                  src={user.profile.avatar_url}
+                  alt={user.name || "User"}
+                  width={32}
+                  height={32}
+                  className="w-8 h-8 rounded-lg object-cover"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange to-orange-light flex items-center justify-center">
+                  <span className="text-xs font-semibold text-white">
+                    {userInitials}
+                  </span>
+                </div>
+              )}
+            </button>
+          </div>
+        </header>
+
+        {/* Mobile Navigation Overlay */}
         {mobileMenuOpen && (
           <>
             {/* Backdrop */}
             <div
-              className="fixed inset-0 bg-[#2D2A26]/40 backdrop-blur-sm md:hidden"
+              className="fixed inset-0 bg-black/20 backdrop-blur-sm md:hidden z-40"
               style={{ animation: "fadeIn 0.2s ease-out" }}
               onClick={() => setMobileMenuOpen(false)}
             />
 
-            {/* Slide-out Menu */}
-            <div
-              className="fixed top-16 right-0 bottom-0 w-72 bg-surface shadow-2xl md:hidden overflow-y-auto"
-              style={{ animation: "slideInRight 0.3s ease-out" }}
+            {/* Slide-out Sidebar */}
+            <aside
+              className="fixed top-0 left-0 bottom-0 w-[280px] bg-white shadow-elevated md:hidden z-50 overflow-y-auto flex flex-col"
+              style={{ animation: "slideInLeft 0.25s ease-out" }}
             >
-              <div className="py-4">
-                {navItems.map((item) => {
-                  const isActive = pathname === item.href || pathname?.startsWith(item.href + "/");
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={[
-                        "flex items-center gap-3 px-6 py-3.5 font-body text-body font-medium transition-colors",
-                        isActive
-                          ? "text-orange bg-orange/5 border-l-4 border-orange"
-                          : "text-text-secondary hover:text-text-primary hover:bg-background/50",
-                      ].join(" ")}
-                    >
-                      <Icon icon={item.icon} className="w-5 h-5" />
-                      <span className="flex-1">{item.label}</span>
-                      {isActive && (
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="m9 18 6-6-6-6" />
-                        </svg>
-                      )}
-                    </Link>
-                  );
-                })}
+              {/* Logo */}
+              <div className="flex items-center justify-between h-14 px-4 border-b border-border">
+                <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)}>
+                  <Image
+                    src="/full-logo.png"
+                    alt="ProfitPulse"
+                    width={900}
+                    height={200}
+                    className="h-10 w-auto"
+                  />
+                </Link>
+                <button
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="p-2 -mr-2 rounded-xl text-text-secondary hover:text-text-primary hover:bg-black/[0.04] transition-colors"
+                >
+                  <Icon icon="ph:x-bold" className="w-5 h-5" />
+                </button>
               </div>
-            </div>
+
+              {/* Navigation */}
+              <div className="flex-1 py-4">
+                {navSections.map((section) => (
+                  <div key={section.title} className="mb-6">
+                    <h3 className="px-4 mb-2 text-[10px] font-semibold uppercase tracking-widest text-text-muted/70">
+                      {section.title}
+                    </h3>
+                    <nav className="flex flex-col gap-1">
+                      {section.items.map((item) => {
+                        const active = isActive(item.href);
+                        return (
+                          <Link
+                            key={item.href}
+                            href={item.href}
+                            onClick={() => setMobileMenuOpen(false)}
+                            className={[
+                              "group flex items-center gap-3 px-3 py-2.5 text-[13px] font-medium transition-all duration-200 rounded-xl mx-2",
+                              active
+                                ? "bg-gradient-to-r from-orange to-orange-light text-white shadow-glow-orange"
+                                : "text-text-secondary hover:text-text-primary hover:bg-black/[0.04]",
+                            ].join(" ")}
+                          >
+                            <Icon icon={item.icon} className="w-[18px] h-[18px] flex-shrink-0" />
+                            <span>{item.label}</span>
+                          </Link>
+                        );
+                      })}
+                    </nav>
+                  </div>
+                ))}
+              </div>
+
+              {/* User Profile - Bottom */}
+              <div className="p-3 border-t border-border">
+                <UserProfile onMobile={true} />
+              </div>
+            </aside>
           </>
         )}
-      </nav>
 
-      {/* Main Content */}
-      <main className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        {children}
-      </main>
+        {/* Main Content */}
+        <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+          {children}
+        </main>
+      </div>
 
       {/* Animations */}
       <style jsx>{`
-        @keyframes slideIn {
-          from {
-            transform: scaleX(0);
-            opacity: 0;
-          }
-          to {
-            transform: scaleX(1);
-            opacity: 1;
-          }
-        }
-
-        @keyframes dropdownFadeIn {
+        @keyframes dropdownFadeUp {
           from {
             opacity: 0;
-            transform: translateY(-8px);
+            transform: translateY(8px);
           }
           to {
             opacity: 1;
@@ -334,9 +383,9 @@ export function AppLayout({ children }: AppLayoutProps) {
           }
         }
 
-        @keyframes slideInRight {
+        @keyframes slideInLeft {
           from {
-            transform: translateX(100%);
+            transform: translateX(-100%);
           }
           to {
             transform: translateX(0);

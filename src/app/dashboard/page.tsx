@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Icon } from "@iconify/react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { HealthScoreGauge } from "@/components/ui/HealthScoreGauge";
@@ -9,8 +9,18 @@ import { Button } from "@/components/ui/Button";
 import { TrafficLightDot } from "@/components/ui/TrafficLightDot";
 import type { HealthStatus } from "@/components/ui/TrafficLightDot";
 import { calculateHealthScore, getHealthStatus } from "@/lib/healthScore";
-import type { HealthAssessment } from "@/lib/database.types";
+import type { HealthAssessment, FinancialSnapshot } from "@/lib/database.types";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
+import Link from "next/link";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 
 function getTimeOfDay(): string {
   const hour = new Date().getHours();
@@ -242,6 +252,67 @@ export default function DashboardPage() {
 
     fetchLatestAssessment();
   }, [user]);
+
+  // ─── Financial Snapshots (for P&L Snapshot + Income Trend) ───────────────
+  const [snapshots, setSnapshots] = useState<FinancialSnapshot[]>([]);
+
+  useEffect(() => {
+    async function fetchSnapshots() {
+      if (!user) return;
+      try {
+        const { getInsForgeClient } = await import("@/lib/insforge");
+        const client = getInsForgeClient();
+        const { data, error } = await client.database
+          .from("financial_snapshots")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("period_date", { ascending: false })
+          .limit(7);
+
+        if (!error && data) {
+          setSnapshots(data as FinancialSnapshot[]);
+        }
+      } catch (err) {
+        console.error("Error fetching snapshots:", err);
+      }
+    }
+    fetchSnapshots();
+  }, [user]);
+
+  const latestSnapshot = snapshots[0] ?? null;
+  const priorMonthSnapshot = snapshots[1] ?? null;
+
+  const plRows = useMemo(() => {
+    if (!latestSnapshot) return [];
+    const c = latestSnapshot;
+    const p = priorMonthSnapshot;
+
+    function pctVar(curr: number | null | undefined, prior: number | null | undefined): number | null {
+      const cv = curr ?? 0;
+      const pv = prior ?? 0;
+      if (pv === 0) return cv === 0 ? 0 : null;
+      return ((cv - pv) / Math.abs(pv)) * 100;
+    }
+
+    return [
+      { label: "Total Income", value: c.total_income ?? 0, change: pctVar(c.total_income, p?.total_income), isNetProfit: false },
+      { label: "Gross Profit", value: c.gross_profit ?? 0, change: pctVar(c.gross_profit, p?.gross_profit), isNetProfit: false },
+      { label: "Total Expenses", value: c.total_expenses ?? 0, change: pctVar(c.total_expenses, p?.total_expenses), isNetProfit: false },
+      { label: "Net Profit", value: c.net_profit ?? 0, change: pctVar(c.net_profit, p?.net_profit), isNetProfit: true },
+    ];
+  }, [latestSnapshot, priorMonthSnapshot]);
+
+  const chartSnapshots = useMemo(() => {
+    return [...snapshots].slice(0, 6).reverse();
+  }, [snapshots]);
+
+  const incomeChartData = useMemo(() => {
+    return chartSnapshots.map((s) => ({
+      month: new Date(s.period_date + "T00:00:00").toLocaleDateString("en-US", { month: "short", year: "2-digit" }),
+      Income: s.total_income ?? 0,
+      Expenses: s.total_expenses ?? 0,
+    }));
+  }, [chartSnapshots]);
 
   const timeOfDay = getTimeOfDay();
   const formattedDate = getFormattedDate();
@@ -601,6 +672,139 @@ export default function DashboardPage() {
               </Button>
             </div>
           </div>
+        )}
+
+        {/* P&L Snapshot */}
+        {!loading && (
+          latestSnapshot ? (
+            <div
+              className="bg-surface rounded-xl p-2xl border border-background shadow-sm animate-fadeIn"
+              style={{ animationDelay: "1100ms" }}
+            >
+              <h2 className="font-body text-small tracking-[0.1em] uppercase text-text-muted mb-lg">
+                P&L Snapshot{" "}
+                <span className="ml-1 normal-case tracking-normal text-text-secondary">
+                  — {new Date(latestSnapshot.period_date + "T00:00:00").toLocaleDateString("en-US", { month: "long", year: "numeric" })}
+                </span>
+              </h2>
+
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-background">
+                      <th className="text-left py-2 pr-lg text-small font-semibold uppercase tracking-wider text-text-muted">
+                        Metric
+                      </th>
+                      <th className="text-right py-2 px-lg text-small font-semibold uppercase tracking-wider text-text-muted">
+                        Current Period
+                      </th>
+                      <th className="text-right py-2 pl-lg text-small font-semibold uppercase tracking-wider text-text-muted">
+                        vs Prior Month
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {plRows.map((row) => {
+                      const isNeg = row.isNetProfit && row.value < 0;
+                      const isPos = row.isNetProfit && row.value > 0;
+                      const changePos = row.change !== null && row.change > 0;
+                      const changeNeg = row.change !== null && row.change < 0;
+
+                      return (
+                        <tr key={row.label} className="border-b border-background last:border-b-0">
+                          <td className={`py-3 pr-lg text-body ${row.isNetProfit || row.label === "Total Income" ? "font-semibold text-text-primary" : "text-text-secondary"}`}>
+                            {row.label}
+                          </td>
+                          <td className={`text-right py-3 px-lg text-body tabular-nums font-semibold ${isNeg ? "text-error" : isPos ? "text-success" : "text-text-primary"}`}>
+                            {formatCurrency(row.value)}
+                          </td>
+                          <td className="text-right py-3 pl-lg text-small tabular-nums">
+                            {row.change !== null ? (
+                              <span className={`font-medium ${changePos ? "text-success" : changeNeg ? "text-error" : "text-text-muted"}`}>
+                                {changePos ? "▲" : changeNeg ? "▼" : ""} {Math.abs(row.change).toFixed(1)}%
+                              </span>
+                            ) : (
+                              <span className="text-text-muted">—</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (
+            <div
+              className="bg-surface rounded-xl px-2xl py-lg border border-background shadow-sm animate-fadeIn"
+              style={{ animationDelay: "1100ms" }}
+            >
+              <p className="text-body text-text-secondary">
+                <Link href="/data" className="text-orange hover:underline font-medium">
+                  Sync QuickBooks
+                </Link>{" "}
+                to see your P&L snapshot
+              </p>
+            </div>
+          )
+        )}
+
+        {/* Income Trend */}
+        {!loading && (
+          incomeChartData.length >= 2 ? (
+            <div
+              className="bg-surface rounded-xl p-2xl border border-background shadow-sm animate-fadeIn"
+              style={{ animationDelay: "1200ms" }}
+            >
+              <h2 className="font-body text-small tracking-[0.1em] uppercase text-text-muted mb-lg">
+                Income Trend
+              </h2>
+
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={incomeChartData} barGap={4} barCategoryGap="20%">
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                  <XAxis
+                    dataKey="month"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 12, fill: "#a3a3a3" }}
+                  />
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 12, fill: "#a3a3a3" }}
+                    tickFormatter={(v: number) =>
+                      v >= 1000 ? `$${(v / 1000).toFixed(0)}K` : `$${v}`
+                    }
+                  />
+                  <Tooltip
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    formatter={(value: any) => formatCurrency(Number(value))}
+                    contentStyle={{
+                      borderRadius: "12px",
+                      border: "1px solid #e5e5e5",
+                      boxShadow: "0 4px 16px -4px rgba(0,0,0,0.1)",
+                      fontSize: "13px",
+                    }}
+                  />
+                  <Bar dataKey="Income" fill="#E8541A" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="Expenses" fill="#94a3b8" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div
+              className="bg-surface rounded-xl px-2xl py-lg border border-background shadow-sm animate-fadeIn"
+              style={{ animationDelay: "1200ms" }}
+            >
+              <h2 className="font-body text-small tracking-[0.1em] uppercase text-text-muted mb-sm">
+                Income Trend
+              </h2>
+              <p className="text-body text-text-secondary">
+                More data will appear as you sync each month
+              </p>
+            </div>
+          )
         )}
       </div>
 

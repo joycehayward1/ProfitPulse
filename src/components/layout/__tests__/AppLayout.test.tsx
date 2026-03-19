@@ -25,37 +25,57 @@ describe("AppLayout", () => {
     jest.clearAllMocks();
   });
 
-  it("renders the logo", () => {
+  it("renders the logo in sidebar", () => {
     render(
       <AppLayout>
         <div>Test content</div>
       </AppLayout>
     );
 
-    expect(screen.getByAltText("ProfitPulse")).toBeInTheDocument();
+    expect(screen.getAllByAltText("ProfitPulse").length).toBeGreaterThan(0);
   });
 
-  it("renders all navigation items", () => {
+  it("renders all navigation items in sidebar", () => {
     render(
       <AppLayout>
         <div>Test content</div>
       </AppLayout>
     );
 
-    expect(screen.getByRole("link", { name: "Dashboard" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Scenarios" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Data" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Settings" })).toBeInTheDocument();
+    // Overview section
+    expect(screen.getAllByRole("link", { name: "Dashboard" }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("link", { name: "Scenarios" }).length).toBeGreaterThan(0);
+
+    // Financials section
+    expect(screen.getAllByRole("link", { name: "P&L" }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("link", { name: "Cash Flow" }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("link", { name: "Balance Sheet" }).length).toBeGreaterThan(0);
+
+    // Settings section
+    expect(screen.getAllByRole("link", { name: "Data" }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("link", { name: "Settings" }).length).toBeGreaterThan(0);
   });
 
-  it("renders user avatar image", () => {
+  it("renders section headers", () => {
     render(
       <AppLayout>
         <div>Test content</div>
       </AppLayout>
     );
 
-    expect(screen.getByAltText("Jessica Morgan")).toBeInTheDocument();
+    expect(screen.getAllByText("OVERVIEW").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("FINANCIALS").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("SETTINGS").length).toBeGreaterThan(0);
+  });
+
+  it("renders user avatar in top bar", () => {
+    render(
+      <AppLayout>
+        <div>Test content</div>
+      </AppLayout>
+    );
+
+    expect(screen.getByLabelText("User menu")).toBeInTheDocument();
   });
 
   it("renders children content", () => {
@@ -79,8 +99,6 @@ describe("AppLayout", () => {
     fireEvent.click(userMenuButton);
 
     await waitFor(() => {
-      expect(screen.getByText("Jessica Morgan")).toBeInTheDocument();
-      expect(screen.getByText("jessica@example.com")).toBeInTheDocument();
       expect(screen.getByRole("link", { name: /profile/i })).toBeInTheDocument();
       expect(screen.getByRole("link", { name: /billing/i })).toBeInTheDocument();
       expect(screen.getByRole("button", { name: /logout/i })).toBeInTheDocument();
@@ -129,9 +147,29 @@ describe("AppLayout", () => {
       </AppLayout>
     );
 
-    expect(screen.getByRole("link", { name: "Dashboard" })).toHaveAttribute("href", "/dashboard");
-    expect(screen.getByRole("link", { name: "Scenarios" })).toHaveAttribute("href", "/scenarios");
-    expect(screen.getByRole("link", { name: "Data" })).toHaveAttribute("href", "/data");
-    expect(screen.getByRole("link", { name: "Settings" })).toHaveAttribute("href", "/settings");
+    // Overview section
+    expect(screen.getAllByRole("link", { name: "Dashboard" })[0]).toHaveAttribute("href", "/dashboard");
+    expect(screen.getAllByRole("link", { name: "Scenarios" })[0]).toHaveAttribute("href", "/scenarios");
+
+    // Financials section
+    expect(screen.getAllByRole("link", { name: "P&L" })[0]).toHaveAttribute("href", "/reports/pl");
+    expect(screen.getAllByRole("link", { name: "Cash Flow" })[0]).toHaveAttribute("href", "/reports/cashflow");
+    expect(screen.getAllByRole("link", { name: "Balance Sheet" })[0]).toHaveAttribute("href", "/reports/balance-sheet");
+
+    // Settings section
+    expect(screen.getAllByRole("link", { name: "Data" })[0]).toHaveAttribute("href", "/data");
+    expect(screen.getAllByRole("link", { name: "Settings" })[0]).toHaveAttribute("href", "/settings");
+  });
+
+  it("renders fixed sidebar on desktop", () => {
+    render(
+      <AppLayout>
+        <div>Test content</div>
+      </AppLayout>
+    );
+
+    // The sidebar should exist with proper width class
+    const sidebar = document.querySelector("aside.md\\:w-\\[220px\\]");
+    expect(sidebar).toBeInTheDocument();
   });
 });

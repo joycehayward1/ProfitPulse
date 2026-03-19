@@ -120,6 +120,35 @@ interface QuickBooksSyncMetrics {
   inventoryValue: number;
 }
 
+interface RichSnapshot {
+  period_date: string;
+  data_source: string;
+  total_income: number | null;
+  gross_profit: number | null;
+  total_expenses: number | null;
+  net_operating_income: number | null;
+  net_profit: number | null;
+  gross_profit_margin: number | null;
+  net_profit_margin: number | null;
+  current_assets: number | null;
+  fixed_assets: number | null;
+  total_assets: number | null;
+  current_liabilities: number | null;
+  long_term_liabilities: number | null;
+  equity: number | null;
+  operating_activities: number | null;
+  investing_activities: number | null;
+  financing_activities: number | null;
+  net_cash_flow: number | null;
+  current_ratio: number | null;
+  working_capital: number | null;
+  roa: number | null;
+  roe: number | null;
+  pl_detail: Record<string, number> | null;
+  bs_detail: Record<string, number> | null;
+  cf_detail: Record<string, number> | null;
+}
+
 interface QuickBooksSyncResponse {
   success: boolean;
   realmId?: string;
@@ -131,6 +160,7 @@ interface QuickBooksSyncResponse {
     ytdEnd: string;
   };
   metrics?: QuickBooksSyncMetrics;
+  richSnapshot?: RichSnapshot;
   error?: string;
 }
 
@@ -138,6 +168,61 @@ interface DatabaseErrorLike {
   code?: string;
   message?: string;
 }
+
+interface AISnapshotData {
+  period_date: string | null;
+  total_income: number | null;
+  gross_profit: number | null;
+  total_expenses: number | null;
+  net_operating_income: number | null;
+  net_profit: number | null;
+  gross_profit_margin: number | null;
+  net_profit_margin: number | null;
+  current_assets: number | null;
+  fixed_assets: number | null;
+  total_assets: number | null;
+  current_liabilities: number | null;
+  long_term_liabilities: number | null;
+  equity: number | null;
+  operating_activities: number | null;
+  investing_activities: number | null;
+  financing_activities: number | null;
+  net_cash_flow: number | null;
+  working_capital: number | null;
+  current_ratio: number | null;
+  roa: number | null;
+  roe: number | null;
+}
+
+type UploadStep = "idle" | "reading" | "sheet_select" | "processing" | "confirm" | "saving";
+
+const SNAPSHOT_FIELDS: Array<{
+  key: keyof AISnapshotData;
+  label: string;
+  format: "currency" | "percent" | "ratio";
+}> = [
+  { key: "total_income", label: "Total Income", format: "currency" },
+  { key: "gross_profit", label: "Gross Profit", format: "currency" },
+  { key: "total_expenses", label: "Total Expenses", format: "currency" },
+  { key: "net_operating_income", label: "Net Operating Income", format: "currency" },
+  { key: "net_profit", label: "Net Profit", format: "currency" },
+  { key: "gross_profit_margin", label: "Gross Profit Margin", format: "percent" },
+  { key: "net_profit_margin", label: "Net Profit Margin", format: "percent" },
+  { key: "current_assets", label: "Current Assets", format: "currency" },
+  { key: "fixed_assets", label: "Fixed Assets", format: "currency" },
+  { key: "total_assets", label: "Total Assets", format: "currency" },
+  { key: "current_liabilities", label: "Current Liabilities", format: "currency" },
+  { key: "long_term_liabilities", label: "Long-term Liabilities", format: "currency" },
+  { key: "equity", label: "Equity", format: "currency" },
+  { key: "operating_activities", label: "Operating Activities", format: "currency" },
+  { key: "investing_activities", label: "Investing Activities", format: "currency" },
+  { key: "financing_activities", label: "Financing Activities", format: "currency" },
+  { key: "net_cash_flow", label: "Net Cash Flow", format: "currency" },
+  { key: "working_capital", label: "Working Capital", format: "currency" },
+  { key: "current_ratio", label: "Current Ratio", format: "ratio" },
+  { key: "roa", label: "Return on Assets (ROA)", format: "percent" },
+  { key: "roe", label: "Return on Equity (ROE)", format: "percent" },
+];
 
 function isMissingFinancialDataColumnError(error: unknown): boolean {
   const dbError = error as DatabaseErrorLike | null;
@@ -197,7 +282,6 @@ export default function DataPage() {
 
   const [historyEntries, setHistoryEntries] = useState<HistoryEntry[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
-  const [latestSnapshot, setLatestSnapshot] = useState<HistoryEntry | null>(null);
   const [qbConnected, setQbConnected] = useState(false);
   const [qbRealmId, setQbRealmId] = useState<string | null>(null);
   const [qbLastSyncAt, setQbLastSyncAt] = useState<string | null>(null);
@@ -206,6 +290,18 @@ export default function DataPage() {
   const [qbDisconnecting, setQbDisconnecting] = useState(false);
   const [deletingEntryId, setDeletingEntryId] = useState<string | null>(null);
   const quickBooksModeLocked = qbConnected;
+
+  // AI Upload States
+  const [uploadStep, setUploadStep] = useState<UploadStep>("idle");
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [parsedSnapshot, setParsedSnapshot] = useState<AISnapshotData | null>(null);
+  const [confirmPeriod, setConfirmPeriod] = useState(getCurrentPeriod());
+  const [sheetNames, setSheetNames] = useState<string[]>([]);
+  const [selectedSheet, setSelectedSheet] = useState("");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const workbookRef = useRef<any>(null);
+  const aiFileInputRef = useRef<HTMLInputElement>(null);
 
   function toInputCurrency(value: number) {
     if (!Number.isFinite(value) || value <= 0) return "";
@@ -342,7 +438,6 @@ export default function DataPage() {
     setHistoryEntries(entries);
 
     if (entries.length > 0) {
-      setLatestSnapshot(entries[0]);
       if (prefillLatest) {
         applyEntryToForm(entries[0]);
       }
@@ -375,7 +470,6 @@ export default function DataPage() {
 
         if (hydratedEntries.length > 0) {
           setHistoryEntries(hydratedEntries);
-          setLatestSnapshot(hydratedEntries[0]);
           if (prefillLatest) {
             applyEntryToForm(hydratedEntries[0]);
           }
@@ -386,14 +480,11 @@ export default function DataPage() {
       const fallbackEntry = mapAssessmentToHistoryEntry(
         assessmentRow
       );
-      setLatestSnapshot(fallbackEntry);
       if (prefillLatest) {
         applyEntryToForm(fallbackEntry);
       }
       return;
     }
-
-    setLatestSnapshot(null);
   }
 
   async function hydrateFinancialDataFromAssessment(
@@ -511,7 +602,8 @@ export default function DataPage() {
       }
 
       const metrics = payload.metrics;
-      const client = getInsForgeClient();
+      const { getInsForgeClient: getClient } = await import("@/lib/insforge");
+      const client = getClient();
 
       const basePayload = {
         user_id: user.id,
@@ -531,14 +623,15 @@ export default function DataPage() {
         inventory_value: metrics.inventoryValue || 0,
       };
 
+      // Upsert financial_data — update on conflict of user_id + period_date
       let { error } = await client.database
         .from("financial_data")
-        .insert(extendedPayload);
+        .upsert([extendedPayload], { onConflict: "user_id,period_date" });
 
       if (error && isMissingFinancialDataColumnError(error)) {
         const retry = await client.database
           .from("financial_data")
-          .insert(basePayload);
+          .upsert([basePayload], { onConflict: "user_id,period_date" });
         error = retry.error;
       }
 
@@ -552,6 +645,23 @@ export default function DataPage() {
             : "QuickBooks synced but save failed."
         );
         return;
+      }
+
+      // Upsert richSnapshot into financial_snapshots
+      if (payload.richSnapshot) {
+        const snapshotRow = {
+          user_id: user.id,
+          ...payload.richSnapshot,
+          period_date: periodFromQuickBooks,
+        };
+
+        const { error: snapError } = await client.database
+          .from("financial_snapshots")
+          .upsert([snapshotRow], { onConflict: "user_id,period_date" });
+
+        if (snapError) {
+          console.error("Failed to save rich snapshot:", snapError);
+        }
       }
 
       setQbConnected(true);
@@ -932,6 +1042,229 @@ export default function DataPage() {
     }
   }
 
+  async function handleAIUpload(file: File) {
+    const maxSize = 2 * 1024 * 1024;
+    if (file.size > maxSize) {
+      setUploadError(
+        "File is over 2 MB. Please use a smaller file or connect QuickBooks instead."
+      );
+      return;
+    }
+
+    setUploadFile(file);
+    setUploadError(null);
+    setUploadStep("reading");
+
+    try {
+      let fileContent = "";
+
+      if (file.name.endsWith(".xlsx") || file.name.endsWith(".xls")) {
+        const XLSX = (await import("xlsx")).default;
+        const buffer = await file.arrayBuffer();
+        const workbook = XLSX.read(buffer, { type: "array" });
+
+        if (workbook.SheetNames.length > 1) {
+          workbookRef.current = workbook;
+          setSheetNames(workbook.SheetNames);
+          setSelectedSheet(workbook.SheetNames[0]);
+          setUploadStep("sheet_select");
+          return;
+        }
+
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        fileContent = XLSX.utils.sheet_to_csv(sheet);
+      } else {
+        fileContent = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve(e.target?.result as string);
+          reader.onerror = () => reject(new Error("Failed to read file"));
+          reader.readAsText(file);
+        });
+      }
+
+      await sendContentToAI(fileContent);
+    } catch (error) {
+      console.error("AI upload error:", error);
+      setUploadError(
+        "We couldn\u2019t read this file format. Try a different file or connect QuickBooks instead."
+      );
+      setUploadStep("idle");
+    }
+  }
+
+  async function sendContentToAI(fileContent: string) {
+    if (!fileContent.trim()) {
+      setUploadError("The file appears to be empty. Please try a different file.");
+      setUploadStep("idle");
+      return;
+    }
+
+    setUploadStep("processing");
+    const client = getInsForgeClient();
+
+    const completion = await client.ai.chat.completions.create({
+      model: "anthropic/claude-sonnet-4-5",
+      messages: [
+        {
+          role: "user",
+          content: `You are a financial data parser. Extract financial data from this spreadsheet content and return ONLY a JSON object with these exact fields (use null for any field not found, do not include markdown, backticks, or explanation):
+{
+  "period_date": "YYYY-MM-DD last day of month this data covers",
+  "total_income": number or null,
+  "gross_profit": number or null,
+  "total_expenses": number or null,
+  "net_operating_income": number or null,
+  "net_profit": number or null,
+  "gross_profit_margin": number or null,
+  "net_profit_margin": number or null,
+  "current_assets": number or null,
+  "fixed_assets": number or null,
+  "total_assets": number or null,
+  "current_liabilities": number or null,
+  "long_term_liabilities": number or null,
+  "equity": number or null,
+  "operating_activities": number or null,
+  "investing_activities": number or null,
+  "financing_activities": number or null,
+  "net_cash_flow": number or null,
+  "working_capital": number or null,
+  "current_ratio": number or null,
+  "roa": number or null,
+  "roe": number or null
+}
+Spreadsheet content: ${fileContent}`,
+        },
+      ],
+      maxTokens: 2000,
+    });
+
+    const aiResponse = completion.choices[0]?.message?.content || "";
+
+    let parsed: AISnapshotData;
+    try {
+      const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error("No JSON found");
+      parsed = JSON.parse(jsonMatch[0]) as AISnapshotData;
+    } catch {
+      setUploadError(
+        "We couldn\u2019t read this file format. Try a different file or connect QuickBooks instead."
+      );
+      setUploadStep("idle");
+      return;
+    }
+
+    setParsedSnapshot(parsed);
+
+    if (parsed.period_date) {
+      const d = new Date(parsed.period_date);
+      if (!isNaN(d.getTime())) {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, "0");
+        setConfirmPeriod(`${year}-${month}`);
+      }
+    }
+
+    setUploadStep("confirm");
+  }
+
+  async function handleParseSheet() {
+    if (!workbookRef.current || !selectedSheet) return;
+
+    try {
+      const XLSX = (await import("xlsx")).default;
+      const sheet = workbookRef.current.Sheets[selectedSheet];
+      const fileContent = XLSX.utils.sheet_to_csv(sheet);
+      await sendContentToAI(fileContent);
+    } catch (error) {
+      console.error("Sheet parse error:", error);
+      setUploadError(
+        "We couldn\u2019t read this file format. Try a different file or connect QuickBooks instead."
+      );
+      setUploadStep("idle");
+    }
+  }
+
+  async function handleSaveAISnapshot() {
+    if (!user || !parsedSnapshot) return;
+
+    setUploadStep("saving");
+    try {
+      const { getInsForgeClient: getClient } = await import("@/lib/insforge");
+      const client = getClient();
+
+      const [year, month] = confirmPeriod.split("-").map(Number);
+      const lastDay = new Date(year, month, 0).getDate();
+      const periodDate = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+
+      const snapshotData = {
+        user_id: user.id,
+        period_date: periodDate,
+        data_source: "spreadsheet",
+        total_income: parsedSnapshot.total_income,
+        gross_profit: parsedSnapshot.gross_profit,
+        total_expenses: parsedSnapshot.total_expenses,
+        net_operating_income: parsedSnapshot.net_operating_income,
+        net_profit: parsedSnapshot.net_profit,
+        gross_profit_margin: parsedSnapshot.gross_profit_margin,
+        net_profit_margin: parsedSnapshot.net_profit_margin,
+        current_assets: parsedSnapshot.current_assets,
+        fixed_assets: parsedSnapshot.fixed_assets,
+        total_assets: parsedSnapshot.total_assets,
+        current_liabilities: parsedSnapshot.current_liabilities,
+        long_term_liabilities: parsedSnapshot.long_term_liabilities,
+        equity: parsedSnapshot.equity,
+        operating_activities: parsedSnapshot.operating_activities,
+        investing_activities: parsedSnapshot.investing_activities,
+        financing_activities: parsedSnapshot.financing_activities,
+        net_cash_flow: parsedSnapshot.net_cash_flow,
+        working_capital: parsedSnapshot.working_capital,
+        current_ratio: parsedSnapshot.current_ratio,
+        roa: parsedSnapshot.roa,
+        roe: parsedSnapshot.roe,
+      };
+
+      const { error } = await client.database
+        .from("financial_snapshots")
+        .upsert([snapshotData], { onConflict: "user_id,period_date" });
+
+      if (error) {
+        const dbError = error as DatabaseErrorLike;
+        showToast(
+          "error",
+          dbError.message ? `Save failed: ${dbError.message}` : "Failed to save data."
+        );
+        setUploadStep("confirm");
+        return;
+      }
+
+      showToast("success", "Your data has been saved");
+      resetAIUpload();
+
+      setLoadingHistory(true);
+      await refreshHistory(false);
+      setLoadingHistory(false);
+    } catch (error) {
+      console.error("Save snapshot error:", error);
+      showToast("error", "Failed to save data. Please try again.");
+      setUploadStep("confirm");
+    }
+  }
+
+  function resetAIUpload() {
+    setUploadStep("idle");
+    setUploadFile(null);
+    setUploadError(null);
+    setParsedSnapshot(null);
+    setConfirmPeriod(getCurrentPeriod());
+    setSheetNames([]);
+    setSelectedSheet("");
+    workbookRef.current = null;
+    if (aiFileInputRef.current) {
+      aiFileInputRef.current.value = "";
+    }
+  }
+
   async function handleImport() {
     if (quickBooksModeLocked) {
       showToast(
@@ -1168,67 +1501,6 @@ export default function DataPage() {
               things become.
             </p>
           </div>
-
-          {/* Current Snapshot */}
-          {latestSnapshot && (
-            <Card className="mb-8 border border-text-muted/20 bg-surface animate-fade-in">
-              <div className="flex flex-col gap-4">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                  <div>
-                    <h2 className="text-lg font-display text-text-primary">Current Data Snapshot</h2>
-                    <p className="text-sm font-body text-text-secondary mt-1">
-                      Source: {formatDataSourceLabel(latestSnapshot.dataSource)} | Period: {formatPeriodDisplay(latestSnapshot.period)} | Updated: {formatDate(latestSnapshot.createdAt)}
-                    </p>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => {
-                      if (quickBooksModeLocked) {
-                        setActiveTab("quickbooks");
-                        return;
-                      }
-                      applyEntryToForm(latestSnapshot);
-                      selectTab("manual");
-                    }}
-                  >
-                    {quickBooksModeLocked ? "Go to QuickBooks Sync" : "Update These Numbers"}
-                  </Button>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
-                  <div>
-                    <p className="text-xs text-text-muted font-body">Cash</p>
-                    <p className="text-sm font-display text-text-primary">{formatCurrency(latestSnapshot.cash)}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-text-muted font-body">Revenue</p>
-                    <p className="text-sm font-display text-text-primary">{formatCurrency(latestSnapshot.revenue)}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-text-muted font-body">Expenses</p>
-                    <p className="text-sm font-display text-text-primary">{formatCurrency(latestSnapshot.expenses)}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-text-muted font-body">Receivables</p>
-                    <p className="text-sm font-display text-text-primary">{formatCurrency(latestSnapshot.receivables)}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-text-muted font-body">Payables</p>
-                    <p className="text-sm font-display text-text-primary">{formatCurrency(latestSnapshot.payables)}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-text-muted font-body">YTD Rev</p>
-                    <p className="text-sm font-display text-text-primary">{formatCurrency(latestSnapshot.ytdRevenue)}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-text-muted font-body">YTD Exp</p>
-                    <p className="text-sm font-display text-text-primary">{formatCurrency(latestSnapshot.ytdExpenses)}</p>
-                  </div>
-                </div>
-              </div>
-            </Card>
-          )}
 
           {/* Tabs */}
           <div
@@ -1554,301 +1826,217 @@ export default function DataPage() {
                     </Button>
                   </div>
                 </Card>
-              ) : csvFiles.length === 0 ? (
-                /* Drag and Drop Zone */
-                <Card className="mb-8">
-                  <div
-                    onDragOver={handleDragOver}
-                    onDragLeave={handleDragLeave}
-                    onDrop={handleDrop}
-                    className={`border-2 border-dashed rounded-lg py-16 px-6 text-center transition-all ${
-                      isDragging
-                        ? "border-orange bg-orange/5"
-                        : "border-text-muted/30 hover:border-orange/50 hover:bg-orange/5"
-                    }`}
-                  >
-                    <svg
-                      className="w-16 h-16 mx-auto mb-6 text-text-muted opacity-40"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={1.5}
-                        d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                      />
-                    </svg>
-                    <h3 className="text-xl font-display text-text-primary mb-3">
-                      Drop your financial spreadsheets here
-                    </h3>
-                    <p className="text-sm font-body text-text-secondary mb-6">
-                      Upload multiple files at once - we&apos;ll combine them automatically
-                    </p>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept=".csv"
-                      multiple
-                      onChange={handleFileSelect}
-                      className="hidden"
-                    />
-                    <Button
-                      variant="primary"
-                      onClick={() => fileInputRef.current?.click()}
-                    >
-                      Choose CSV Files
-                    </Button>
-                    <p className="text-xs font-body text-text-muted mt-6">
-                      Accepts .csv files up to 10MB
-                    </p>
-                  </div>
-                </Card>
               ) : (
-                /* CSV Preview and Mapping */
-                <div className="space-y-6">
-                  {/* Files Info */}
-                  <Card>
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-lg font-display text-text-primary">
-                          Uploaded Files ({csvFiles.length})
+                <>
+                  {/* File Upload Zone */}
+                  {uploadStep === "idle" && (
+                    <Card className="mb-8">
+                      {uploadError && (
+                        <div className="mb-6 p-4 rounded-lg bg-error/10 border border-error/20">
+                          <p className="text-sm font-body text-error">{uploadError}</p>
+                        </div>
+                      )}
+                      <div className="border-2 border-dashed rounded-lg py-16 px-6 text-center transition-all border-text-muted/30 hover:border-orange/50 hover:bg-orange/5">
+                        <svg
+                          className="w-16 h-16 mx-auto mb-6 text-text-muted opacity-40"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={1.5}
+                            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                          />
+                        </svg>
+                        <h3 className="text-xl font-display text-text-primary mb-3">
+                          Upload your financial spreadsheet
                         </h3>
-                        <Button variant="secondary" size="sm" onClick={resetUpload}>
-                          Remove All
-                        </Button>
-                      </div>
-
-                      {/* List of uploaded files */}
-                      <div className="space-y-2">
-                        {csvFiles.map((file, index) => (
-                          <div key={index} className="flex items-center gap-3 p-3 bg-background/50 rounded-lg">
-                            <svg
-                              className="w-6 h-6 text-success flex-shrink-0"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                              />
-                            </svg>
-                            <div className="flex-1 min-w-0">
-                              <p className="font-body font-medium text-text-primary truncate">
-                                {file.name}
-                              </p>
-                              <p className="text-xs font-body text-text-muted">
-                                {(file.size / 1024).toFixed(1)} KB
-                              </p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="pt-2 border-t border-text-muted/20">
-                        <p className="text-sm font-body text-text-primary mb-2">
-                          Total: {csvData.length} rows • {csvHeaders.length} unique columns
+                        <p className="text-sm font-body text-text-secondary mb-6">
+                          Our AI will read your file and extract the numbers automatically
                         </p>
+                        <input
+                          ref={aiFileInputRef}
+                          type="file"
+                          accept=".csv,.xlsx"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) void handleAIUpload(file);
+                          }}
+                          className="hidden"
+                        />
                         <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={() => fileInputRef.current?.click()}
+                          variant="primary"
+                          onClick={() => aiFileInputRef.current?.click()}
                         >
-                          Add More Files
+                          Choose File
+                        </Button>
+                        <p className="text-xs font-body text-text-muted mt-6">
+                          Accepts .csv and .xlsx files up to 2 MB
+                        </p>
+                      </div>
+                    </Card>
+                  )}
+
+                  {/* Sheet Selector */}
+                  {uploadStep === "sheet_select" && sheetNames.length > 1 && (
+                    <Card className="mb-8">
+                      <div className="mb-4">
+                        <h3 className="text-lg font-display text-text-primary mb-1">
+                          Multiple tabs detected
+                        </h3>
+                        {uploadFile?.name && (
+                          <p className="text-sm font-body text-text-secondary">
+                            {uploadFile.name} has {sheetNames.length} tabs
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="mb-6">
+                        <label className="block text-sm font-body font-medium text-text-secondary mb-2">
+                          Which tab contains your financial data?
+                        </label>
+                        <select
+                          value={selectedSheet}
+                          onChange={(e) => setSelectedSheet(e.target.value)}
+                          className="w-full sm:w-auto px-4 py-3 rounded-md border border-text-muted/30 bg-surface text-text-primary font-body focus:outline-none focus:ring-2 focus:ring-orange focus:border-transparent appearance-none"
+                          style={{
+                            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236B6560'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
+                            backgroundRepeat: "no-repeat",
+                            backgroundPosition: "right 0.75rem center",
+                            backgroundSize: "1.25rem",
+                            paddingRight: "2.5rem",
+                          }}
+                        >
+                          {sheetNames.map((name) => (
+                            <option key={name} value={name}>
+                              {name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <Button
+                          variant="primary"
+                          onClick={() => {
+                            void handleParseSheet();
+                          }}
+                        >
+                          Parse This Tab
+                        </Button>
+                        <Button variant="cancel" onClick={resetAIUpload}>
+                          Cancel
+                        </Button>
+                      </div>
+                    </Card>
+                  )}
+
+                  {/* Loading State */}
+                  {(uploadStep === "reading" || uploadStep === "processing") && (
+                    <Card className="mb-8">
+                      <div className="py-16 text-center">
+                        <div className="w-12 h-12 mx-auto mb-4 border-4 border-orange/20 border-t-orange rounded-full animate-spin" />
+                        <p className="text-lg font-display text-text-primary mb-2">
+                          Reading your spreadsheet&hellip;
+                        </p>
+                        <p className="text-sm font-body text-text-secondary">
+                          {uploadFile?.name && (
+                            <span className="block mb-1 text-text-primary font-medium">{uploadFile.name}</span>
+                          )}
+                          Our AI is extracting your financial data
+                        </p>
+                      </div>
+                    </Card>
+                  )}
+
+                  {/* Confirmation Screen */}
+                  {(uploadStep === "confirm" || uploadStep === "saving") && parsedSnapshot && (
+                    <div className="space-y-6">
+                      <Card>
+                        <div className="mb-6">
+                          <h3 className="text-xl font-display text-text-primary mb-2">
+                            Here&apos;s what we found in your spreadsheet
+                          </h3>
+                          <p className="text-sm font-body text-text-secondary">
+                            Review before saving. Edit anything that looks off.
+                          </p>
+                        </div>
+
+                        {/* Period Selector */}
+                        <div className="mb-6">
+                          <label className="block text-sm font-body font-medium text-text-secondary mb-2">
+                            Which month does this data cover?
+                          </label>
+                          <input
+                            type="month"
+                            value={confirmPeriod}
+                            onChange={(e) => setConfirmPeriod(e.target.value)}
+                            className="w-full sm:w-auto px-4 py-3 rounded-md border border-text-muted/30 bg-surface text-text-primary font-body focus:outline-none focus:ring-2 focus:ring-orange focus:border-transparent transition-all"
+                          />
+                        </div>
+
+                        {/* Data Table */}
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="border-b border-text-muted/20">
+                                <th className="text-left font-body font-medium text-text-secondary py-3 px-4">
+                                  Field
+                                </th>
+                                <th className="text-right font-body font-medium text-text-secondary py-3 px-4">
+                                  Value Found
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {SNAPSHOT_FIELDS.map(({ key, label, format }) => {
+                                const val = parsedSnapshot[key];
+                                return (
+                                  <tr key={key} className="border-b border-text-muted/10">
+                                    <td className="py-3 px-4 font-body text-text-primary">
+                                      {label}
+                                    </td>
+                                    <td className="py-3 px-4 text-right font-body">
+                                      {val != null && typeof val === "number" ? (
+                                        <span className="text-text-primary">
+                                          {format === "currency"
+                                            ? formatCurrency(val)
+                                            : format === "percent"
+                                            ? `${val.toFixed(1)}%`
+                                            : val.toFixed(2)}
+                                        </span>
+                                      ) : (
+                                        <span className="text-text-muted">Not found</span>
+                                      )}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </Card>
+
+                      {/* Action Buttons */}
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+                        <Button
+                          variant="primary"
+                          onClick={() => {
+                            void handleSaveAISnapshot();
+                          }}
+                          disabled={uploadStep === "saving"}
+                        >
+                          {uploadStep === "saving" ? "Saving..." : "Save to Dashboard"}
+                        </Button>
+                        <Button variant="cancel" onClick={resetAIUpload}>
+                          Cancel
                         </Button>
                       </div>
                     </div>
-                  </Card>
-
-                  {/* Column Mapping */}
-                  <Card>
-                    <h3 className="text-lg font-display text-text-primary mb-4">
-                      Map Your Columns
-                    </h3>
-                    <p className="text-sm font-body text-text-secondary mb-6">
-                      Match the columns in your spreadsheet to the fields below. We&apos;ve
-                      made our best guess, but double-check to make sure.
-                    </p>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                      <div>
-                        <label className="block text-sm font-body font-medium text-text-secondary mb-2">
-                          Revenue <span className="text-error">*</span>
-                        </label>
-                        <select
-                          value={columnMapping.revenue}
-                          onChange={(e) =>
-                            handleColumnMappingChange("revenue", e.target.value)
-                          }
-                          className="w-full px-4 py-3 rounded-md border border-text-muted/30 bg-surface text-text-primary font-body focus:outline-none focus:ring-2 focus:ring-orange focus:border-transparent appearance-none"
-                          style={{
-                            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236B6560'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
-                            backgroundRepeat: "no-repeat",
-                            backgroundPosition: "right 0.75rem center",
-                            backgroundSize: "1.25rem",
-                            paddingRight: "2.5rem",
-                          }}
-                        >
-                          <option value="">Select column...</option>
-                          {csvHeaders.map((header) => (
-                            <option key={header} value={header}>
-                              {header}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-body font-medium text-text-secondary mb-2">
-                          Expenses <span className="text-error">*</span>
-                        </label>
-                        <select
-                          value={columnMapping.expenses}
-                          onChange={(e) =>
-                            handleColumnMappingChange("expenses", e.target.value)
-                          }
-                          className="w-full px-4 py-3 rounded-md border border-text-muted/30 bg-surface text-text-primary font-body focus:outline-none focus:ring-2 focus:ring-orange focus:border-transparent appearance-none"
-                          style={{
-                            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236B6560'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
-                            backgroundRepeat: "no-repeat",
-                            backgroundPosition: "right 0.75rem center",
-                            backgroundSize: "1.25rem",
-                            paddingRight: "2.5rem",
-                          }}
-                        >
-                          <option value="">Select column...</option>
-                          {csvHeaders.map((header) => (
-                            <option key={header} value={header}>
-                              {header}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-body font-medium text-text-secondary mb-2">
-                          Cash Balance <span className="text-error">*</span>
-                        </label>
-                        <select
-                          value={columnMapping.cashBalance}
-                          onChange={(e) =>
-                            handleColumnMappingChange("cashBalance", e.target.value)
-                          }
-                          className="w-full px-4 py-3 rounded-md border border-text-muted/30 bg-surface text-text-primary font-body focus:outline-none focus:ring-2 focus:ring-orange focus:border-transparent appearance-none"
-                          style={{
-                            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236B6560'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
-                            backgroundRepeat: "no-repeat",
-                            backgroundPosition: "right 0.75rem center",
-                            backgroundSize: "1.25rem",
-                            paddingRight: "2.5rem",
-                          }}
-                        >
-                          <option value="">Select column...</option>
-                          {csvHeaders.map((header) => (
-                            <option key={header} value={header}>
-                              {header}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-body font-medium text-text-secondary mb-2">
-                          Date (Optional)
-                        </label>
-                        <select
-                          value={columnMapping.date}
-                          onChange={(e) =>
-                            handleColumnMappingChange("date", e.target.value)
-                          }
-                          className="w-full px-4 py-3 rounded-md border border-text-muted/30 bg-surface text-text-primary font-body focus:outline-none focus:ring-2 focus:ring-orange focus:border-transparent appearance-none"
-                          style={{
-                            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236B6560'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
-                            backgroundRepeat: "no-repeat",
-                            backgroundPosition: "right 0.75rem center",
-                            backgroundSize: "1.25rem",
-                            paddingRight: "2.5rem",
-                          }}
-                        >
-                          <option value="">Select column...</option>
-                          {csvHeaders.map((header) => (
-                            <option key={header} value={header}>
-                              {header}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                  </Card>
-
-                  {/* Preview Table */}
-                  <Card>
-                    <h3 className="text-lg font-display text-text-primary mb-4">
-                      Preview
-                    </h3>
-                    <p className="text-sm font-body text-text-secondary mb-4">
-                      First 10 rows from your file
-                    </p>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b border-text-muted/20">
-                            {csvHeaders.map((header) => (
-                              <th
-                                key={header}
-                                className="text-left font-body font-medium text-text-secondary py-3 px-4"
-                              >
-                                {header}
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {csvData.slice(0, 10).map((row, idx) => (
-                            <tr
-                              key={idx}
-                              className="border-b border-text-muted/10 hover:bg-background/50 transition-colors"
-                            >
-                              {csvHeaders.map((header) => (
-                                <td
-                                  key={header}
-                                  className="font-body text-text-primary py-3 px-4"
-                                >
-                                  {row[header]}
-                                </td>
-                              ))}
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                    {csvData.length > 10 && (
-                      <p className="text-xs font-body text-text-muted mt-4">
-                        Showing 10 of {csvData.length} rows
-                      </p>
-                    )}
-                  </Card>
-
-                  {/* Action Buttons */}
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
-                    <Button
-                      variant="primary"
-                      onClick={handleImport}
-                      disabled={!isMappingValid || isImporting}
-                    >
-                      {isImporting
-                        ? "Importing..."
-                        : `Import ${csvData.length} Rows`}
-                    </Button>
-                    <Button variant="cancel" onClick={resetUpload}>
-                      Cancel
-                    </Button>
-                  </div>
-                </div>
+                  )}
+                </>
               )}
             </div>
           )}
@@ -2015,7 +2203,7 @@ export default function DataPage() {
                         <th className="text-right font-body font-medium text-text-secondary py-3 px-4">Expenses</th>
                         <th className="text-right font-body font-medium text-text-secondary py-3 px-4">Profit</th>
                         <th className="text-left font-body font-medium text-text-secondary py-3 px-4">Updated</th>
-                        <th className="text-left font-body font-medium text-text-secondary py-3 px-4">Action</th>
+                        <th className="text-right font-body font-medium text-text-secondary py-3 px-4"></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -2053,36 +2241,18 @@ export default function DataPage() {
                             <td className="py-3 px-4 font-body text-text-secondary">
                               {formatDate(entry.createdAt)}
                             </td>
-                            <td className="py-3 px-4">
-                              <div className="flex items-center gap-2">
-                                <Button
-                                  type="button"
-                                  variant="secondary"
-                                  size="sm"
-                                  disabled={quickBooksModeLocked}
-                                  onClick={() => {
-                                    applyEntryToForm(entry);
-                                    selectTab("manual");
-                                    showToast(
-                                      "success",
-                                      `Loaded ${formatPeriodDisplay(entry.period)} into the form.`
-                                    );
-                                  }}
-                                >
-                                  Load
-                                </Button>
-                                <Button
-                                  type="button"
-                                  variant="cancel"
-                                  size="sm"
-                                  disabled={deletingEntryId === entry.id}
-                                  onClick={() => {
-                                    void handleDeleteLedgerEntry(entry.id, entry.period);
-                                  }}
-                                >
-                                  {deletingEntryId === entry.id ? "Deleting..." : "Delete"}
-                                </Button>
-                              </div>
+                            <td className="py-3 px-4 text-right">
+                              <Button
+                                type="button"
+                                variant="cancel"
+                                size="sm"
+                                disabled={deletingEntryId === entry.id}
+                                onClick={() => {
+                                  void handleDeleteLedgerEntry(entry.id, entry.period);
+                                }}
+                              >
+                                {deletingEntryId === entry.id ? "Deleting..." : "Delete"}
+                              </Button>
                             </td>
                           </tr>
                         );

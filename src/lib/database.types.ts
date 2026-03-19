@@ -117,6 +117,40 @@ export interface Scenario {
   created_at: string;
 }
 
+/** Rich financial snapshot — from QuickBooks sync */
+export interface FinancialSnapshot {
+  id: string;
+  user_id: string;
+  period_date: string;
+  data_source: string;
+  total_income: number | null;
+  gross_profit: number | null;
+  total_expenses: number | null;
+  net_operating_income: number | null;
+  net_profit: number | null;
+  gross_profit_margin: number | null;
+  net_profit_margin: number | null;
+  current_assets: number | null;
+  fixed_assets: number | null;
+  total_assets: number | null;
+  current_liabilities: number | null;
+  long_term_liabilities: number | null;
+  equity: number | null;
+  operating_activities: number | null;
+  investing_activities: number | null;
+  financing_activities: number | null;
+  net_cash_flow: number | null;
+  current_ratio: number | null;
+  working_capital: number | null;
+  roa: number | null;
+  roe: number | null;
+  pl_detail: Record<string, number> | null;
+  bs_detail: Record<string, number> | null;
+  cf_detail: Record<string, number> | null;
+  prior_month_date: string | null;
+  created_at: string;
+}
+
 /** QuickBooks OAuth connection */
 export interface QuickBooksConnection {
   id: string;
@@ -138,6 +172,8 @@ export type ExpenseCategoryInsert = Omit<ExpenseCategory, "id">;
 export type AlertConfigInsert = Omit<AlertConfig, "id" | "created_at">;
 export type AlertHistoryInsert = Omit<AlertHistory, "id">;
 export type ScenarioInsert = Omit<Scenario, "id" | "created_at">;
+export type FinancialSnapshotInsert = Omit<FinancialSnapshot, "id" | "created_at">;
+export type FinancialSnapshotUpdate = Partial<Omit<FinancialSnapshot, "id" | "created_at">> & { id: string };
 export type QuickBooksConnectionInsert = Omit<QuickBooksConnection, "id">;
 
 // ─── Update Types (all fields optional except id) ────────────────────────────
@@ -161,6 +197,7 @@ export const TABLE_NAMES = {
   alert_history: "alert_history",
   scenarios: "scenarios",
   quickbooks_connections: "quickbooks_connections",
+  financial_snapshots: "financial_snapshots",
 } as const;
 
 export type TableName = (typeof TABLE_NAMES)[keyof typeof TABLE_NAMES];

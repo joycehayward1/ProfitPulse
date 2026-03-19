@@ -7,10 +7,11 @@ html {
 }
 
 body {
-  background-color: #FFF8F5;
-  color: #2D2A26;
-  font-family: Arial, sans-serif;
+  background-color: #FAFAFA;
+  color: #1a1a1a;
   font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 @keyframes fade-in {
