@@ -33,13 +33,15 @@ export function AuthLayout({
 
         {/* Content */}
         <div className="relative z-10">
-          <Image
-            src="/full-logo.png"
-            alt="ProfitPulse"
-            width={900}
-            height={200}
-            className="h-[150px] md:h-[190px] w-auto drop-shadow-lg"
-          />
+          <Link href="/">
+            <Image
+              src="/full-logo.png"
+              alt="ProfitPulse"
+              width={900}
+              height={200}
+              className="h-[150px] md:h-[190px] w-auto drop-shadow-lg"
+            />
+          </Link>
         </div>
 
         <div className="relative z-10 space-y-6">
