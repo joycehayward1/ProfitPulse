@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Icon } from "@iconify/react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { HealthScoreGauge } from "@/components/ui/HealthScoreGauge";
@@ -222,10 +222,76 @@ function MetricCard({
   );
 }
 
+function ScoreRubricModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  if (!open) return null;
+
+  const tiers = [
+    { range: "90 – 100", label: "Thriving", color: "#43A047", bg: "bg-[#43A047]/10", description: "Your business is in excellent financial shape. Strong profit margins, healthy cash reserves, and receivables are under control." },
+    { range: "75 – 89", label: "Solid", color: "#66BB6A", bg: "bg-[#66BB6A]/10", description: "Things are looking good overall. There might be one area to keep an eye on, but nothing urgent. You're in a strong position to invest or grow." },
+    { range: "60 – 74", label: "Needs Attention", color: "#F9A825", bg: "bg-[#F9A825]/10", description: "Your business is okay, but there are a couple of things that could become problems if they're not addressed. Time to look closer." },
+    { range: "40 – 59", label: "At Risk", color: "#EF6C00", bg: "bg-[#EF6C00]/10", description: "Multiple areas need attention. Profit margins may be thin, cash reserves are low, or you're waiting too long to get paid." },
+    { range: "Below 40", label: "Critical", color: "#D32F2F", bg: "bg-[#D32F2F]/10", description: "Your finances need immediate action. Cash could run out soon, expenses may be outpacing revenue. Focus on stabilizing before anything else." },
+  ];
+
+  return (
+    <>
+      <div
+        className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[9998]"
+        onClick={onClose}
+        style={{ animation: "fadeIn 0.2s ease-out" }}
+      />
+      <div
+        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999] w-[90vw] max-w-lg bg-white rounded-2xl shadow-2xl border border-border-light overflow-hidden"
+        style={{ animation: "fadeIn 0.25s ease-out" }}
+      >
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border-light">
+          <h2 className="font-display text-xl text-text-primary">How Your Score Works</h2>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-black/5 transition-colors text-text-muted hover:text-text-primary"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="px-6 py-4 space-y-1">
+          <p className="text-sm text-text-secondary mb-4">
+            Your health score is a composite of profit margin, cash runway, receivables, and cash flow — the same factors a financial advisor would look at.
+          </p>
+          {tiers.map((tier) => (
+            <div key={tier.label} className={`flex items-start gap-3 p-3 rounded-xl ${tier.bg}`}>
+              <div className="flex-shrink-0 mt-0.5">
+                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: tier.color }} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-baseline gap-2 mb-0.5">
+                  <span className="text-sm font-semibold text-text-primary">{tier.label}</span>
+                  <span className="text-xs text-text-muted">{tier.range}</span>
+                </div>
+                <p className="text-xs leading-relaxed text-text-secondary">{tier.description}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="px-6 py-3 border-t border-border-light bg-background/50">
+          <p className="text-xs text-text-muted text-center">
+            Scores update automatically when your financial data changes.
+          </p>
+        </div>
+      </div>
+    </>
+  );
+}
+
 export default function DashboardPage() {
   const { user, loading: _authLoading } = useRequireAuth();
   const [loading, setLoading] = useState(true);
   const [assessment, setAssessment] = useState<HealthAssessment | null>(null);
+  const [rubricOpen, setRubricOpen] = useState(false);
+  const toggleRubric = useCallback(() => setRubricOpen((v) => !v), []);
 
   useEffect(() => {
     async function fetchLatestAssessment() {
@@ -334,8 +400,48 @@ export default function DashboardPage() {
       })
     : null;
 
+  // Pulse message — reflects health score tier
+  const pulseText = (() => {
+    if (loading || !assessment || !healthScore) return undefined;
+    const score = healthScore.totalScore;
+
+    const thriving = [
+      "You're in excellent shape. Strong margins, healthy cash reserves — keep doing what you're doing.",
+      "Your numbers look great. This is the kind of position where you can think about investing or growing.",
+      "Everything's clicking. Profit margins are solid, cash is healthy, and receivables are under control.",
+    ];
+    const solid = [
+      "Things are looking good overall. There might be one area to watch, but you're in a strong position.",
+      "Solid financial health. You've got room to grow — just keep an eye on the details.",
+      "Your business is in good shape. A few small tweaks could take you from good to great.",
+    ];
+    const needsAttention = [
+      "Your business is okay, but a couple of things could become problems if they're not addressed soon.",
+      "Not bad, but your cash runway or receivables might need a closer look. Worth digging in.",
+      "There are some areas that need attention — nothing urgent yet, but don't let them slide.",
+    ];
+    const atRisk = [
+      "Multiple areas need attention. Let's make a plan — margins or cash reserves could use some work.",
+      "Your finances are showing some strain. Focus on the biggest gap first and work from there.",
+      "Things are tight. Take a look at where cash is going and what you can tighten up.",
+    ];
+    const critical = [
+      "Your finances need immediate attention. Cash could run out soon — focus on stabilizing first.",
+      "This is a critical moment. Expenses may be outpacing revenue. Let's focus on the essentials.",
+      "Urgent: your numbers are in a tough spot. Prioritize cash flow and cut what you can.",
+    ];
+
+    const pick = (arr: string[]) => arr[Math.floor(score) % arr.length];
+
+    if (score >= 90) return pick(thriving);
+    if (score >= 75) return pick(solid);
+    if (score >= 60) return pick(needsAttention);
+    if (score >= 40) return pick(atRisk);
+    return pick(critical);
+  })();
+
   return (
-    <AppLayout>
+    <AppLayout pulseMessage={pulseText}>
       <div className="space-y-2xl">
         {/* Greeting Section - Editorial style with staggered reveal */}
         <div
@@ -428,10 +534,18 @@ export default function DashboardPage() {
 
             <div className="relative z-10 p-2xl">
               {/* Section Label */}
-              <div className="mb-lg animate-fadeIn" style={{ animationDelay: "500ms" }}>
+              <div className="mb-lg animate-fadeIn flex items-center gap-2" style={{ animationDelay: "500ms" }}>
                 <span className="text-small font-body tracking-[0.15em] uppercase text-orange font-semibold">
                   Your Business Health
                 </span>
+                <button
+                  onClick={toggleRubric}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium text-text-muted hover:text-orange bg-orange/5 hover:bg-orange/10 transition-colors"
+                  title="How is this scored?"
+                >
+                  <Icon icon="ph:info-bold" className="w-3.5 h-3.5" />
+                  <span>How is this scored?</span>
+                </button>
               </div>
 
               <div className="grid md:grid-cols-2 gap-2xl items-center">
@@ -752,19 +866,7 @@ export default function DashboardPage() {
                 </table>
               </div>
             </div>
-          ) : (
-            <div
-              className="bg-surface rounded-xl px-2xl py-lg border border-background shadow-sm animate-fadeIn"
-              style={{ animationDelay: "1100ms" }}
-            >
-              <p className="text-body text-text-secondary">
-                <Link href="/data" className="text-orange hover:underline font-medium">
-                  Add your financial data
-                </Link>{" "}
-                to see your P&L snapshot
-              </p>
-            </div>
-          )
+          ) : null
         )}
 
         {/* Income Trend */}
@@ -825,6 +927,8 @@ export default function DashboardPage() {
           )
         )}
       </div>
+
+      <ScoreRubricModal open={rubricOpen} onClose={() => setRubricOpen(false)} />
 
       <style jsx>{`
         @keyframes fadeIn {

@@ -6,9 +6,11 @@ import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { Icon } from "@iconify/react";
 import { useAuth } from "@/contexts/AuthContext";
+import { PulseAssistant } from "@/components/PulseAssistant";
 
 interface AppLayoutProps {
   children: ReactNode;
+  pulseMessage?: string;
 }
 
 interface NavItem {
@@ -47,9 +49,26 @@ const navSections: NavSection[] = [
   },
 ];
 
-export function AppLayout({ children }: AppLayoutProps) {
+const PULSE_MESSAGES: Record<string, string> = {
+  "/reports/pl": "This is your profit breakdown — where your money comes in and where it goes.",
+  "/reports/cashflow": "Here's how cash is moving through your business this period.",
+  "/reports/balance-sheet": "A snapshot of what you own, what you owe, and what's left over.",
+  "/scenarios": "Run some what-ifs here — I'll crunch the numbers for you.",
+  "/data": "This is where your numbers live. Upload a spreadsheet or enter them manually.",
+};
+
+const DEFAULT_PULSE_MESSAGE = "Hey there! I'm Pulse — your financial buddy. I'll keep you posted on how things are going.";
+
+function getPulseMessage(pathname: string): string {
+  for (const [path, msg] of Object.entries(PULSE_MESSAGES)) {
+    if (pathname.startsWith(path)) return msg;
+  }
+  return DEFAULT_PULSE_MESSAGE;
+}
+
+export function AppLayout({ children, pulseMessage }: AppLayoutProps) {
   const pathname = usePathname();
-  const router = useRouter();
+  const _router = useRouter();
   const { user, signOut } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -360,6 +379,12 @@ export function AppLayout({ children }: AppLayoutProps) {
           {children}
         </main>
       </div>
+
+      {/* Pulse Assistant */}
+      <PulseAssistant
+        message={pulseMessage || getPulseMessage(pathname || "")}
+        page={pathname || ""}
+      />
 
       {/* Animations */}
       <style jsx>{`
