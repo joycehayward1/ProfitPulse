@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import * as XLSX from "xlsx";
+import { Icon } from "@iconify/react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/Button";
 import { CurrencyInput } from "@/components/ui/CurrencyInput";
@@ -12,27 +13,6 @@ import { useToast } from "@/components/ui/Toast";
 
 type DataSource = "upload" | "quickbooks" | "manual" | null;
 type Step = "choose-source" | "upload" | "review" | "context" | "processing";
-
-interface ExtractedData {
-  cash: string;
-  revenue: string;
-  expenses: string;
-  receivables: string;
-  payables: string;
-  ytdRevenue: string;
-  ytdExpenses: string;
-  inventoryValue: string;
-  sources: {
-    cash?: string;
-    revenue?: string;
-    expenses?: string;
-    receivables?: string;
-    payables?: string;
-    ytdRevenue?: string;
-    ytdExpenses?: string;
-    inventoryValue?: string;
-  };
-}
 
 interface QuickBooksSyncMetrics {
   cash: number;
@@ -59,6 +39,79 @@ interface QuickBooksSyncResponse {
   error?: string;
 }
 
+interface AISnapshotData {
+  period_date: string | null;
+  total_income: number | null;
+  gross_profit: number | null;
+  total_expenses: number | null;
+  net_operating_income: number | null;
+  net_profit: number | null;
+  gross_profit_margin: number | null;
+  net_profit_margin: number | null;
+  current_assets: number | null;
+  fixed_assets: number | null;
+  total_assets: number | null;
+  current_liabilities: number | null;
+  long_term_liabilities: number | null;
+  equity: number | null;
+  operating_activities: number | null;
+  investing_activities: number | null;
+  financing_activities: number | null;
+  net_cash_flow: number | null;
+  working_capital: number | null;
+  current_ratio: number | null;
+  roa: number | null;
+  roe: number | null;
+}
+
+interface SnapshotField {
+  key: keyof AISnapshotData;
+  label: string;
+  format: "currency" | "percent" | "ratio";
+}
+
+const SNAPSHOT_SECTIONS: Array<{
+  title: string;
+  fields: SnapshotField[];
+}> = [
+  {
+    title: "Profit & Loss",
+    fields: [
+      { key: "total_income", label: "Total Income", format: "currency" },
+      { key: "gross_profit", label: "Gross Profit", format: "currency" },
+      { key: "total_expenses", label: "Total Expenses", format: "currency" },
+      { key: "net_operating_income", label: "Net Operating Income", format: "currency" },
+      { key: "net_profit", label: "Net Profit", format: "currency" },
+      { key: "gross_profit_margin", label: "Gross Profit Margin", format: "percent" },
+      { key: "net_profit_margin", label: "Net Profit Margin", format: "percent" },
+    ],
+  },
+  {
+    title: "Balance Sheet",
+    fields: [
+      { key: "current_assets", label: "Current Assets", format: "currency" },
+      { key: "fixed_assets", label: "Fixed Assets", format: "currency" },
+      { key: "total_assets", label: "Total Assets", format: "currency" },
+      { key: "current_liabilities", label: "Current Liabilities", format: "currency" },
+      { key: "long_term_liabilities", label: "Long-term Liabilities", format: "currency" },
+      { key: "equity", label: "Equity", format: "currency" },
+      { key: "working_capital", label: "Working Capital", format: "currency" },
+      { key: "current_ratio", label: "Current Ratio", format: "ratio" },
+      { key: "roa", label: "Return on Assets (ROA)", format: "percent" },
+      { key: "roe", label: "Return on Equity (ROE)", format: "percent" },
+    ],
+  },
+  {
+    title: "Cash Flow",
+    fields: [
+      { key: "operating_activities", label: "Operating Activities", format: "currency" },
+      { key: "investing_activities", label: "Investing Activities", format: "currency" },
+      { key: "financing_activities", label: "Financing Activities", format: "currency" },
+      { key: "net_cash_flow", label: "Net Cash Flow", format: "currency" },
+    ],
+  },
+];
+
 interface DatabaseErrorLike {
   code?: string;
   message?: string;
@@ -78,21 +131,7 @@ function isMissingAssessmentColumnError(error: unknown): boolean {
   );
 }
 
-function isMissingFinancialDataColumnError(error: unknown): boolean {
-  const dbError = error as DatabaseErrorLike | null;
-  const message = (dbError?.message || "").toLowerCase();
-  if (dbError?.code === "PGRST204") return true;
-
-  return (
-    message.includes("payables") ||
-    message.includes("ytd_revenue") ||
-    message.includes("ytd_expenses") ||
-    message.includes("inventory_value") ||
-    message.includes("expense_breakdown")
-  );
-}
-
-export default function AssessmentPage() {
+function AssessmentContent() {
   const { user, loading: authLoading } = useRequireAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -109,24 +148,12 @@ export default function AssessmentPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [qbConnected, setQbConnected] = useState(false);
   const [qbRealmId, setQbRealmId] = useState<string | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [qbConnecting, setQbConnecting] = useState(false);
   const [qbSyncing, setQbSyncing] = useState(false);
   const [qbSyncedAt, setQbSyncedAt] = useState<string | null>(null);
   const [qbSyncPeriodText, setQbSyncPeriodText] = useState<string | null>(null);
   const [checkingExistingAssessment, setCheckingExistingAssessment] = useState(true);
-
-  // Extracted data from AI
-  const [extractedData, setExtractedData] = useState<ExtractedData>({
-    cash: "",
-    revenue: "",
-    expenses: "",
-    receivables: "",
-    payables: "",
-    ytdRevenue: "",
-    ytdExpenses: "",
-    inventoryValue: "",
-    sources: {},
-  });
 
   // User-confirmed data
   const [formData, setFormData] = useState({
@@ -151,6 +178,23 @@ export default function AssessmentPage() {
     marketing: "",
     other: "",
   });
+
+  // AI snapshot data (upload flow)
+  const [parsedSnapshot, setParsedSnapshot] = useState<AISnapshotData | null>(null);
+  const [confirmPeriod, setConfirmPeriod] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  });
+  const [editingField, setEditingField] = useState<string | null>(null);
+
+  function formatCurrency(amount: number) {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  }
 
   const getAuthHeaders = useCallback(async (): Promise<Record<string, string> | null> => {
     const { getInsForgeClient } = await import("@/lib/insforge");
@@ -217,28 +261,6 @@ export default function AssessmentPage() {
         ytdRevenue: formatMetricForInput(metrics.ytdRevenue),
         ytdExpenses: formatMetricForInput(metrics.ytdExpenses),
         inventoryValue: formatMetricForInput(metrics.inventoryValue),
-      }));
-
-      setExtractedData((prev) => ({
-        ...prev,
-        cash: metrics.cash > 0 ? metrics.cash.toString() : "",
-        revenue: metrics.revenue > 0 ? metrics.revenue.toString() : "",
-        expenses: metrics.expenses > 0 ? metrics.expenses.toString() : "",
-        receivables: metrics.receivables > 0 ? metrics.receivables.toString() : "",
-        payables: metrics.payables > 0 ? metrics.payables.toString() : "",
-        ytdRevenue: metrics.ytdRevenue > 0 ? metrics.ytdRevenue.toString() : "",
-        ytdExpenses: metrics.ytdExpenses > 0 ? metrics.ytdExpenses.toString() : "",
-        inventoryValue: metrics.inventoryValue > 0 ? metrics.inventoryValue.toString() : "",
-        sources: {
-          ...(metrics.cash > 0 ? { cash: "QuickBooks" } : {}),
-          ...(metrics.revenue > 0 ? { revenue: "QuickBooks" } : {}),
-          ...(metrics.expenses > 0 ? { expenses: "QuickBooks" } : {}),
-          ...(metrics.receivables > 0 ? { receivables: "QuickBooks" } : {}),
-          ...(metrics.payables > 0 ? { payables: "QuickBooks" } : {}),
-          ...(metrics.ytdRevenue > 0 ? { ytdRevenue: "QuickBooks" } : {}),
-          ...(metrics.ytdExpenses > 0 ? { ytdExpenses: "QuickBooks" } : {}),
-          ...(metrics.inventoryValue > 0 ? { inventoryValue: "QuickBooks" } : {}),
-        },
       }));
 
       setQbSyncedAt(payload.pulledAt || new Date().toISOString());
@@ -370,6 +392,7 @@ export default function AssessmentPage() {
     // QuickBooks will be handled when credentials available
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async function handleQuickBooksConnect() {
     if (qbConnected) {
       if (!qbSyncedAt) {
@@ -455,7 +478,7 @@ export default function AssessmentPage() {
     );
 
     if (validFiles.length === 0) {
-      showToast("error", "Please upload CSV or Excel files");
+      showToast("error", "Please upload CSV files");
       return;
     }
 
@@ -466,130 +489,37 @@ export default function AssessmentPage() {
     const { getInsForgeClient } = await import("@/lib/insforge");
     const client = getInsForgeClient();
 
-    const extracted: ExtractedData = {
-      cash: "",
-      revenue: "",
-      expenses: "",
-      receivables: "",
-      payables: "",
-      ytdRevenue: "",
-      ytdExpenses: "",
-      inventoryValue: "",
-      sources: {},
-    };
+    // Read all files and concatenate content for a single AI call
+    let allContent = "";
 
     for (const file of validFiles) {
-      await new Promise<void>((resolve) => {
+      const content = await new Promise<string>((resolve) => {
         const isExcel = file.name.endsWith(".xlsx") || file.name.endsWith(".xls");
         const reader = new FileReader();
 
-        reader.onload = async (e) => {
+        reader.onload = (e) => {
           try {
             let csvText = "";
-
             if (isExcel) {
-              // Convert Excel to CSV first
               const data = new Uint8Array(e.target?.result as ArrayBuffer);
               const workbook = XLSX.read(data, { type: "array" });
-              const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-              csvText = XLSX.utils.sheet_to_csv(firstSheet);
+              // Combine ALL sheets so AI can extract from P&L, Balance Sheet, Cash Flow, etc.
+              const parts: string[] = [];
+              for (const name of workbook.SheetNames) {
+                const sheet = workbook.Sheets[name];
+                const csv = XLSX.utils.sheet_to_csv(sheet);
+                if (csv.trim()) {
+                  parts.push(`=== SHEET: ${name} ===\n${csv}`);
+                }
+              }
+              csvText = parts.join("\n\n");
             } else {
-              // Already CSV
               csvText = e.target?.result as string;
             }
-
-            console.log(`🤖 Using AI to analyze ${file.name}...`);
-
-            // Use AI to extract financial data
-            try {
-              const aiResponse = await client.ai.chat.completions.create({
-                model: "anthropic/claude-sonnet-4.5",
-                messages: [
-                  {
-                    role: "user",
-                    content: `Analyze this financial spreadsheet and extract these 8 metrics (if present):
-
-1. **Current Cash Balance** - The amount of cash the business has right now
-2. **Monthly Revenue** - Average monthly sales/income
-3. **Monthly Expenses** - Average monthly costs/spending
-4. **Accounts Receivable** - Money owed to the business by customers
-5. **Accounts Payable** - Money the business owes to vendors/suppliers
-6. **Year-to-Date Revenue** - Total revenue earned so far this fiscal year
-7. **Year-to-Date Expenses** - Total expenses incurred so far this fiscal year
-8. **Inventory Value** - Current value of inventory on hand (if applicable)
-
-Spreadsheet data:
-${csvText}
-
-Return ONLY a JSON object with these exact keys (use empty string "" if not found):
-{
-  "cash": "number only, no $ or commas",
-  "revenue": "number only, no $ or commas",
-  "expenses": "number only, no $ or commas",
-  "receivables": "number only, no $ or commas",
-  "payables": "number only, no $ or commas",
-  "ytdRevenue": "number only, no $ or commas",
-  "ytdExpenses": "number only, no $ or commas",
-  "inventoryValue": "number only, no $ or commas"
-}`,
-                  },
-                ],
-                temperature: 0.3,
-                maxTokens: 500,
-              });
-
-              const aiContent = aiResponse.choices[0]?.message?.content || "{}";
-              console.log(`🤖 AI response for ${file.name}:`, aiContent);
-
-              // Parse AI response
-              const jsonMatch = aiContent.match(/\{[\s\S]*\}/);
-              if (jsonMatch) {
-                const aiData = JSON.parse(jsonMatch[0]);
-
-                // Update extracted data (only if not already set)
-                if (aiData.cash && !extracted.cash) {
-                  extracted.cash = aiData.cash;
-                  extracted.sources.cash = file.name;
-                }
-                if (aiData.revenue && !extracted.revenue) {
-                  extracted.revenue = aiData.revenue;
-                  extracted.sources.revenue = file.name;
-                }
-                if (aiData.expenses && !extracted.expenses) {
-                  extracted.expenses = aiData.expenses;
-                  extracted.sources.expenses = file.name;
-                }
-                if (aiData.receivables && !extracted.receivables) {
-                  extracted.receivables = aiData.receivables;
-                  extracted.sources.receivables = file.name;
-                }
-                if (aiData.payables && !extracted.payables) {
-                  extracted.payables = aiData.payables;
-                  extracted.sources.payables = file.name;
-                }
-                if (aiData.ytdRevenue && !extracted.ytdRevenue) {
-                  extracted.ytdRevenue = aiData.ytdRevenue;
-                  extracted.sources.ytdRevenue = file.name;
-                }
-                if (aiData.ytdExpenses && !extracted.ytdExpenses) {
-                  extracted.ytdExpenses = aiData.ytdExpenses;
-                  extracted.sources.ytdExpenses = file.name;
-                }
-                if (aiData.inventoryValue && !extracted.inventoryValue) {
-                  extracted.inventoryValue = aiData.inventoryValue;
-                  extracted.sources.inventoryValue = file.name;
-                }
-
-                console.log(`✅ Extracted from ${file.name}:`, aiData);
-              }
-            } catch (aiError) {
-              console.error(`❌ AI extraction failed for ${file.name}:`, aiError);
-            }
-
-            resolve();
+            resolve(csvText);
           } catch (error) {
-            console.error(`❌ Error processing ${file.name}:`, error);
-            resolve();
+            console.error(`Error reading ${file.name}:`, error);
+            resolve("");
           }
         };
 
@@ -599,47 +529,114 @@ Return ONLY a JSON object with these exact keys (use empty string "" if not foun
           reader.readAsText(file);
         }
       });
+
+      if (content) {
+        allContent += `\n--- ${file.name} ---\n${content}`;
+      }
     }
 
-    // Debug: Show final aggregated data
-    console.log("🎯 FINAL AGGREGATED DATA:", extracted);
+    if (!allContent.trim()) {
+      showToast("error", "Could not read any data from the uploaded files.");
+      setIsProcessing(false);
+      return;
+    }
 
-    setExtractedData(extracted);
+    console.log("🤖 Using AI to analyze uploaded files...");
 
-    // Pre-fill form with extracted data
-    setFormData((prev) => ({
-      ...prev,
-      cash: extracted.cash || prev.cash,
-      revenue: extracted.revenue || prev.revenue,
-      expenses: extracted.expenses || prev.expenses,
-      receivables: extracted.receivables || prev.receivables,
-      payables: extracted.payables || prev.payables,
-      ytdRevenue: extracted.ytdRevenue || prev.ytdRevenue,
-      ytdExpenses: extracted.ytdExpenses || prev.ytdExpenses,
-      inventoryValue: extracted.inventoryValue || prev.inventoryValue,
-    }));
+    try {
+      const aiResponse = await client.ai.chat.completions.create({
+        model: "anthropic/claude-sonnet-4.6",
+        messages: [
+          {
+            role: "user",
+            content: `You are a financial data parser. The spreadsheet may contain data across multiple sheets (Profit & Loss, Balance Sheet, Cash Flow). Extract data from ALL sheets/sections.
+
+Return ONLY a JSON object (no markdown, no backticks, no explanation) with these fields. Use null for any field truly not found. All monetary values as plain numbers (no $ or commas). IMPORTANT: Return percentages and ratios as DECIMALS (e.g. 68.3% → 0.683, NOT 68.3).
+
+{
+  "period_date": "YYYY-MM-DD last day of the month this data covers",
+  "total_income": total revenue/income/sales (number or null),
+  "gross_profit": gross profit (number or null),
+  "total_expenses": total expenses/operating expenses (number or null),
+  "net_operating_income": operating income/EBIT (number or null),
+  "net_profit": net income/net profit/bottom line (number or null),
+  "gross_profit_margin": as decimal e.g. 0.683 (number or null),
+  "net_profit_margin": as decimal e.g. 0.157 (number or null),
+  "current_assets": cash + receivables + inventory + other current assets (number or null),
+  "fixed_assets": property/equipment/long-term assets (number or null),
+  "total_assets": total assets (number or null),
+  "current_liabilities": AP + short-term debt + other current liabilities (number or null),
+  "long_term_liabilities": long-term debt/notes payable (number or null),
+  "equity": owner equity/retained earnings/shareholders equity (number or null),
+  "operating_activities": cash from operations (number or null),
+  "investing_activities": cash from investing (number or null),
+  "financing_activities": cash from financing (number or null),
+  "net_cash_flow": net change in cash (number or null),
+  "working_capital": current_assets minus current_liabilities — calculate if not explicit (number or null),
+  "current_ratio": current_assets / current_liabilities — calculate if not explicit (number or null),
+  "roa": net_profit / total_assets as decimal — calculate if not explicit (number or null),
+  "roe": net_profit / equity as decimal — calculate if not explicit (number or null)
+}
+
+Look for common labels: "Total Revenue", "Sales", "Income", "COGS", "Cost of Goods Sold", "Operating Expenses", "Cash and Cash Equivalents", "Accounts Receivable", "Accounts Payable", "Total Current Assets", "Fixed Assets", "Property Plant & Equipment", "Total Liabilities", "Owner's Equity", "Retained Earnings", "Cash from Operations", "Cash from Investing", "Cash from Financing".
+
+If working_capital, current_ratio, roa, or roe are not explicitly stated but can be calculated from other extracted values, calculate them.
+
+Spreadsheet content:
+${allContent}`,
+          },
+        ],
+        maxTokens: 2000,
+      });
+
+      const aiContent = aiResponse.choices[0]?.message?.content || "";
+      console.log("🤖 AI response:", aiContent);
+
+      const jsonMatch = aiContent.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        showToast("error", "Could not parse financial data from your files. Try a different file.");
+        setIsProcessing(false);
+        return;
+      }
+
+      const parsed = JSON.parse(jsonMatch[0]) as AISnapshotData;
+
+      // Fix percentages if AI returned them as whole numbers (68.3) instead of decimals (0.683)
+      const pctFields: (keyof AISnapshotData)[] = [
+        "gross_profit_margin", "net_profit_margin", "roa", "roe",
+      ];
+      for (const f of pctFields) {
+        const v = parsed[f];
+        if (typeof v === "number" && (v > 1 || v < -1)) {
+          (parsed as unknown as Record<string, number | null>)[f] = v / 100;
+        }
+      }
+
+      setParsedSnapshot(parsed);
+
+      // Set confirm period from AI-detected date
+      if (parsed.period_date) {
+        const d = new Date(parsed.period_date);
+        if (!isNaN(d.getTime())) {
+          const year = d.getFullYear();
+          const month = String(d.getMonth() + 1).padStart(2, "0");
+          setConfirmPeriod(`${year}-${month}`);
+        }
+      }
+
+      const foundCount = Object.entries(parsed).filter(
+        ([k, v]) => k !== "period_date" && v != null
+      ).length;
+
+      console.log(`✅ Found ${foundCount} of 21 financial fields`);
+      showToast("success", `Found ${foundCount} financial fields in your files!`);
+    } catch (aiError) {
+      console.error("AI extraction failed:", aiError);
+      showToast("error", "AI analysis failed. Please try again.");
+    }
 
     setIsProcessing(false);
     setCurrentStep("review");
-
-    const foundCount = [
-      extracted.cash,
-      extracted.revenue,
-      extracted.expenses,
-      extracted.receivables,
-      extracted.payables,
-      extracted.ytdRevenue,
-      extracted.ytdExpenses,
-      extracted.inventoryValue,
-    ].filter(Boolean).length;
-
-    const totalMetrics = 8;
-    console.log(`✅ Found ${foundCount} of ${totalMetrics} metrics`);
-
-    showToast(
-      "success",
-      `Found ${foundCount} financial metrics in your files!`
-    );
   }
 
   // Submit Assessment
@@ -652,175 +649,235 @@ Return ONLY a JSON object with these exact keys (use empty string "" if not foun
       const { getInsForgeClient } = await import("@/lib/insforge");
       const client = getInsForgeClient();
 
-      // Parse values
-      const cash = parseFloat(formData.cash.replace(/,/g, "")) || 0;
-      const revenue = parseFloat(formData.revenue.replace(/,/g, "")) || 0;
-      const expenses = parseFloat(formData.expenses.replace(/,/g, "")) || 0;
-      const receivables =
-        parseFloat(formData.receivables.replace(/,/g, "")) || 0;
-      const payables = parseFloat(formData.payables.replace(/,/g, "")) || 0;
-      const ytdRevenue = parseFloat(formData.ytdRevenue.replace(/,/g, "")) || 0;
-      const ytdExpenses = parseFloat(formData.ytdExpenses.replace(/,/g, "")) || 0;
-      const inventoryValue = parseFloat(formData.inventoryValue.replace(/,/g, "")) || 0;
+      // Upload flow with full snapshot
+      if (dataSource === "upload" && parsedSnapshot) {
+        // Derive basic fields from snapshot for health score
+        const cash = parsedSnapshot.current_assets ?? 0;
+        const revenue = parsedSnapshot.total_income ?? 0;
+        const expenses = parsedSnapshot.total_expenses ?? 0;
+        const receivables = 0; // Not a discrete field in snapshot
 
-      // Parse expense breakdown
-      const payrollAmount = parseFloat(expenseBreakdown.payroll.replace(/,/g, "")) || 0;
-      const rentAmount = parseFloat(expenseBreakdown.rent.replace(/,/g, "")) || 0;
-      const suppliesAmount = parseFloat(expenseBreakdown.supplies.replace(/,/g, "")) || 0;
-      const marketingAmount = parseFloat(expenseBreakdown.marketing.replace(/,/g, "")) || 0;
-      const otherAmount = parseFloat(expenseBreakdown.other.replace(/,/g, "")) || 0;
+        const healthScore = calculateHealthScore(cash, revenue, expenses, receivables);
 
-      // Calculate health score
-      const healthScore = calculateHealthScore(
-        cash,
-        revenue,
-        expenses,
-        receivables
-      );
-
-      const basePayload = {
-        user_id: user.id,
-        cash_on_hand: cash,
-        monthly_revenue: revenue,
-        monthly_expenses: expenses,
-        accounts_receivable: receivables,
-        employee_count: parseInt(formData.employeeCount) || 0,
-        biggest_worry: formData.biggestWorry || null,
-        health_score: healthScore,
-      };
-
-      const extendedPayload = {
-        ...basePayload,
-        accounts_payable: payables,
-        ytd_revenue: ytdRevenue,
-        ytd_expenses: ytdExpenses,
-        inventory_value: inventoryValue,
-        expense_breakdown:
-          payrollAmount || rentAmount || suppliesAmount || marketingAmount || otherAmount
-            ? {
-                rent: rentAmount,
-                payroll: payrollAmount,
-                supplies: suppliesAmount,
-                marketing: marketingAmount,
-                other: otherAmount,
-              }
-            : null,
-      };
-
-      const sourceForFinancialData =
-        dataSource === "quickbooks"
-          ? "quickbooks"
-          : dataSource === "upload"
-          ? "spreadsheet"
-          : "manual";
-
-      const now = new Date();
-      const periodDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
-
-      const financialBasePayload = {
-        user_id: user.id,
-        period_date: periodDate,
-        cash_balance: cash,
-        revenue,
-        expenses,
-        receivables,
-        data_source: sourceForFinancialData,
-      };
-
-      const financialExtendedPayload = {
-        ...financialBasePayload,
-        payables,
-        ytd_revenue: ytdRevenue,
-        ytd_expenses: ytdExpenses,
-        inventory_value: inventoryValue,
-        expense_breakdown:
-          payrollAmount || rentAmount || suppliesAmount || marketingAmount || otherAmount
-            ? {
-                rent: rentAmount,
-                payroll: payrollAmount,
-                supplies: suppliesAmount,
-                marketing: marketingAmount,
-                other: otherAmount,
-              }
-            : null,
-      };
-
-      // Save assessment (with backward compatibility for older schemas)
-      let { error } = await client.database
-        .from("health_assessments")
-        .insert(extendedPayload);
-
-      if (error && isMissingAssessmentColumnError(error)) {
-        console.warn("health_assessments missing newer columns; falling back to legacy insert", error);
-        const retry = await client.database
-          .from("health_assessments")
-          .insert(basePayload);
-        error = retry.error;
-      }
-
-      if (error) {
-        console.error("Error saving assessment:", error);
-        const dbError = error as DatabaseErrorLike;
-        showToast(
-          "error",
-          dbError.message
-            ? `Failed to save assessment: ${dbError.message}`
-            : "Failed to save assessment"
-        );
-        return;
-      }
-
-      // Save matching snapshot so Data and Scenarios stay in sync with assessment answers.
-      let financialInsert = await client.database
-        .from("financial_data")
-        .insert(financialExtendedPayload);
-
-      if (financialInsert.error && isMissingFinancialDataColumnError(financialInsert.error)) {
-        console.warn(
-          "financial_data missing newer columns; falling back to legacy insert",
-          financialInsert.error
-        );
-        financialInsert = await client.database
-          .from("financial_data")
-          .insert(financialBasePayload);
-      }
-
-      if (financialInsert.error) {
-        console.error("Error saving financial snapshot:", financialInsert.error);
-        const dbError = financialInsert.error as DatabaseErrorLike;
-        showToast(
-          "error",
-          dbError.message
-            ? `Assessment saved, but data snapshot failed: ${dbError.message}`
-            : "Assessment saved, but data snapshot failed."
-        );
-        return;
-      }
-
-      // Store in sessionStorage as backup
-      sessionStorage.setItem(
-        "assessment_data",
-        JSON.stringify({
+        const basePayload = {
+          user_id: user.id,
           cash_on_hand: cash,
           monthly_revenue: revenue,
           monthly_expenses: expenses,
           accounts_receivable: receivables,
+          employee_count: parseInt(formData.employeeCount) || 0,
+          biggest_worry: formData.biggestWorry || null,
+          health_score: healthScore,
+        };
+
+        // Save health assessment
+        const { error } = await client.database
+          .from("health_assessments")
+          .insert(basePayload);
+
+        if (error) {
+          console.error("Error saving assessment:", error);
+          const dbError = error as DatabaseErrorLike;
+          showToast(
+            "error",
+            dbError.message
+              ? `Failed to save assessment: ${dbError.message}`
+              : "Failed to save assessment"
+          );
+          return;
+        }
+
+        // Upsert to financial_snapshots with full 22-field schema
+        const [year, month] = confirmPeriod.split("-").map(Number);
+        const lastDay = new Date(year, month, 0).getDate();
+        const periodDate = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+
+        const snapshotData = {
+          user_id: user.id,
+          period_date: periodDate,
+          data_source: "spreadsheet",
+          total_income: parsedSnapshot.total_income,
+          gross_profit: parsedSnapshot.gross_profit,
+          total_expenses: parsedSnapshot.total_expenses,
+          net_operating_income: parsedSnapshot.net_operating_income,
+          net_profit: parsedSnapshot.net_profit,
+          gross_profit_margin: parsedSnapshot.gross_profit_margin,
+          net_profit_margin: parsedSnapshot.net_profit_margin,
+          current_assets: parsedSnapshot.current_assets,
+          fixed_assets: parsedSnapshot.fixed_assets,
+          total_assets: parsedSnapshot.total_assets,
+          current_liabilities: parsedSnapshot.current_liabilities,
+          long_term_liabilities: parsedSnapshot.long_term_liabilities,
+          equity: parsedSnapshot.equity,
+          operating_activities: parsedSnapshot.operating_activities,
+          investing_activities: parsedSnapshot.investing_activities,
+          financing_activities: parsedSnapshot.financing_activities,
+          net_cash_flow: parsedSnapshot.net_cash_flow,
+          working_capital: parsedSnapshot.working_capital,
+          current_ratio: parsedSnapshot.current_ratio,
+          roa: parsedSnapshot.roa,
+          roe: parsedSnapshot.roe,
+        };
+
+        const { error: snapshotError } = await client.database
+          .from("financial_snapshots")
+          .upsert([snapshotData], { onConflict: "user_id,period_date" });
+
+        if (snapshotError) {
+          console.error("Error saving financial snapshot:", snapshotError);
+          const dbError = snapshotError as DatabaseErrorLike;
+          showToast(
+            "error",
+            dbError.message
+              ? `Assessment saved, but snapshot failed: ${dbError.message}`
+              : "Assessment saved, but snapshot failed."
+          );
+          return;
+        }
+
+        // Store in sessionStorage as backup
+        sessionStorage.setItem(
+          "assessment_data",
+          JSON.stringify({
+            cash_on_hand: cash,
+            monthly_revenue: revenue,
+            monthly_expenses: expenses,
+            accounts_receivable: receivables,
+            employee_count: parseInt(formData.employeeCount) || 0,
+            biggest_worry: formData.biggestWorry,
+            health_score: healthScore,
+          })
+        );
+      } else {
+        // Manual / QuickBooks flow (original logic)
+        const cash = parseFloat(formData.cash.replace(/,/g, "")) || 0;
+        const revenue = parseFloat(formData.revenue.replace(/,/g, "")) || 0;
+        const expenses = parseFloat(formData.expenses.replace(/,/g, "")) || 0;
+        const receivables =
+          parseFloat(formData.receivables.replace(/,/g, "")) || 0;
+        const payables = parseFloat(formData.payables.replace(/,/g, "")) || 0;
+        const ytdRevenue = parseFloat(formData.ytdRevenue.replace(/,/g, "")) || 0;
+        const ytdExpenses = parseFloat(formData.ytdExpenses.replace(/,/g, "")) || 0;
+        const inventoryValue = parseFloat(formData.inventoryValue.replace(/,/g, "")) || 0;
+
+        const payrollAmount = parseFloat(expenseBreakdown.payroll.replace(/,/g, "")) || 0;
+        const rentAmount = parseFloat(expenseBreakdown.rent.replace(/,/g, "")) || 0;
+        const suppliesAmount = parseFloat(expenseBreakdown.supplies.replace(/,/g, "")) || 0;
+        const marketingAmount = parseFloat(expenseBreakdown.marketing.replace(/,/g, "")) || 0;
+        const otherAmount = parseFloat(expenseBreakdown.other.replace(/,/g, "")) || 0;
+
+        const healthScore = calculateHealthScore(cash, revenue, expenses, receivables);
+
+        const basePayload = {
+          user_id: user.id,
+          cash_on_hand: cash,
+          monthly_revenue: revenue,
+          monthly_expenses: expenses,
+          accounts_receivable: receivables,
+          employee_count: parseInt(formData.employeeCount) || 0,
+          biggest_worry: formData.biggestWorry || null,
+          health_score: healthScore,
+        };
+
+        const extendedPayload = {
+          ...basePayload,
           accounts_payable: payables,
           ytd_revenue: ytdRevenue,
           ytd_expenses: ytdExpenses,
           inventory_value: inventoryValue,
-          expense_breakdown: payrollAmount || rentAmount || suppliesAmount || marketingAmount || otherAmount ? {
-            rent: rentAmount,
-            payroll: payrollAmount,
-            supplies: suppliesAmount,
-            marketing: marketingAmount,
-            other: otherAmount,
-          } : null,
-          employee_count: parseInt(formData.employeeCount) || 0,
-          biggest_worry: formData.biggestWorry,
-          health_score: healthScore,
-        })
-      );
+          expense_breakdown:
+            payrollAmount || rentAmount || suppliesAmount || marketingAmount || otherAmount
+              ? {
+                  rent: rentAmount,
+                  payroll: payrollAmount,
+                  supplies: suppliesAmount,
+                  marketing: marketingAmount,
+                  other: otherAmount,
+                }
+              : null,
+        };
+
+        const sourceForFinancialData =
+          dataSource === "quickbooks"
+            ? "quickbooks"
+            : "manual";
+
+        const now = new Date();
+        const periodDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+
+        let { error } = await client.database
+          .from("health_assessments")
+          .insert(extendedPayload);
+
+        if (error && isMissingAssessmentColumnError(error)) {
+          console.warn("health_assessments missing newer columns; falling back to legacy insert", error);
+          const retry = await client.database
+            .from("health_assessments")
+            .insert(basePayload);
+          error = retry.error;
+        }
+
+        if (error) {
+          console.error("Error saving assessment:", error);
+          const dbError = error as DatabaseErrorLike;
+          showToast(
+            "error",
+            dbError.message
+              ? `Failed to save assessment: ${dbError.message}`
+              : "Failed to save assessment"
+          );
+          return;
+        }
+
+        const { error: snapshotError } = await client.database
+          .from("financial_snapshots")
+          .upsert([{
+            user_id: user.id,
+            period_date: periodDate,
+            data_source: sourceForFinancialData,
+            total_income: revenue,
+            total_expenses: expenses,
+            net_profit: revenue - expenses,
+            current_assets: cash,
+            current_liabilities: payables,
+          }], { onConflict: "user_id,period_date" });
+
+        if (snapshotError) {
+          console.error("Error saving financial snapshot:", snapshotError);
+          const dbError = snapshotError as DatabaseErrorLike;
+          showToast(
+            "error",
+            dbError.message
+              ? `Assessment saved, but data snapshot failed: ${dbError.message}`
+              : "Assessment saved, but data snapshot failed."
+          );
+          return;
+        }
+
+        sessionStorage.setItem(
+          "assessment_data",
+          JSON.stringify({
+            cash_on_hand: cash,
+            monthly_revenue: revenue,
+            monthly_expenses: expenses,
+            accounts_receivable: receivables,
+            accounts_payable: payables,
+            ytd_revenue: ytdRevenue,
+            ytd_expenses: ytdExpenses,
+            inventory_value: inventoryValue,
+            expense_breakdown: payrollAmount || rentAmount || suppliesAmount || marketingAmount || otherAmount ? {
+              rent: rentAmount,
+              payroll: payrollAmount,
+              supplies: suppliesAmount,
+              marketing: marketingAmount,
+              other: otherAmount,
+            } : null,
+            employee_count: parseInt(formData.employeeCount) || 0,
+            biggest_worry: formData.biggestWorry,
+            health_score: healthScore,
+          })
+        );
+      }
 
       showToast("success", "Assessment completed. Your dashboard is ready.");
       router.push("/dashboard");
@@ -869,7 +926,8 @@ Return ONLY a JSON object with these exact keys (use empty string "" if not foun
   }
 
   const canProceedToContext =
-    formData.cash && formData.revenue && formData.expenses;
+    (dataSource === "upload" && parsedSnapshot) ||
+    (formData.cash && formData.revenue && formData.expenses);
 
   if (authLoading || checkingExistingAssessment) {
     return (
@@ -924,7 +982,7 @@ Return ONLY a JSON object with these exact keys (use empty string "" if not foun
                         Upload Spreadsheets (Recommended)
                       </h3>
                       <p className="text-body text-text-secondary font-body mb-3">
-                        Upload your CSV or Excel files and let AI extract your
+                        Upload your CSV files and let AI extract your
                         financial data automatically.
                       </p>
                       <div className="inline-flex items-center gap-2 text-sm text-orange font-semibold">
@@ -947,16 +1005,13 @@ Return ONLY a JSON object with these exact keys (use empty string "" if not foun
                   </div>
                 </button>
 
-                {/* QuickBooks */}
-                <button
-                  onClick={handleQuickBooksConnect}
-                  disabled={qbConnecting}
-                  className={`group relative p-8 rounded-xl border-2 transition-all text-left ${
-                    qbConnected
-                      ? "bg-[#2CA01C]/[0.03] border-[#2CA01C] shadow-sm"
-                      : "bg-surface border-text-muted/20 hover:border-[#2CA01C] hover:shadow-md"
-                  } ${qbConnecting ? "opacity-70 cursor-not-allowed" : ""}`}
+                {/* QuickBooks - Coming Soon */}
+                <div
+                  className="group relative p-8 rounded-xl border-2 transition-all text-left bg-surface border-text-muted/20 opacity-70 cursor-default"
                 >
+                  <div className="absolute top-4 right-4 inline-flex items-center gap-1.5 px-3 py-1 bg-orange/10 rounded-full">
+                    <span className="text-xs font-semibold text-orange">Coming Soon</span>
+                  </div>
                   <div className="flex items-start gap-4">
                     <div className="w-12 h-12 flex items-center justify-center flex-shrink-0">
                       <Image
@@ -964,49 +1019,16 @@ Return ONLY a JSON object with these exact keys (use empty string "" if not foun
                         alt="QuickBooks"
                         width={48}
                         height={48}
-                        className="w-12 h-12 object-contain"
+                        className="w-12 h-12 object-contain grayscale"
                       />
                     </div>
                     <div className="flex-1">
-                      <h3 className="text-xl font-display text-text-primary mb-2 group-hover:text-[#2CA01C] transition-colors">
+                      <h3 className="text-xl font-display text-text-primary mb-2">
                         Connect QuickBooks
                       </h3>
-                      <p className="text-body text-text-secondary font-body">
-                        Automatically sync your QuickBooks data for instant
-                        insights.
-                      </p>
-                      {qbConnected && (
-                        <div className="mt-3 space-y-2">
-                          <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#2CA01C]/10 rounded-full">
-                            <div className="w-2 h-2 rounded-full bg-[#2CA01C]" />
-                            <span className="text-xs font-semibold text-[#1E7A14]">Connected to QuickBooks</span>
-                          </div>
-                          {qbRealmId && (
-                            <p className="text-xs text-text-secondary font-body">
-                              Company ID: {qbRealmId}
-                            </p>
-                          )}
-                        </div>
-                      )}
-                      <div className="mt-3 inline-flex items-center gap-2 text-sm text-[#2CA01C] font-semibold">
-                        <span>{qbConnecting ? "Connecting..." : qbConnected ? "Continue to assessment" : "Connect now"}</span>
-                        <svg
-                          className="w-4 h-4 group-hover:translate-x-1 transition-transform"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2.5}
-                            d="M13 7l5 5m0 0l-5 5m5-5H6"
-                          />
-                        </svg>
-                      </div>
                     </div>
                   </div>
-                </button>
+                </div>
 
                 {/* Enter Manually */}
                 <button
@@ -1071,7 +1093,7 @@ Return ONLY a JSON object with these exact keys (use empty string "" if not foun
                   Upload Your Financial Data
                 </h1>
                 <p className="text-base text-text-secondary font-body">
-                  Drop your CSV or Excel files below. AI will extract the data
+                  Drop your CSV files below. AI will extract the data
                   automatically.
                 </p>
               </div>
@@ -1111,7 +1133,7 @@ Return ONLY a JSON object with these exact keys (use empty string "" if not foun
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".csv,.xlsx,.xls"
+                  accept=".csv"
                   multiple
                   onChange={handleFileSelect}
                   className="hidden"
@@ -1124,7 +1146,7 @@ Return ONLY a JSON object with these exact keys (use empty string "" if not foun
                   {isProcessing ? "Processing..." : "Choose Files"}
                 </Button>
                 <p className="text-xs text-text-muted mt-4">
-                  Supports CSV, Excel (.xlsx, .xls)
+                  Supports CSV files
                 </p>
               </div>
 
@@ -1256,21 +1278,250 @@ Return ONLY a JSON object with these exact keys (use empty string "" if not foun
                 </div>
               )}
 
-              {/* AI Extraction Results */}
-              {dataSource === "upload" &&
-                uploadedFiles.length > 0 &&
-                (extractedData.cash ||
-                  extractedData.revenue ||
-                  extractedData.expenses ||
-                  extractedData.receivables ||
-                  extractedData.payables ||
-                  extractedData.ytdRevenue ||
-                  extractedData.ytdExpenses) && (
-                <div className="mb-8 p-6 bg-success/5 border border-success/20 rounded-xl">
-                  <div className="flex items-start gap-3 mb-4">
-                    <div className="w-10 h-10 rounded-full bg-success flex items-center justify-center flex-shrink-0">
+              {/* Financial Data Section */}
+              <div className="space-y-6">
+              {dataSource === "upload" && parsedSnapshot ? (
+                <div className="space-y-6">
+                  <div className="mb-6">
+                    <h3 className="text-xl font-display text-text-primary mb-2">
+                      Here&apos;s what we found in your spreadsheet
+                    </h3>
+                    <p className="text-sm font-body text-text-secondary">
+                      Review before saving. Click any value to edit or fill in missing fields.
+                    </p>
+                  </div>
+
+                  {/* Period Selector */}
+                  <div className="mb-6">
+                    <label className="block text-sm font-body font-medium text-text-secondary mb-2">
+                      Which month does this data cover?
+                    </label>
+                    <input
+                      type="month"
+                      value={confirmPeriod}
+                      onChange={(e) => setConfirmPeriod(e.target.value)}
+                      className="w-full sm:w-auto px-4 py-3 rounded-md border border-text-muted/30 bg-surface text-text-primary font-body focus:outline-none focus:ring-2 focus:ring-orange focus:border-transparent transition-all"
+                    />
+                  </div>
+
+                  {/* Data Table - grouped by section */}
+                  <div className="overflow-x-auto space-y-6">
+                    {SNAPSHOT_SECTIONS.map((section) => (
+                      <div key={section.title}>
+                        <h4 className="text-sm font-body font-semibold text-text-secondary uppercase tracking-wider mb-2 px-4">
+                          {section.title}
+                        </h4>
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b border-text-muted/20">
+                              <th className="text-left font-body font-medium text-text-secondary py-2 px-4">
+                                Field
+                              </th>
+                              <th className="text-right font-body font-medium text-text-secondary py-2 px-4">
+                                Value
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {section.fields.map(({ key, label, format }) => {
+                              const val = parsedSnapshot[key];
+                              const isEditing = editingField === key;
+                              const displayValue =
+                                val != null && typeof val === "number"
+                                  ? format === "currency"
+                                    ? formatCurrency(val)
+                                    : format === "percent"
+                                    ? `${(val * 100).toFixed(1)}%`
+                                    : val.toFixed(2)
+                                  : null;
+
+                              return (
+                                <tr key={key} className="border-b border-text-muted/10">
+                                  <td className="py-3 px-4 font-body text-text-primary">
+                                    {label}
+                                  </td>
+                                  <td className="py-3 px-4 text-right font-body">
+                                    {isEditing ? (
+                                      <input
+                                        type="text"
+                                        autoFocus
+                                        defaultValue={
+                                          val != null && typeof val === "number"
+                                            ? format === "percent"
+                                              ? (val * 100).toFixed(1)
+                                              : format === "currency"
+                                              ? Math.round(val).toLocaleString("en-US")
+                                              : val.toFixed(2)
+                                            : ""
+                                        }
+                                        placeholder={
+                                          format === "currency"
+                                            ? "$0"
+                                            : format === "percent"
+                                            ? "0.0%"
+                                            : "0.00"
+                                        }
+                                        className="w-32 ml-auto text-right px-2 py-1 rounded border border-orange/50 bg-white text-text-primary font-body text-sm focus:outline-none focus:ring-2 focus:ring-orange"
+                                        onBlur={(e) => {
+                                          const raw = e.target.value.replace(/[$,%\s]/g, "").replace(/,/g, "");
+                                          const num = parseFloat(raw);
+                                          setParsedSnapshot((prev) => {
+                                            if (!prev) return prev;
+                                            return {
+                                              ...prev,
+                                              [key]: raw === "" || isNaN(num)
+                                                ? null
+                                                : format === "percent"
+                                                ? num / 100
+                                                : num,
+                                            };
+                                          });
+                                          setEditingField(null);
+                                        }}
+                                        onKeyDown={(e) => {
+                                          if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                                          if (e.key === "Escape") setEditingField(null);
+                                        }}
+                                      />
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        onClick={() => setEditingField(key)}
+                                        className={`inline-flex items-center gap-1.5 rounded px-2 py-1 transition-colors hover:bg-orange/10 ${
+                                          displayValue
+                                            ? "text-text-primary"
+                                            : "text-text-muted italic"
+                                        }`}
+                                        title="Click to edit"
+                                      >
+                                        {displayValue || "Not found"}
+                                        <Icon
+                                          icon="ph:pencil-simple"
+                                          className="w-3 h-3 text-text-muted"
+                                          style={{ opacity: 0.4 }}
+                                        />
+                                      </button>
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                /* Manual / QuickBooks flow: CurrencyInput form */
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div>
+                      <CurrencyInput
+                        label="Cash in the bank right now"
+                        value={formData.cash}
+                        onChange={(value) =>
+                          setFormData({ ...formData, cash: value })
+                        }
+                        placeholder="0"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <CurrencyInput
+                        label="Monthly revenue (average)"
+                        value={formData.revenue}
+                        onChange={(value) =>
+                          setFormData({ ...formData, revenue: value })
+                        }
+                        placeholder="0"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <CurrencyInput
+                        label="Monthly expenses (average)"
+                        value={formData.expenses}
+                        onChange={(value) =>
+                          setFormData({ ...formData, expenses: value })
+                        }
+                        placeholder="0"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <CurrencyInput
+                        label="Accounts receivable (money owed to you)"
+                        value={formData.receivables}
+                        onChange={(value) =>
+                          setFormData({ ...formData, receivables: value })
+                        }
+                        placeholder="0"
+                      />
+                    </div>
+
+                    <div>
+                      <CurrencyInput
+                        label="Accounts payable (money you owe)"
+                        value={formData.payables}
+                        onChange={(value) =>
+                          setFormData({ ...formData, payables: value })
+                        }
+                        placeholder="0"
+                      />
+                    </div>
+
+                    <div>
+                      <CurrencyInput
+                        label="Year-to-date revenue"
+                        value={formData.ytdRevenue}
+                        onChange={(value) =>
+                          setFormData({ ...formData, ytdRevenue: value })
+                        }
+                        placeholder="0"
+                      />
+                    </div>
+
+                    <div>
+                      <CurrencyInput
+                        label="Year-to-date expenses"
+                        value={formData.ytdExpenses}
+                        onChange={(value) =>
+                          setFormData({ ...formData, ytdExpenses: value })
+                        }
+                        placeholder="0"
+                      />
+                    </div>
+
+                    <div>
+                      <CurrencyInput
+                        label="Inventory value (if applicable)"
+                        value={formData.inventoryValue}
+                        onChange={(value) =>
+                          setFormData({ ...formData, inventoryValue: value })
+                        }
+                        placeholder="0"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Expense Breakdown Toggle */}
+                  <div className="pt-4 border-t border-text-muted/20">
+                    <button
+                      type="button"
+                      onClick={() => setShowExpenseBreakdown(!showExpenseBreakdown)}
+                      className="flex items-center justify-between w-full text-left group"
+                    >
+                      <span className="text-sm font-body font-medium text-text-secondary group-hover:text-orange transition-colors">
+                        Add expense breakdown by category (optional)
+                      </span>
                       <svg
-                        className="w-6 h-6 text-white"
+                        className={`w-5 h-5 text-text-muted transition-transform ${
+                          showExpenseBreakdown ? "rotate-180" : ""
+                        }`}
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -1278,324 +1529,65 @@ Return ONLY a JSON object with these exact keys (use empty string "" if not foun
                         <path
                           strokeLinecap="round"
                           strokeLinejoin="round"
-                          strokeWidth={2.5}
-                          d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+                          strokeWidth={2}
+                          d="M19 9l-7 7-7-7"
                         />
                       </svg>
-                    </div>
-                    <div>
-                      <h3 className="font-display text-text-primary mb-1">
-                        AI Found Data in Your Files
-                      </h3>
-                      <div className="text-sm text-text-secondary font-body space-y-1">
-                        {extractedData.cash && (
-                          <p>
-                            ✓ Cash: ${parseFloat(extractedData.cash).toLocaleString()}{" "}
-                            <span className="text-text-muted">
-                              (from {extractedData.sources.cash})
-                            </span>
-                          </p>
-                        )}
-                        {extractedData.revenue && (
-                          <p>
-                            ✓ Revenue: ${parseFloat(extractedData.revenue).toLocaleString()}{" "}
-                            <span className="text-text-muted">
-                              (from {extractedData.sources.revenue})
-                            </span>
-                          </p>
-                        )}
-                        {extractedData.expenses && (
-                          <p>
-                            ✓ Expenses: ${parseFloat(extractedData.expenses).toLocaleString()}{" "}
-                            <span className="text-text-muted">
-                              (from {extractedData.sources.expenses})
-                            </span>
-                          </p>
-                        )}
-                        {extractedData.receivables && (
-                          <p>
-                            ✓ Receivables: $
-                            {parseFloat(extractedData.receivables).toLocaleString()}{" "}
-                            <span className="text-text-muted">
-                              (from {extractedData.sources.receivables})
-                            </span>
-                          </p>
-                        )}
-                        {extractedData.payables && (
-                          <p>
-                            ✓ Payables: $
-                            {parseFloat(extractedData.payables).toLocaleString()}{" "}
-                            <span className="text-text-muted">
-                              (from {extractedData.sources.payables})
-                            </span>
-                          </p>
-                        )}
-                        {extractedData.ytdRevenue && (
-                          <p>
-                            ✓ YTD Revenue: $
-                            {parseFloat(extractedData.ytdRevenue).toLocaleString()}{" "}
-                            <span className="text-text-muted">
-                              (from {extractedData.sources.ytdRevenue})
-                            </span>
-                          </p>
-                        )}
-                        {extractedData.ytdExpenses && (
-                          <p>
-                            ✓ YTD Expenses: $
-                            {parseFloat(extractedData.ytdExpenses).toLocaleString()}{" "}
-                            <span className="text-text-muted">
-                              (from {extractedData.sources.ytdExpenses})
-                            </span>
-                          </p>
-                        )}
-                        {extractedData.inventoryValue && (
-                          <p>
-                            ✓ Inventory: $
-                            {parseFloat(extractedData.inventoryValue).toLocaleString()}{" "}
-                            <span className="text-text-muted">
-                              (from {extractedData.sources.inventoryValue})
-                            </span>
-                          </p>
-                        )}
+                    </button>
+
+                    <div
+                      className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                        showExpenseBreakdown
+                          ? "max-h-[600px] opacity-100 mt-6"
+                          : "max-h-0 opacity-0"
+                      }`}
+                    >
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-background/50 p-4 sm:p-6 rounded-lg border border-text-muted/10">
+                        <CurrencyInput
+                          label="Rent"
+                          value={expenseBreakdown.rent}
+                          onChange={(value) =>
+                            setExpenseBreakdown({ ...expenseBreakdown, rent: value })
+                          }
+                          placeholder="0"
+                        />
+                        <CurrencyInput
+                          label="Payroll"
+                          value={expenseBreakdown.payroll}
+                          onChange={(value) =>
+                            setExpenseBreakdown({ ...expenseBreakdown, payroll: value })
+                          }
+                          placeholder="0"
+                        />
+                        <CurrencyInput
+                          label="Supplies"
+                          value={expenseBreakdown.supplies}
+                          onChange={(value) =>
+                            setExpenseBreakdown({ ...expenseBreakdown, supplies: value })
+                          }
+                          placeholder="0"
+                        />
+                        <CurrencyInput
+                          label="Marketing"
+                          value={expenseBreakdown.marketing}
+                          onChange={(value) =>
+                            setExpenseBreakdown({ ...expenseBreakdown, marketing: value })
+                          }
+                          placeholder="0"
+                        />
+                        <CurrencyInput
+                          label="Other"
+                          value={expenseBreakdown.other}
+                          onChange={(value) =>
+                            setExpenseBreakdown({ ...expenseBreakdown, other: value })
+                          }
+                          placeholder="0"
+                        />
                       </div>
                     </div>
                   </div>
                 </div>
               )}
-
-              {/* Financial Inputs */}
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <div>
-                    <CurrencyInput
-                      label="Cash in the bank right now"
-                      value={formData.cash}
-                      onChange={(value) =>
-                        setFormData({ ...formData, cash: value })
-                      }
-                      placeholder="0"
-                      required
-                    />
-                    {extractedData.cash && (
-                      <p className="text-xs text-success mt-1 font-body">
-                        ✓ Auto-filled from {extractedData.sources.cash}
-                      </p>
-                    )}
-                  </div>
-
-                  <div>
-                    <CurrencyInput
-                      label="Monthly revenue (average)"
-                      value={formData.revenue}
-                      onChange={(value) =>
-                        setFormData({ ...formData, revenue: value })
-                      }
-                      placeholder="0"
-                      required
-                    />
-                    {extractedData.revenue && (
-                      <p className="text-xs text-success mt-1 font-body">
-                        ✓ Auto-filled from {extractedData.sources.revenue}
-                      </p>
-                    )}
-                  </div>
-
-                  <div>
-                    <CurrencyInput
-                      label="Monthly expenses (average)"
-                      value={formData.expenses}
-                      onChange={(value) =>
-                        setFormData({ ...formData, expenses: value })
-                      }
-                      placeholder="0"
-                      required
-                    />
-                    {extractedData.expenses && (
-                      <p className="text-xs text-success mt-1 font-body">
-                        ✓ Auto-filled from {extractedData.sources.expenses}
-                      </p>
-                    )}
-                  </div>
-
-                  <div>
-                    <CurrencyInput
-                      label="Accounts receivable (money owed to you)"
-                      value={formData.receivables}
-                      onChange={(value) =>
-                        setFormData({ ...formData, receivables: value })
-                      }
-                      placeholder="0"
-                    />
-                    {extractedData.receivables ? (
-                      <p className="text-xs text-success mt-1 font-body">
-                        ✓ Auto-filled from {extractedData.sources.receivables}
-                      </p>
-                    ) : (
-                      <p className="text-xs text-text-muted mt-1 font-body">
-                        Couldn&apos;t find this in your files - enter if you have it
-                      </p>
-                    )}
-                  </div>
-
-                  <div>
-                    <CurrencyInput
-                      label="Accounts payable (money you owe)"
-                      value={formData.payables}
-                      onChange={(value) =>
-                        setFormData({ ...formData, payables: value })
-                      }
-                      placeholder="0"
-                    />
-                    {extractedData.payables ? (
-                      <p className="text-xs text-success mt-1 font-body">
-                        ✓ Auto-filled from {extractedData.sources.payables}
-                      </p>
-                    ) : (
-                      <p className="text-xs text-text-muted mt-1 font-body">
-                        Bills, vendor invoices, or loans due
-                      </p>
-                    )}
-                  </div>
-
-                  <div>
-                    <CurrencyInput
-                      label="Year-to-date revenue"
-                      value={formData.ytdRevenue}
-                      onChange={(value) =>
-                        setFormData({ ...formData, ytdRevenue: value })
-                      }
-                      placeholder="0"
-                    />
-                    {extractedData.ytdRevenue ? (
-                      <p className="text-xs text-success mt-1 font-body">
-                        ✓ Auto-filled from {extractedData.sources.ytdRevenue}
-                      </p>
-                    ) : (
-                      <p className="text-xs text-text-muted mt-1 font-body">
-                        Total revenue earned so far this fiscal year
-                      </p>
-                    )}
-                  </div>
-
-                  <div>
-                    <CurrencyInput
-                      label="Year-to-date expenses"
-                      value={formData.ytdExpenses}
-                      onChange={(value) =>
-                        setFormData({ ...formData, ytdExpenses: value })
-                      }
-                      placeholder="0"
-                    />
-                    {extractedData.ytdExpenses ? (
-                      <p className="text-xs text-success mt-1 font-body">
-                        ✓ Auto-filled from {extractedData.sources.ytdExpenses}
-                      </p>
-                    ) : (
-                      <p className="text-xs text-text-muted mt-1 font-body">
-                        Total expenses incurred so far this fiscal year
-                      </p>
-                    )}
-                  </div>
-
-                  <div>
-                    <CurrencyInput
-                      label="Inventory value (if applicable)"
-                      value={formData.inventoryValue}
-                      onChange={(value) =>
-                        setFormData({ ...formData, inventoryValue: value })
-                      }
-                      placeholder="0"
-                    />
-                    {extractedData.inventoryValue ? (
-                      <p className="text-xs text-success mt-1 font-body">
-                        ✓ Auto-filled from {extractedData.sources.inventoryValue}
-                      </p>
-                    ) : (
-                      <p className="text-xs text-text-muted mt-1 font-body">
-                        Skip if your business doesn&apos;t carry inventory
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Expense Breakdown Toggle */}
-                <div className="pt-4 border-t border-text-muted/20">
-                  <button
-                    type="button"
-                    onClick={() => setShowExpenseBreakdown(!showExpenseBreakdown)}
-                    className="flex items-center justify-between w-full text-left group"
-                  >
-                    <span className="text-sm font-body font-medium text-text-secondary group-hover:text-orange transition-colors">
-                      Add expense breakdown by category (optional)
-                    </span>
-                    <svg
-                      className={`w-5 h-5 text-text-muted transition-transform ${
-                        showExpenseBreakdown ? "rotate-180" : ""
-                      }`}
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 9l-7 7-7-7"
-                      />
-                    </svg>
-                  </button>
-
-                  <div
-                    className={`overflow-hidden transition-all duration-300 ease-in-out ${
-                      showExpenseBreakdown
-                        ? "max-h-[600px] opacity-100 mt-6"
-                        : "max-h-0 opacity-0"
-                    }`}
-                  >
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-background/50 p-4 sm:p-6 rounded-lg border border-text-muted/10">
-                      <CurrencyInput
-                        label="Rent"
-                        value={expenseBreakdown.rent}
-                        onChange={(value) =>
-                          setExpenseBreakdown({ ...expenseBreakdown, rent: value })
-                        }
-                        placeholder="0"
-                      />
-                      <CurrencyInput
-                        label="Payroll"
-                        value={expenseBreakdown.payroll}
-                        onChange={(value) =>
-                          setExpenseBreakdown({ ...expenseBreakdown, payroll: value })
-                        }
-                        placeholder="0"
-                      />
-                      <CurrencyInput
-                        label="Supplies"
-                        value={expenseBreakdown.supplies}
-                        onChange={(value) =>
-                          setExpenseBreakdown({ ...expenseBreakdown, supplies: value })
-                        }
-                        placeholder="0"
-                      />
-                      <CurrencyInput
-                        label="Marketing"
-                        value={expenseBreakdown.marketing}
-                        onChange={(value) =>
-                          setExpenseBreakdown({ ...expenseBreakdown, marketing: value })
-                        }
-                        placeholder="0"
-                      />
-                      <CurrencyInput
-                        label="Other"
-                        value={expenseBreakdown.other}
-                        onChange={(value) =>
-                          setExpenseBreakdown({ ...expenseBreakdown, other: value })
-                        }
-                        placeholder="0"
-                      />
-                    </div>
-                  </div>
-                </div>
 
                 {/* Context Questions */}
                 <div className="pt-6 border-t border-text-muted/20">
@@ -1660,5 +1652,13 @@ Return ONLY a JSON object with these exact keys (use empty string "" if not foun
         </div>
       </div>
     </AppLayout>
+  );
+}
+
+export default function AssessmentPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <AssessmentContent />
+    </Suspense>
   );
 }

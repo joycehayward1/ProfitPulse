@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Icon } from "@iconify/react";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -21,8 +21,22 @@ interface BusinessData {
   industry: string;
 }
 
-export default function SettingsPage() {
-  const { user } = useRequireAuth();
+interface QbTestResult {
+  success: boolean;
+  realmId?: string;
+  error?: string;
+  report?: {
+    header?: {
+      ReportName?: string;
+      StartPeriod?: string;
+      EndPeriod?: string;
+    };
+    rowCount?: number;
+  };
+}
+
+function SettingsContent() {
+  const { user, refreshUser } = useRequireAuth();
   const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
   const [isSaving, setIsSaving] = useState(false);
@@ -40,13 +54,20 @@ export default function SettingsPage() {
     industry: "",
   });
 
-  // QuickBooks connection state
+  // QuickBooks connection state — disabled (coming soon)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [qbConnected, setQbConnected] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [qbConnectedAt, setQbConnectedAt] = useState<string | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [qbLastSync, setQbLastSync] = useState<string | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [qbLoading, setQbLoading] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [qbDisconnecting, setQbDisconnecting] = useState(false);
-  const [qbTestResult, setQbTestResult] = useState<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [qbTestResult, setQbTestResult] = useState<QbTestResult | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [qbTesting, setQbTesting] = useState(false);
   const searchParams = useSearchParams();
   const handledQbResultRef = useRef<string | null>(null);
@@ -64,6 +85,64 @@ export default function SettingsPage() {
       Authorization: `Bearer ${data.session.accessToken}`,
     };
   }, []);
+
+  // Profile photo upload
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  async function ensureProfileRow() {
+    if (!user?.id) return;
+    const { getInsForgeClient } = await import("@/lib/insforge");
+    const client = getInsForgeClient();
+    const { data } = await client.database
+      .from("profiles")
+      .select("id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (!data) {
+      await client.database
+        .from("profiles")
+        .insert({ user_id: user.id });
+    }
+  }
+
+  async function handlePhotoUpload(file: File) {
+    if (!user?.id) return;
+    if (!file.type.startsWith("image/")) {
+      showToast("error", "Please select an image file");
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      showToast("error", "Image must be under 2 MB");
+      return;
+    }
+
+    setUploadingPhoto(true);
+    try {
+      const { getInsForgeClient } = await import("@/lib/insforge");
+      const client = getInsForgeClient();
+
+      const ext = file.name.split(".").pop() || "jpg";
+      const filePath = `${user.id}.${ext}`;
+
+      // Upload to InsForge storage
+      const { data: uploadData, error: uploadError } = await client.storage
+        .from("avatars")
+        .upload(filePath, file);
+
+      if (uploadError || !uploadData) throw uploadError || new Error("Upload failed");
+
+      // Set locally — saved to DB when user clicks "Save Changes"
+      const avatarUrl = uploadData.url + `?t=${Date.now()}`;
+      setProfileData((prev) => ({ ...prev, avatar_url: avatarUrl }));
+      showToast("success", "Photo uploaded — click Save Changes to apply");
+    } catch (error) {
+      console.error("Photo upload error:", error);
+      showToast("error", "Failed to upload photo");
+    } finally {
+      setUploadingPhoto(false);
+    }
+  }
 
   // Notification preferences
   const [emailNotifications, setEmailNotifications] = useState({
@@ -125,6 +204,7 @@ export default function SettingsPage() {
     checkQbStatus();
   }, [user, getAuthHeaders]);
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async function handleConnectQuickBooks() {
     if (!user?.id) {
       showToast("error", "Please log in before connecting QuickBooks.");
@@ -165,6 +245,7 @@ export default function SettingsPage() {
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async function handleTestQuickBooks() {
     if (!user) return;
     setQbTesting(true);
@@ -186,13 +267,14 @@ export default function SettingsPage() {
       } else {
         showToast("error", data.error || "Test failed");
       }
-    } catch (err) {
+    } catch (_err) {
       showToast("error", "Failed to test QuickBooks connection");
     } finally {
       setQbTesting(false);
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async function handleDisconnectQuickBooks() {
     if (!user) return;
 
@@ -267,6 +349,8 @@ export default function SettingsPage() {
       const { getInsForgeClient } = await import("@/lib/insforge");
       const client = getInsForgeClient();
 
+      await ensureProfileRow();
+
       // Update profile in InsForge
       const { error } = await client.database
         .from("profiles")
@@ -274,10 +358,11 @@ export default function SettingsPage() {
           name: profileData.name,
           avatar_url: profileData.avatar_url,
         })
-        .eq("id", user?.id);
+        .eq("user_id", user?.id);
 
       if (error) throw error;
 
+      await refreshUser();
       showToast("success", "Profile updated successfully");
     } catch (error) {
       console.error("Error updating profile:", error);
@@ -293,13 +378,15 @@ export default function SettingsPage() {
       const { getInsForgeClient } = await import("@/lib/insforge");
       const client = getInsForgeClient();
 
+      await ensureProfileRow();
+
       const { error } = await client.database
         .from("profiles")
         .update({
           business_name: businessData.business_name,
           industry: businessData.industry,
         })
-        .eq("id", user?.id);
+        .eq("user_id", user?.id);
 
       if (error) throw error;
 
@@ -370,9 +457,24 @@ export default function SettingsPage() {
                     <p className="text-small text-text-secondary mb-md">
                       Upload a profile picture to personalize your account
                     </p>
-                    <Button variant="secondary" size="sm">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) void handlePhotoUpload(file);
+                      }}
+                      className="hidden"
+                    />
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploadingPhoto}
+                    >
                       <Icon icon="ph:upload-simple-bold" className="w-4 h-4 mr-2" />
-                      Upload Photo
+                      {uploadingPhoto ? "Uploading..." : "Upload Photo"}
                     </Button>
                   </div>
                 </div>
@@ -479,110 +581,27 @@ export default function SettingsPage() {
           {/* Integrations Tab */}
           {activeTab === "integrations" && (
             <div className="space-y-md">
-              {/* QuickBooks Integration */}
-              <div className="bg-surface rounded-xl p-xl border border-background shadow-sm">
+              {/* QuickBooks Integration - Coming Soon */}
+              <div className="bg-surface rounded-xl p-xl border border-background shadow-sm opacity-70">
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-md flex-1">
-                    <div className="w-14 h-14 rounded-lg bg-[#2CA01C]/10 flex items-center justify-center flex-shrink-0">
+                    <div className="w-14 h-14 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
                       <img
                         src="/quickbooks.png"
                         alt="QuickBooks"
-                        className="w-8 h-8 object-contain"
+                        className="w-8 h-8 object-contain grayscale"
                       />
                     </div>
                     <div className="flex-1">
-                      <h3 className="font-display text-h3 text-text-primary mb-xs">QuickBooks</h3>
-                      <p className="text-small text-text-secondary mb-md">
-                        Automatically sync your financial data from QuickBooks to ProfitPulse
-                      </p>
-                      {qbConnected ? (
-                        <div className="space-y-2">
-                          <div className="inline-flex items-center gap-2 px-md py-xs bg-success/10 rounded-full">
-                            <div className="w-2 h-2 rounded-full bg-success" />
-                            <span className="text-small font-body text-success">Connected</span>
-                          </div>
-                          {qbConnectedAt && (
-                            <p className="text-xs text-text-muted font-body">
-                              Connected {new Date(qbConnectedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                            </p>
-                          )}
-                          {qbLastSync && (
-                            <p className="text-xs text-text-muted font-body">
-                              Last synced {new Date(qbLastSync).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
-                            </p>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="inline-flex items-center gap-2 px-md py-xs bg-background rounded-full">
-                          <div className="w-2 h-2 rounded-full bg-text-muted" />
-                          <span className="text-small font-body text-text-muted">Not Connected</span>
-                        </div>
-                      )}
+                      <div className="flex items-center gap-3 mb-xs">
+                        <h3 className="font-display text-h3 text-text-primary">QuickBooks</h3>
+                        <span className="inline-flex items-center gap-1.5 px-3 py-0.5 bg-orange/10 rounded-full text-xs font-semibold text-orange">
+                          Coming Soon
+                        </span>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex flex-col gap-2">
-                    {qbConnected ? (
-                      <>
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={handleTestQuickBooks}
-                          disabled={qbTesting}
-                        >
-                          <Icon icon="ph:play-bold" className="w-4 h-4 mr-2" />
-                          {qbTesting ? "Testing..." : "Test Connection"}
-                        </Button>
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={handleConnectQuickBooks}
-                          disabled={qbLoading || qbDisconnecting}
-                        >
-                          <Icon icon="ph:arrows-clockwise-bold" className="w-4 h-4 mr-2" />
-                          Reconnect
-                        </Button>
-                        <Button
-                          variant="cancel"
-                          size="sm"
-                          onClick={handleDisconnectQuickBooks}
-                          disabled={qbDisconnecting || qbLoading || qbTesting}
-                        >
-                          <Icon icon="ph:link-break-bold" className="w-4 h-4 mr-2" />
-                          {qbDisconnecting ? "Disconnecting..." : "Disconnect"}
-                        </Button>
-                      </>
-                    ) : (
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        onClick={handleConnectQuickBooks}
-                        disabled={qbLoading}
-                      >
-                        <Icon icon="ph:link-bold" className="w-4 h-4 mr-2" />
-                        {qbLoading ? "Connecting..." : "Connect"}
-                      </Button>
-                    )}
-                  </div>
                 </div>
-
-                {/* Test Result Display */}
-                {qbTestResult && (
-                  <div className={`mt-md p-md rounded-lg border ${qbTestResult.success ? "bg-success/5 border-success/20" : "bg-critical/5 border-critical/20"}`}>
-                    <h4 className="text-sm font-display font-semibold mb-2 text-text-primary">
-                      {qbTestResult.success ? "Connection Test Passed" : "Connection Test Failed"}
-                    </h4>
-                    {qbTestResult.success ? (
-                      <div className="text-xs font-body text-text-secondary space-y-1">
-                        <p>Realm ID: {qbTestResult.realmId}</p>
-                        <p>Report: {qbTestResult.report?.header?.ReportName || "Profit and Loss"}</p>
-                        <p>Period: {qbTestResult.report?.header?.StartPeriod} to {qbTestResult.report?.header?.EndPeriod}</p>
-                        <p>Rows: {qbTestResult.report?.rowCount}</p>
-                      </div>
-                    ) : (
-                      <p className="text-xs font-body text-critical">{qbTestResult.error}</p>
-                    )}
-                  </div>
-                )}
               </div>
 
               {/* Integration Requests */}
@@ -592,7 +611,7 @@ export default function SettingsPage() {
                   <h3 className="font-display text-h3 text-text-primary">Want to see more integrations?</h3>
                 </div>
                 <p className="text-small text-text-secondary mb-lg">
-                  Tell us which platforms and business tools you'd like to connect with ProfitPulse.
+                  Tell us which platforms and business tools you&apos;d like to connect with ProfitPulse.
                 </p>
                 <Button variant="secondary" size="sm">
                   <Icon icon="ph:paper-plane-tilt-bold" className="w-4 h-4 mr-2" />
@@ -692,7 +711,7 @@ export default function SettingsPage() {
                     "Unlimited financial data entries",
                     "AI-powered insights & analysis",
                     "What-if scenario planning",
-                    "QuickBooks integration",
+                    "QuickBooks integration (coming soon)",
                     "Priority email support",
                   ].map((feature) => (
                     <div key={feature} className="flex items-center gap-2">
@@ -776,5 +795,13 @@ export default function SettingsPage() {
         </div>
       </div>
     </AppLayout>
+  );
+}
+
+export default function SettingsPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <SettingsContent />
+    </Suspense>
   );
 }

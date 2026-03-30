@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { Icon } from "@iconify/react";
+import { InfoTooltip } from "@/components/ui/MetricTooltip";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import type { FinancialSnapshot } from "@/lib/database.types";
@@ -57,9 +58,10 @@ interface KPICardProps {
   isHealthy: boolean;
   icon: string;
   delay: string;
+  tooltip?: string;
 }
 
-function KPICard({ label, value, change, changeLabel, isHealthy, icon, delay }: KPICardProps) {
+function KPICard({ label, value, change, changeLabel, isHealthy, icon, delay, tooltip }: KPICardProps) {
   const hasChange = change !== null && !isNaN(change);
   const isPositive = hasChange && change >= 0;
 
@@ -84,8 +86,9 @@ function KPICard({ label, value, change, changeLabel, isHealthy, icon, delay }: 
         />
       </div>
 
-      <h3 className="font-body text-small tracking-[0.1em] uppercase text-text-muted mb-sm">
+      <h3 className="font-body text-small tracking-[0.1em] uppercase text-text-muted mb-sm flex items-center gap-1.5">
         {label}
+        {tooltip && <InfoTooltip text={tooltip} />}
       </h3>
 
       <p className="font-display text-h1 md:text-[36px] text-text-primary mb-xs tracking-tight tabular-nums">
@@ -113,6 +116,7 @@ interface TableRowData {
   current: number | null;
   priorYear: number | null;
   isBold?: boolean;
+  tooltip?: string;
 }
 
 function SummaryTable({ rows, delay }: { rows: TableRowData[]; delay: string }) {
@@ -145,7 +149,7 @@ function SummaryTable({ rows, delay }: { rows: TableRowData[]; delay: string }) 
             </tr>
           </thead>
           <tbody>
-            {rows.map((row, idx) => {
+            {rows.map((row, _idx) => {
               const variance =
                 row.current !== null && row.priorYear !== null
                   ? ((row.current - row.priorYear) / Math.abs(row.priorYear || 1)) * 100
@@ -164,7 +168,10 @@ function SummaryTable({ rows, delay }: { rows: TableRowData[]; delay: string }) 
                       row.isBold ? "font-semibold text-text-primary" : "text-text-secondary"
                     }`}
                   >
-                    {row.label}
+                    <span className="inline-flex items-center gap-1.5">
+                      {row.label}
+                      {row.tooltip && <InfoTooltip text={row.tooltip} />}
+                    </span>
                   </td>
                   <td
                     className={`text-right px-lg py-sm text-body tabular-nums ${
@@ -289,39 +296,46 @@ export default function BalanceSheetPage() {
         label: "Current Assets",
         current: currentSnapshot?.current_assets ?? null,
         priorYear: priorYearSnapshot?.current_assets ?? null,
+        tooltip: "Cash and assets that can be converted to cash within a year, like receivables and inventory.",
       },
       {
         label: "Fixed Assets",
         current: currentSnapshot?.fixed_assets ?? null,
         priorYear: priorYearSnapshot?.fixed_assets ?? null,
+        tooltip: "Long-term assets like equipment, property, and vehicles used to run your business.",
       },
       {
         label: "Total Assets",
         current: currentSnapshot?.total_assets ?? null,
         priorYear: priorYearSnapshot?.total_assets ?? null,
         isBold: true,
+        tooltip: "Everything your business owns — both current and fixed assets combined.",
       },
       {
         label: "Current Liabilities",
         current: currentSnapshot?.current_liabilities ?? null,
         priorYear: priorYearSnapshot?.current_liabilities ?? null,
+        tooltip: "Debts and obligations due within the next 12 months, like accounts payable and short-term loans.",
       },
       {
         label: "Long-term Liabilities",
         current: currentSnapshot?.long_term_liabilities ?? null,
         priorYear: priorYearSnapshot?.long_term_liabilities ?? null,
+        tooltip: "Debts due beyond 12 months, like long-term loans, mortgages, or leases.",
       },
       {
         label: "Total Liabilities",
         current: totalLiabilities || null,
         priorYear: priorTotalLiabilities || null,
         isBold: true,
+        tooltip: "Everything your business owes — all current and long-term debts combined.",
       },
       {
         label: "Equity",
         current: currentSnapshot?.equity ?? null,
         priorYear: priorYearSnapshot?.equity ?? null,
         isBold: true,
+        tooltip: "The owner's stake in the business — total assets minus total liabilities. This is your net worth.",
       },
     ];
   }, [currentSnapshot, priorYearSnapshot]);
@@ -367,7 +381,7 @@ export default function BalanceSheetPage() {
                   No balance sheet data yet
                 </h2>
                 <p className="text-[15px] leading-relaxed text-text-secondary max-w-md mx-auto">
-                  Connect QuickBooks or upload a spreadsheet to see your balance sheet analysis.
+                  Upload a spreadsheet or enter data manually to see your balance sheet analysis.
                 </p>
               </div>
 
@@ -412,9 +426,25 @@ export default function BalanceSheetPage() {
           className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-md animate-fadeIn"
           style={{ animationDelay: "0ms" }}
         >
-          <h1 className="font-display text-[42px] md:text-[56px] leading-tight text-text-primary tracking-tight">
-            Balance Sheet
-          </h1>
+          <div className="flex items-center gap-3">
+            <h1 className="font-display text-[42px] md:text-[56px] leading-tight text-text-primary tracking-tight">
+              Balance Sheet
+            </h1>
+            {currentSnapshot && (
+              <span
+                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-medium leading-4 ${
+                  currentSnapshot.data_source === "quickbooks"
+                    ? "bg-emerald-50 text-emerald-700"
+                    : "bg-gray-100 text-gray-500"
+                }`}
+              >
+                {currentSnapshot.data_source === "quickbooks" && (
+                  <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                )}
+                {currentSnapshot.data_source === "quickbooks" ? "QuickBooks" : currentSnapshot.data_source === "spreadsheet" ? "Spreadsheet" : "Manual"}
+              </span>
+            )}
+          </div>
 
           {/* Period Selector */}
           <div className="relative">
@@ -446,6 +476,7 @@ export default function BalanceSheetPage() {
             isHealthy={(currentSnapshot?.current_ratio ?? 0) >= 2}
             icon="ph:scales-bold"
             delay="100ms"
+            tooltip="Current assets divided by current liabilities. Above 2.0 means you can comfortably cover short-term debts."
           />
           <KPICard
             label="Working Capital"
@@ -455,6 +486,7 @@ export default function BalanceSheetPage() {
             isHealthy={(currentSnapshot?.working_capital ?? 0) > 0}
             icon="ph:wallet-bold"
             delay="200ms"
+            tooltip="Current assets minus current liabilities. Positive means you have enough to fund day-to-day operations."
           />
           <KPICard
             label="ROA"
@@ -464,6 +496,7 @@ export default function BalanceSheetPage() {
             isHealthy={(currentSnapshot?.roa ?? 0) > 5}
             icon="ph:chart-pie-bold"
             delay="300ms"
+            tooltip="Return on Assets — how efficiently your business uses its assets to generate profit. Higher is better."
           />
           <KPICard
             label="ROE"
@@ -473,6 +506,7 @@ export default function BalanceSheetPage() {
             isHealthy={(currentSnapshot?.roe ?? 0) > 10}
             icon="ph:trend-up-bold"
             delay="400ms"
+            tooltip="Return on Equity — how much profit you generate for each dollar of owner's equity. Higher means better returns."
           />
         </div>
 

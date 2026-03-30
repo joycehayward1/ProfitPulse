@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { Icon } from "@iconify/react";
+import { InfoTooltip } from "@/components/ui/MetricTooltip";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import type { FinancialSnapshot } from "@/lib/database.types";
@@ -130,6 +131,7 @@ export default function PLPage() {
         change: pctChange(c?.total_income, pm?.total_income),
         icon: "ph:arrow-circle-down-bold",
         iconColor: "#43A047",
+        tooltip: "All revenue your business earned before any expenses are deducted.",
       },
       {
         label: "Gross Profit",
@@ -137,6 +139,7 @@ export default function PLPage() {
         change: pctChange(c?.gross_profit, pm?.gross_profit),
         icon: "ph:trend-up-bold",
         iconColor: "#E65100",
+        tooltip: "Revenue minus the direct costs of delivering your services or products.",
       },
       {
         label: "Total Expenses",
@@ -145,6 +148,7 @@ export default function PLPage() {
         icon: "ph:arrow-circle-up-bold",
         iconColor: "#ef4444",
         invertColor: true, // lower is better
+        tooltip: "All business costs including payroll, rent, software, marketing, and overhead.",
       },
       {
         label: "Net Profit",
@@ -153,6 +157,7 @@ export default function PLPage() {
         icon: "ph:chart-line-bold",
         iconColor: "#7B1FA2",
         isNetProfit: true,
+        tooltip: "The bottom line — what's left after all expenses. This is the true measure of profitability.",
       },
     ];
   }, [current, priorMonth]);
@@ -190,13 +195,13 @@ export default function PLPage() {
     }
 
     return [
-      row("Income", c?.total_income, py?.total_income, pm?.total_income),
-      row("Gross Profit", c?.gross_profit, py?.gross_profit, pm?.gross_profit),
-      row("Gross Profit Margin %", c?.gross_profit_margin, py?.gross_profit_margin, pm?.gross_profit_margin, true),
-      row("Total Expenses", c?.total_expenses, py?.total_expenses, pm?.total_expenses),
-      row("Net Operating Income", c?.net_operating_income, py?.net_operating_income, pm?.net_operating_income),
-      row("Net Profit", c?.net_profit, py?.net_profit, pm?.net_profit),
-      row("Net Profit Margin %", c?.net_profit_margin, py?.net_profit_margin, pm?.net_profit_margin, true),
+      { ...row("Income", c?.total_income, py?.total_income, pm?.total_income), tooltip: "All revenue your business earned before any expenses are deducted." },
+      { ...row("Gross Profit", c?.gross_profit, py?.gross_profit, pm?.gross_profit), tooltip: "Revenue minus the direct costs of delivering your services or products." },
+      { ...row("Gross Profit Margin %", c?.gross_profit_margin, py?.gross_profit_margin, pm?.gross_profit_margin, true), tooltip: "Gross profit as a percentage of revenue. Higher means you keep more of each dollar earned." },
+      { ...row("Total Expenses", c?.total_expenses, py?.total_expenses, pm?.total_expenses), tooltip: "All business costs including payroll, rent, software, marketing, and overhead." },
+      { ...row("Net Operating Income", c?.net_operating_income, py?.net_operating_income, pm?.net_operating_income), tooltip: "Profit from core business operations, before interest and taxes." },
+      { ...row("Net Profit", c?.net_profit, py?.net_profit, pm?.net_profit), tooltip: "The bottom line — what's left after all expenses." },
+      { ...row("Net Profit Margin %", c?.net_profit_margin, py?.net_profit_margin, pm?.net_profit_margin, true), tooltip: "Net profit as a percentage of revenue. Shows how much of each dollar you actually keep." },
     ];
   }, [current, priorYear, priorMonth]);
 
@@ -241,7 +246,7 @@ export default function PLPage() {
                   No P&L data yet
                 </h2>
                 <p className="text-[15px] leading-relaxed text-text-secondary max-w-md mx-auto">
-                  Connect QuickBooks or upload a spreadsheet to see your Profit &amp; Loss report.
+                  Upload a spreadsheet or enter data manually to see your Profit &amp; Loss report.
                 </p>
               </div>
 
@@ -266,9 +271,25 @@ export default function PLPage() {
       <div className="space-y-lg">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-sm">
-          <h1 className="font-display text-[36px] md:text-[42px] leading-tight text-text-primary tracking-tight">
-            Profit &amp; Loss
-          </h1>
+          <div className="flex items-center gap-3">
+            <h1 className="font-display text-[36px] md:text-[42px] leading-tight text-text-primary tracking-tight">
+              Profit &amp; Loss
+            </h1>
+            {current && (
+              <span
+                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-medium leading-4 ${
+                  current.data_source === "quickbooks"
+                    ? "bg-emerald-50 text-emerald-700"
+                    : "bg-gray-100 text-gray-500"
+                }`}
+              >
+                {current.data_source === "quickbooks" && (
+                  <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                )}
+                {current.data_source === "quickbooks" ? "QuickBooks" : current.data_source === "spreadsheet" ? "Spreadsheet" : "Manual"}
+              </span>
+            )}
+          </div>
 
           {/* Period selector */}
           <div className="relative">
@@ -344,8 +365,9 @@ export default function PLPage() {
                     </span>
                   )}
                 </div>
-                <p className="text-small text-text-muted uppercase tracking-wider mb-xs">
+                <p className="text-small text-text-muted uppercase tracking-wider mb-xs flex items-center gap-1.5">
                   {kpi.label}
+                  {kpi.tooltip && <InfoTooltip text={kpi.tooltip} />}
                 </p>
                 <p
                   className={`font-display text-h2 md:text-h1 tracking-tight tabular-nums ${
@@ -458,7 +480,10 @@ export default function PLPage() {
                           isBold ? "font-semibold" : ""
                         }`}
                       >
-                        {row.label}
+                        <span className="inline-flex items-center gap-1.5">
+                          {row.label}
+                          {row.tooltip && <InfoTooltip text={row.tooltip} />}
+                        </span>
                       </td>
                       <td className="text-right py-sm px-lg tabular-nums text-text-primary">
                         {fmt(row.current)}

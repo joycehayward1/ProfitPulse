@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { Icon } from "@iconify/react";
+import { InfoTooltip } from "@/components/ui/MetricTooltip";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import type { FinancialSnapshot } from "@/lib/database.types";
@@ -124,9 +125,10 @@ interface KpiCardProps {
   priorValue: number;
   negative?: boolean;
   delay: string;
+  tooltip?: string;
 }
 
-function KpiCard({ label, icon, iconColor, value, priorValue, negative, delay }: KpiCardProps) {
+function KpiCard({ label, icon, iconColor, value, priorValue, negative, delay, tooltip }: KpiCardProps) {
   const isNegative = negative && value < 0;
 
   return (
@@ -144,8 +146,9 @@ function KpiCard({ label, icon, iconColor, value, priorValue, negative, delay }:
         <Variance current={value} prior={priorValue} />
       </div>
 
-      <h3 className="font-body text-small tracking-[0.1em] uppercase text-text-muted mb-xs">
+      <h3 className="font-body text-small tracking-[0.1em] uppercase text-text-muted mb-xs flex items-center gap-1.5">
         {label}
+        {tooltip && <InfoTooltip text={tooltip} />}
       </h3>
 
       <p
@@ -246,6 +249,7 @@ export default function CashFlowPage() {
         priorYear: safeNum(py?.operating_activities),
         priorMonth: safeNum(pm?.operating_activities),
         bold: false,
+        tooltip: "Cash generated from your core business operations — sales, services, and day-to-day activities.",
       },
       {
         label: "Investing Activities",
@@ -253,6 +257,7 @@ export default function CashFlowPage() {
         priorYear: safeNum(py?.investing_activities),
         priorMonth: safeNum(pm?.investing_activities),
         bold: false,
+        tooltip: "Cash spent on or received from long-term investments like equipment, property, or other assets.",
       },
       {
         label: "Financing Activities",
@@ -260,6 +265,7 @@ export default function CashFlowPage() {
         priorYear: safeNum(py?.financing_activities),
         priorMonth: safeNum(pm?.financing_activities),
         bold: false,
+        tooltip: "Cash from loans, investor funding, or repayments. Includes debt and equity transactions.",
       },
       {
         label: "Net Cash Flow",
@@ -267,6 +273,7 @@ export default function CashFlowPage() {
         priorYear: safeNum(py?.net_cash_flow),
         priorMonth: safeNum(pm?.net_cash_flow),
         bold: true,
+        tooltip: "The total change in cash for the period. Positive means more cash came in than went out.",
       },
     ];
   }, [currentSnapshot, priorYearSnapshot, priorMonthSnapshot]);
@@ -284,9 +291,25 @@ export default function CashFlowPage() {
           style={{ animationDelay: "0ms" }}
         >
           <div>
-            <h1 className="font-display text-[28px] md:text-[36px] text-text-primary tracking-tight">
-              Cash Flow
-            </h1>
+            <div className="flex items-center gap-3">
+              <h1 className="font-display text-[28px] md:text-[36px] text-text-primary tracking-tight">
+                Cash Flow
+              </h1>
+              {currentSnapshot && (
+                <span
+                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-medium leading-4 ${
+                    currentSnapshot.data_source === "quickbooks"
+                      ? "bg-emerald-50 text-emerald-700"
+                      : "bg-gray-100 text-gray-500"
+                  }`}
+                >
+                  {currentSnapshot.data_source === "quickbooks" && (
+                    <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                  )}
+                  {currentSnapshot.data_source === "quickbooks" ? "QuickBooks" : currentSnapshot.data_source === "spreadsheet" ? "Spreadsheet" : "Manual"}
+                </span>
+              )}
+            </div>
             <p className="text-body text-text-secondary mt-1">
               Where your money comes from and where it goes
             </p>
@@ -346,7 +369,7 @@ export default function CashFlowPage() {
                   No cash flow data yet
                 </h2>
                 <p className="text-[15px] leading-relaxed text-text-secondary max-w-md mx-auto">
-                  Connect QuickBooks or upload a spreadsheet to see your cash flow analysis.
+                  Upload a spreadsheet or enter data manually to see your cash flow analysis.
                 </p>
               </div>
 
@@ -375,6 +398,7 @@ export default function CashFlowPage() {
                 value={safeNum(currentSnapshot.operating_activities)}
                 priorValue={safeNum(priorMonthSnapshot?.operating_activities)}
                 delay="200ms"
+                tooltip="Cash generated from your core business operations — sales, services, and day-to-day activities."
               />
               <KpiCard
                 label="Investing Activities"
@@ -383,6 +407,7 @@ export default function CashFlowPage() {
                 value={safeNum(currentSnapshot.investing_activities)}
                 priorValue={safeNum(priorMonthSnapshot?.investing_activities)}
                 delay="300ms"
+                tooltip="Cash spent on or received from long-term investments like equipment, property, or other assets."
               />
               <KpiCard
                 label="Net Cash Flow"
@@ -392,6 +417,7 @@ export default function CashFlowPage() {
                 priorValue={safeNum(priorMonthSnapshot?.net_cash_flow)}
                 negative
                 delay="400ms"
+                tooltip="The total change in cash for the period. Positive means more cash came in than went out."
               />
             </div>
 
@@ -504,7 +530,10 @@ export default function CashFlowPage() {
                               : "text-text-secondary"
                           }`}
                         >
-                          {row.label}
+                          <span className="inline-flex items-center gap-1.5">
+                            {row.label}
+                            {row.tooltip && <InfoTooltip text={row.tooltip} />}
+                          </span>
                         </td>
                         <td
                           className={`text-right px-lg py-3.5 tabular-nums ${

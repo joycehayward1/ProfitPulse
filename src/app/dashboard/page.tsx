@@ -11,6 +11,7 @@ import type { HealthStatus } from "@/components/ui/TrafficLightDot";
 import { calculateHealthScore, getHealthStatus } from "@/lib/healthScore";
 import type { HealthAssessment, FinancialSnapshot } from "@/lib/database.types";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
+import { InfoTooltip } from "@/components/ui/MetricTooltip";
 import Link from "next/link";
 import {
   BarChart,
@@ -123,6 +124,8 @@ interface MetricCardProps {
   animateCurrency?: boolean;
   /** If true, animates the numeric value */
   animateNumber?: boolean;
+  /** Tooltip text explaining the metric */
+  tooltip?: string;
 }
 
 function MetricCard({
@@ -135,6 +138,7 @@ function MetricCard({
   iconColor,
   animateCurrency = false,
   animateNumber = false,
+  tooltip,
 }: MetricCardProps) {
   const numericValue = typeof value === "number" ? value : 0;
   const [count, setCount] = useState(0);
@@ -202,8 +206,9 @@ function MetricCard({
       </div>
 
       {/* Label */}
-      <h3 className="font-body text-small tracking-[0.1em] uppercase text-text-muted mb-sm">
+      <h3 className="font-body text-small tracking-[0.1em] uppercase text-text-muted mb-sm flex items-center gap-1.5">
         {label}
+        {tooltip && <InfoTooltip text={tooltip} />}
       </h3>
 
       {/* Value */}
@@ -218,7 +223,7 @@ function MetricCard({
 }
 
 export default function DashboardPage() {
-  const { user, loading: authLoading } = useRequireAuth();
+  const { user, loading: _authLoading } = useRequireAuth();
   const [loading, setLoading] = useState(true);
   const [assessment, setAssessment] = useState<HealthAssessment | null>(null);
 
@@ -295,10 +300,10 @@ export default function DashboardPage() {
     }
 
     return [
-      { label: "Total Income", value: c.total_income ?? 0, change: pctVar(c.total_income, p?.total_income), isNetProfit: false },
-      { label: "Gross Profit", value: c.gross_profit ?? 0, change: pctVar(c.gross_profit, p?.gross_profit), isNetProfit: false },
-      { label: "Total Expenses", value: c.total_expenses ?? 0, change: pctVar(c.total_expenses, p?.total_expenses), isNetProfit: false },
-      { label: "Net Profit", value: c.net_profit ?? 0, change: pctVar(c.net_profit, p?.net_profit), isNetProfit: true },
+      { label: "Total Income", value: c.total_income ?? 0, change: pctVar(c.total_income, p?.total_income), isNetProfit: false, tooltip: "All revenue your business earned before any expenses are deducted." },
+      { label: "Gross Profit", value: c.gross_profit ?? 0, change: pctVar(c.gross_profit, p?.gross_profit), isNetProfit: false, tooltip: "Revenue minus the direct costs of delivering your services. Shows how efficiently you deliver." },
+      { label: "Total Expenses", value: c.total_expenses ?? 0, change: pctVar(c.total_expenses, p?.total_expenses), isNetProfit: false, tooltip: "All business costs including payroll, rent, software, marketing, and overhead." },
+      { label: "Net Profit", value: c.net_profit ?? 0, change: pctVar(c.net_profit, p?.net_profit), isNetProfit: true, tooltip: "The bottom line — what's left after all expenses. This is the true measure of profitability." },
     ];
   }, [latestSnapshot, priorMonthSnapshot]);
 
@@ -449,9 +454,7 @@ export default function DashboardPage() {
                       className="text-[14px] px-lg py-sm"
                     />
                     <p className="text-small text-text-muted">
-                      {/* Placeholder for delta - will calculate from historical data */}
-                      <span className="text-success font-semibold">+5</span> from last
-                      week
+                      Last updated {new Date(assessment.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                     </p>
                   </div>
                 </div>
@@ -506,25 +509,27 @@ export default function DashboardPage() {
             {/* Profit Card */}
             <MetricCard
               label="Profit"
-              value={assessment.monthly_revenue - assessment.monthly_expenses}
-              statusText="On Track"
-              status="healthy"
+              value={latestSnapshot?.net_profit != null ? latestSnapshot.net_profit : "—"}
+              statusText={latestSnapshot?.net_profit != null ? (latestSnapshot.net_profit >= 0 ? "On Track" : "Needs Attention") : "No data yet"}
+              status={latestSnapshot?.net_profit != null ? (latestSnapshot.net_profit >= 0 ? "healthy" : "critical") : "attention"}
               delay="600ms"
               icon="ph:chart-line-bold"
               iconColor="#E65100"
-              animateCurrency
+              animateCurrency={latestSnapshot?.net_profit != null}
+              tooltip="Your net profit after all expenses are deducted from revenue. A positive number means your business is making money."
             />
 
             {/* Cash Flow Card */}
             <MetricCard
               label="Cash Flow"
-              value={assessment.monthly_revenue - assessment.monthly_expenses}
-              statusText="Healthy"
-              status="healthy"
+              value={latestSnapshot?.net_cash_flow != null ? latestSnapshot.net_cash_flow : "—"}
+              statusText={latestSnapshot?.net_cash_flow != null ? (latestSnapshot.net_cash_flow >= 0 ? "Healthy" : "Needs Attention") : "No data yet"}
+              status={latestSnapshot?.net_cash_flow != null ? (latestSnapshot.net_cash_flow >= 0 ? "healthy" : "critical") : "attention"}
               delay="700ms"
               icon="ph:wallet-bold"
               iconColor="#43A047"
-              animateCurrency
+              animateCurrency={latestSnapshot?.net_cash_flow != null}
+              tooltip="The net amount of cash moving in and out of your business. Positive cash flow means more money is coming in than going out."
             />
 
             {/* Runway Card */}
@@ -536,6 +541,7 @@ export default function DashboardPage() {
               delay="800ms"
               icon="ph:timer-bold"
               iconColor="#7B1FA2"
+              tooltip="How many months your business can operate at current spending levels with the cash you have on hand."
             />
           </div>
         )}
@@ -558,7 +564,10 @@ export default function DashboardPage() {
                   className="font-display text-[56px] md:text-[72px] leading-none text-text-primary tracking-tight mb-xs block tabular-nums"
                   delay={900}
                 />
-                <p className="text-body text-text-secondary">Cash on hand right now</p>
+                <p className="text-body text-text-secondary inline-flex items-center gap-1.5">
+                  Cash on hand right now
+                  <InfoTooltip text="The total liquid cash available in your business accounts right now. This is your financial safety net." />
+                </p>
               </div>
 
               {/* Money In/Out Grid */}
@@ -586,7 +595,10 @@ export default function DashboardPage() {
                       className="font-display text-h1 text-success mb-xs block tabular-nums"
                       delay={1000}
                     />
-                    <p className="text-small text-text-secondary">Money In (last month)</p>
+                    <p className="text-small text-text-secondary inline-flex items-center gap-1.5">
+                      Money In (last month)
+                      <InfoTooltip text="Total revenue collected last month, including sales, services, and any other income sources." />
+                    </p>
                   </div>
                 </div>
 
@@ -613,7 +625,10 @@ export default function DashboardPage() {
                       className="font-display text-h1 text-error mb-xs block tabular-nums"
                       delay={1100}
                     />
-                    <p className="text-small text-text-secondary">Money Out (last month)</p>
+                    <p className="text-small text-text-secondary inline-flex items-center gap-1.5">
+                      Money Out (last month)
+                      <InfoTooltip text="Total expenses paid last month, including payroll, rent, software, and all other business costs." />
+                    </p>
                   </div>
                 </div>
               </div>
@@ -713,7 +728,10 @@ export default function DashboardPage() {
                       return (
                         <tr key={row.label} className="border-b border-background last:border-b-0">
                           <td className={`py-3 pr-lg text-body ${row.isNetProfit || row.label === "Total Income" ? "font-semibold text-text-primary" : "text-text-secondary"}`}>
-                            {row.label}
+                            <span className="inline-flex items-center gap-1.5">
+                              {row.label}
+                              {row.tooltip && <InfoTooltip text={row.tooltip} />}
+                            </span>
                           </td>
                           <td className={`text-right py-3 px-lg text-body tabular-nums font-semibold ${isNeg ? "text-error" : isPos ? "text-success" : "text-text-primary"}`}>
                             {formatCurrency(row.value)}
@@ -741,7 +759,7 @@ export default function DashboardPage() {
             >
               <p className="text-body text-text-secondary">
                 <Link href="/data" className="text-orange hover:underline font-medium">
-                  Sync QuickBooks
+                  Add your financial data
                 </Link>{" "}
                 to see your P&L snapshot
               </p>

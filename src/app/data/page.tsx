@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, Suspense } from "react";
 import Papa, { ParseResult } from "papaparse";
 import { Icon } from "@iconify/react";
 import { useSearchParams } from "next/navigation";
@@ -9,6 +9,7 @@ import { Button, Card, CurrencyInput } from "@/components/ui";
 import { useToast } from "@/components/ui/Toast";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { getInsForgeClient } from "@/lib/insforge";
+import type { FinancialSnapshot } from "@/lib/database.types";
 
 type Tab = "manual" | "upload" | "quickbooks";
 
@@ -66,28 +67,6 @@ interface ColumnMapping {
 }
 
 type ColumnMappingKey = keyof ColumnMapping;
-
-interface FinancialDataRow {
-  id: string;
-  period_date: string | null;
-  cash_balance: number | null;
-  revenue: number | null;
-  expenses: number | null;
-  receivables: number | null;
-  payables: number | null;
-  ytd_revenue: number | null;
-  ytd_expenses: number | null;
-  inventory_value: number | null;
-  created_at: string;
-  data_source: string | null;
-  expense_breakdown: {
-    rent?: number;
-    payroll?: number;
-    supplies?: number;
-    marketing?: number;
-    other?: number;
-  } | null;
-}
 
 interface HealthAssessmentRow {
   id: string;
@@ -194,51 +173,57 @@ interface AISnapshotData {
   roe: number | null;
 }
 
-type UploadStep = "idle" | "reading" | "sheet_select" | "processing" | "confirm" | "saving";
+type UploadStep = "idle" | "reading" | "processing" | "confirm" | "saving";
 
-const SNAPSHOT_FIELDS: Array<{
+interface SnapshotField {
   key: keyof AISnapshotData;
   label: string;
   format: "currency" | "percent" | "ratio";
-}> = [
-  { key: "total_income", label: "Total Income", format: "currency" },
-  { key: "gross_profit", label: "Gross Profit", format: "currency" },
-  { key: "total_expenses", label: "Total Expenses", format: "currency" },
-  { key: "net_operating_income", label: "Net Operating Income", format: "currency" },
-  { key: "net_profit", label: "Net Profit", format: "currency" },
-  { key: "gross_profit_margin", label: "Gross Profit Margin", format: "percent" },
-  { key: "net_profit_margin", label: "Net Profit Margin", format: "percent" },
-  { key: "current_assets", label: "Current Assets", format: "currency" },
-  { key: "fixed_assets", label: "Fixed Assets", format: "currency" },
-  { key: "total_assets", label: "Total Assets", format: "currency" },
-  { key: "current_liabilities", label: "Current Liabilities", format: "currency" },
-  { key: "long_term_liabilities", label: "Long-term Liabilities", format: "currency" },
-  { key: "equity", label: "Equity", format: "currency" },
-  { key: "operating_activities", label: "Operating Activities", format: "currency" },
-  { key: "investing_activities", label: "Investing Activities", format: "currency" },
-  { key: "financing_activities", label: "Financing Activities", format: "currency" },
-  { key: "net_cash_flow", label: "Net Cash Flow", format: "currency" },
-  { key: "working_capital", label: "Working Capital", format: "currency" },
-  { key: "current_ratio", label: "Current Ratio", format: "ratio" },
-  { key: "roa", label: "Return on Assets (ROA)", format: "percent" },
-  { key: "roe", label: "Return on Equity (ROE)", format: "percent" },
-];
-
-function isMissingFinancialDataColumnError(error: unknown): boolean {
-  const dbError = error as DatabaseErrorLike | null;
-  const message = (dbError?.message || "").toLowerCase();
-  if (dbError?.code === "PGRST204") return true;
-
-  return (
-    message.includes("payables") ||
-    message.includes("ytd_revenue") ||
-    message.includes("ytd_expenses") ||
-    message.includes("inventory_value") ||
-    message.includes("expense_breakdown")
-  );
 }
 
-export default function DataPage() {
+const SNAPSHOT_SECTIONS: Array<{
+  title: string;
+  fields: SnapshotField[];
+}> = [
+  {
+    title: "Profit & Loss",
+    fields: [
+      { key: "total_income", label: "Total Income", format: "currency" },
+      { key: "gross_profit", label: "Gross Profit", format: "currency" },
+      { key: "total_expenses", label: "Total Expenses", format: "currency" },
+      { key: "net_operating_income", label: "Net Operating Income", format: "currency" },
+      { key: "net_profit", label: "Net Profit", format: "currency" },
+      { key: "gross_profit_margin", label: "Gross Profit Margin", format: "percent" },
+      { key: "net_profit_margin", label: "Net Profit Margin", format: "percent" },
+    ],
+  },
+  {
+    title: "Balance Sheet",
+    fields: [
+      { key: "current_assets", label: "Current Assets", format: "currency" },
+      { key: "fixed_assets", label: "Fixed Assets", format: "currency" },
+      { key: "total_assets", label: "Total Assets", format: "currency" },
+      { key: "current_liabilities", label: "Current Liabilities", format: "currency" },
+      { key: "long_term_liabilities", label: "Long-term Liabilities", format: "currency" },
+      { key: "equity", label: "Equity", format: "currency" },
+      { key: "working_capital", label: "Working Capital", format: "currency" },
+      { key: "current_ratio", label: "Current Ratio", format: "ratio" },
+      { key: "roa", label: "Return on Assets (ROA)", format: "percent" },
+      { key: "roe", label: "Return on Equity (ROE)", format: "percent" },
+    ],
+  },
+  {
+    title: "Cash Flow",
+    fields: [
+      { key: "operating_activities", label: "Operating Activities", format: "currency" },
+      { key: "investing_activities", label: "Investing Activities", format: "currency" },
+      { key: "financing_activities", label: "Financing Activities", format: "currency" },
+      { key: "net_cash_flow", label: "Net Cash Flow", format: "currency" },
+    ],
+  },
+];
+
+function DataContent() {
   const { user } = useRequireAuth();
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<Tab>("manual");
@@ -248,17 +233,17 @@ export default function DataPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // CSV Upload States
-  const [isDragging, setIsDragging] = useState(false);
-  const [csvFiles, setCsvFiles] = useState<File[]>([]);
+  const [_isDragging, setIsDragging] = useState(false);
+  const [_csvFiles, setCsvFiles] = useState<File[]>([]);
   const [csvData, setCsvData] = useState<CSVRow[]>([]);
-  const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
+  const [_csvHeaders, setCsvHeaders] = useState<string[]>([]);
   const [columnMapping, setColumnMapping] = useState<ColumnMapping>({
     revenue: "",
     expenses: "",
     cashBalance: "",
     date: "",
   });
-  const [isImporting, setIsImporting] = useState(false);
+  const [_isImporting, setIsImporting] = useState(false);
 
   const [formData, setFormData] = useState<FormData>({
     cash: "",
@@ -282,14 +267,20 @@ export default function DataPage() {
 
   const [historyEntries, setHistoryEntries] = useState<HistoryEntry[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [qbConnected, setQbConnected] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [qbRealmId, setQbRealmId] = useState<string | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [qbLastSyncAt, setQbLastSyncAt] = useState<string | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [qbSyncing, setQbSyncing] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [qbConnecting, setQbConnecting] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [qbDisconnecting, setQbDisconnecting] = useState(false);
   const [deletingEntryId, setDeletingEntryId] = useState<string | null>(null);
-  const quickBooksModeLocked = qbConnected;
+  const quickBooksModeLocked = false; // QB disabled — coming soon
 
   // AI Upload States
   const [uploadStep, setUploadStep] = useState<UploadStep>("idle");
@@ -297,8 +288,9 @@ export default function DataPage() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [parsedSnapshot, setParsedSnapshot] = useState<AISnapshotData | null>(null);
   const [confirmPeriod, setConfirmPeriod] = useState(getCurrentPeriod());
-  const [sheetNames, setSheetNames] = useState<string[]>([]);
-  const [selectedSheet, setSelectedSheet] = useState("");
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [_sheetNames, setSheetNames] = useState<string[]>([]);
+  const [_selectedSheet, setSelectedSheet] = useState("");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const workbookRef = useRef<any>(null);
   const aiFileInputRef = useRef<HTMLInputElement>(null);
@@ -347,24 +339,6 @@ export default function DataPage() {
     const month = String(parsed.getMonth() + 1).padStart(2, "0");
     const day = String(parsed.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
-  }
-
-  function mapRowToHistoryEntry(row: FinancialDataRow): HistoryEntry {
-    return {
-      id: row.id,
-      period: row.period_date || getCurrentPeriod(),
-      cash: row.cash_balance || 0,
-      revenue: row.revenue || 0,
-      expenses: row.expenses || 0,
-      receivables: row.receivables || 0,
-      payables: row.payables || 0,
-      ytdRevenue: row.ytd_revenue || 0,
-      ytdExpenses: row.ytd_expenses || 0,
-      inventoryValue: row.inventory_value || 0,
-      createdAt: row.created_at,
-      dataSource: row.data_source || "manual",
-      expenseBreakdown: row.expense_breakdown || null,
-    };
   }
 
   function mapAssessmentToHistoryEntry(row: HealthAssessmentRow): HistoryEntry {
@@ -416,35 +390,54 @@ export default function DataPage() {
     setShowExpenseBreakdown(hasBreakdown);
   }
 
+  function mapSnapshotToHistoryEntry(row: FinancialSnapshot): HistoryEntry {
+    return {
+      id: row.id,
+      period: row.period_date || getCurrentPeriod(),
+      cash: row.current_assets ?? 0,
+      revenue: row.total_income ?? 0,
+      expenses: row.total_expenses ?? 0,
+      receivables: 0,
+      payables: row.current_liabilities ?? 0,
+      ytdRevenue: 0,
+      ytdExpenses: 0,
+      inventoryValue: 0,
+      createdAt: row.created_at,
+      dataSource: row.data_source || "manual",
+      expenseBreakdown: null,
+    };
+  }
+
   async function refreshHistory(prefillLatest: boolean) {
     if (!user) return;
 
     const client = getInsForgeClient();
-    const { data, error } = await client.database
-      .from("financial_data")
+
+    const { data: snapData, error: snapError } = await client.database
+      .from("financial_snapshots")
       .select("*")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(20);
 
-    if (error) {
-      console.error("Error loading financial history:", error);
-      return;
+    if (snapError) {
+      console.error("Error loading financial_snapshots history:", snapError);
     }
 
-    const entries: HistoryEntry[] = (data || []).map((row) =>
-      mapRowToHistoryEntry(row as FinancialDataRow)
+    const allEntries: HistoryEntry[] = (snapData || []).map((row) =>
+      mapSnapshotToHistoryEntry(row as FinancialSnapshot)
     );
-    setHistoryEntries(entries);
 
-    if (entries.length > 0) {
+    setHistoryEntries(allEntries);
+
+    if (allEntries.length > 0) {
       if (prefillLatest) {
-        applyEntryToForm(entries[0]);
+        applyEntryToForm(allEntries[0]);
       }
       return;
     }
 
-    // Backward compatibility for users who completed assessment before financial_data sync existed.
+    // Fallback: prefill form from latest health_assessment if no snapshots exist
     const { data: assessment, error: assessmentError } = await client.database
       .from("health_assessments")
       .select("*")
@@ -455,92 +448,11 @@ export default function DataPage() {
 
     if (!assessmentError && assessment) {
       const assessmentRow = assessment as HealthAssessmentRow;
-      const hydrated = await hydrateFinancialDataFromAssessment(assessmentRow);
-      if (hydrated) {
-        const { data: refreshed } = await client.database
-          .from("financial_data")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false })
-          .limit(20);
-
-        const hydratedEntries: HistoryEntry[] = (refreshed || []).map((row) =>
-          mapRowToHistoryEntry(row as FinancialDataRow)
-        );
-
-        if (hydratedEntries.length > 0) {
-          setHistoryEntries(hydratedEntries);
-          if (prefillLatest) {
-            applyEntryToForm(hydratedEntries[0]);
-          }
-          return;
-        }
-      }
-
-      const fallbackEntry = mapAssessmentToHistoryEntry(
-        assessmentRow
-      );
+      const fallbackEntry = mapAssessmentToHistoryEntry(assessmentRow);
       if (prefillLatest) {
         applyEntryToForm(fallbackEntry);
       }
-      return;
     }
-  }
-
-  async function hydrateFinancialDataFromAssessment(
-    assessment: HealthAssessmentRow
-  ): Promise<boolean> {
-    if (!user) return false;
-
-    const client = getInsForgeClient();
-    const periodDate = normalizePeriodDate(assessment.created_at);
-    if (!periodDate) return false;
-
-    const { data: qbConnection } = await client.database
-      .from("quickbooks_connections")
-      .select("id")
-      .eq("user_id", user.id)
-      .limit(1)
-      .single();
-
-    const inferredSource = qbConnection ? "quickbooks" : "manual";
-
-    const basePayload = {
-      user_id: user.id,
-      period_date: periodDate,
-      cash_balance: assessment.cash_on_hand || 0,
-      revenue: assessment.monthly_revenue || 0,
-      expenses: assessment.monthly_expenses || 0,
-      receivables: assessment.accounts_receivable || 0,
-      data_source: inferredSource,
-    };
-
-    const extendedPayload = {
-      ...basePayload,
-      payables: assessment.accounts_payable || 0,
-      ytd_revenue: assessment.ytd_revenue || 0,
-      ytd_expenses: assessment.ytd_expenses || 0,
-      inventory_value: assessment.inventory_value || 0,
-      expense_breakdown: assessment.expense_breakdown || null,
-    };
-
-    let { error } = await client.database
-      .from("financial_data")
-      .insert(extendedPayload);
-
-    if (error && isMissingFinancialDataColumnError(error)) {
-      const retry = await client.database
-        .from("financial_data")
-        .insert(basePayload);
-      error = retry.error;
-    }
-
-    if (error) {
-      console.error("Failed to hydrate financial_data from assessment:", error);
-      return false;
-    }
-
-    return true;
   }
 
   async function getAuthHeaders(): Promise<Record<string, string> | null> {
@@ -570,6 +482,7 @@ export default function DataPage() {
     setQbLastSyncAt(data.lastSyncAt || null);
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async function syncQuickBooksToFinancialData() {
     if (!user) return;
 
@@ -605,35 +518,27 @@ export default function DataPage() {
       const { getInsForgeClient: getClient } = await import("@/lib/insforge");
       const client = getClient();
 
-      const basePayload = {
-        user_id: user.id,
-        period_date: periodFromQuickBooks,
-        cash_balance: metrics.cash || 0,
-        revenue: metrics.revenue || 0,
-        expenses: metrics.expenses || 0,
-        receivables: metrics.receivables || 0,
-        data_source: "quickbooks",
-      };
+      // Upsert into financial_snapshots (single source of truth)
+      const snapshotRow = payload.richSnapshot
+        ? {
+            user_id: user.id,
+            ...payload.richSnapshot,
+            period_date: periodFromQuickBooks,
+          }
+        : {
+            user_id: user.id,
+            period_date: periodFromQuickBooks,
+            data_source: "quickbooks",
+            total_income: metrics.revenue || 0,
+            total_expenses: metrics.expenses || 0,
+            net_profit: (metrics.revenue || 0) - (metrics.expenses || 0),
+            current_assets: metrics.cash || 0,
+            current_liabilities: metrics.payables || 0,
+          };
 
-      const extendedPayload = {
-        ...basePayload,
-        payables: metrics.payables || 0,
-        ytd_revenue: metrics.ytdRevenue || 0,
-        ytd_expenses: metrics.ytdExpenses || 0,
-        inventory_value: metrics.inventoryValue || 0,
-      };
-
-      // Upsert financial_data — update on conflict of user_id + period_date
-      let { error } = await client.database
-        .from("financial_data")
-        .upsert([extendedPayload], { onConflict: "user_id,period_date" });
-
-      if (error && isMissingFinancialDataColumnError(error)) {
-        const retry = await client.database
-          .from("financial_data")
-          .upsert([basePayload], { onConflict: "user_id,period_date" });
-        error = retry.error;
-      }
+      const { error } = await client.database
+        .from("financial_snapshots")
+        .upsert([snapshotRow], { onConflict: "user_id,period_date" });
 
       if (error) {
         console.error("Failed to save QuickBooks sync snapshot:", error);
@@ -645,23 +550,6 @@ export default function DataPage() {
             : "QuickBooks synced but save failed."
         );
         return;
-      }
-
-      // Upsert richSnapshot into financial_snapshots
-      if (payload.richSnapshot) {
-        const snapshotRow = {
-          user_id: user.id,
-          ...payload.richSnapshot,
-          period_date: periodFromQuickBooks,
-        };
-
-        const { error: snapError } = await client.database
-          .from("financial_snapshots")
-          .upsert([snapshotRow], { onConflict: "user_id,period_date" });
-
-        if (snapError) {
-          console.error("Failed to save rich snapshot:", snapError);
-        }
       }
 
       setQbConnected(true);
@@ -758,7 +646,11 @@ export default function DataPage() {
   }
 
   function formatDate(dateString: string) {
-    return new Date(dateString).toLocaleDateString("en-US", {
+    // Ensure UTC timestamps without a Z suffix are parsed correctly
+    const normalized = dateString.endsWith("Z") || dateString.includes("+")
+      ? dateString
+      : dateString + "Z";
+    return new Date(normalized).toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
       year: "numeric",
@@ -801,16 +693,16 @@ export default function DataPage() {
       const cashValue = parseFloat(formData.cash.replace(/,/g, ""));
       const revenueValue = parseFloat(formData.revenue.replace(/,/g, ""));
       const expensesValue = parseFloat(formData.expenses.replace(/,/g, ""));
-      const receivablesValue = parseFloat(formData.receivables.replace(/,/g, ""));
+      const _receivablesValue = parseFloat(formData.receivables.replace(/,/g, ""));
       const payablesValue = parseFloat(formData.payables.replace(/,/g, "")) || 0;
-      const ytdRevenueValue = parseFloat(formData.ytdRevenue.replace(/,/g, "")) || 0;
-      const ytdExpensesValue = parseFloat(formData.ytdExpenses.replace(/,/g, "")) || 0;
-      const inventoryValue = parseFloat(formData.inventoryValue.replace(/,/g, "")) || 0;
-      const rentValue = parseFloat(expenseBreakdown.rent.replace(/,/g, "")) || 0;
-      const payrollValue = parseFloat(expenseBreakdown.payroll.replace(/,/g, "")) || 0;
-      const suppliesValue = parseFloat(expenseBreakdown.supplies.replace(/,/g, "")) || 0;
-      const marketingValue = parseFloat(expenseBreakdown.marketing.replace(/,/g, "")) || 0;
-      const otherValue = parseFloat(expenseBreakdown.other.replace(/,/g, "")) || 0;
+      const _ytdRevenueValue = parseFloat(formData.ytdRevenue.replace(/,/g, "")) || 0;
+      const _ytdExpensesValue = parseFloat(formData.ytdExpenses.replace(/,/g, "")) || 0;
+      const _inventoryValue = parseFloat(formData.inventoryValue.replace(/,/g, "")) || 0;
+      const _rentValue = parseFloat(expenseBreakdown.rent.replace(/,/g, "")) || 0;
+      const _payrollValue = parseFloat(expenseBreakdown.payroll.replace(/,/g, "")) || 0;
+      const _suppliesValue = parseFloat(expenseBreakdown.supplies.replace(/,/g, "")) || 0;
+      const _marketingValue = parseFloat(expenseBreakdown.marketing.replace(/,/g, "")) || 0;
+      const _otherValue = parseFloat(expenseBreakdown.other.replace(/,/g, "")) || 0;
       const periodDateValue = normalizePeriodDate(formData.period);
 
       if (!periodDateValue) {
@@ -818,41 +710,18 @@ export default function DataPage() {
         return;
       }
 
-      const basePayload = {
-        user_id: user.id,
-        period_date: periodDateValue,
-        cash_balance: cashValue,
-        revenue: revenueValue,
-        expenses: expensesValue,
-        receivables: receivablesValue,
-        data_source: "manual",
-      };
-
-      const extendedPayload = {
-        ...basePayload,
-        payables: payablesValue,
-        ytd_revenue: ytdRevenueValue,
-        ytd_expenses: ytdExpensesValue,
-        inventory_value: inventoryValue,
-        expense_breakdown:
-          rentValue || payrollValue || suppliesValue || marketingValue || otherValue
-            ? {
-                rent: rentValue,
-                payroll: payrollValue,
-                supplies: suppliesValue,
-                marketing: marketingValue,
-                other: otherValue,
-              }
-            : null,
-      };
-
-      // Save to InsForge financial_data table
-      let { error } = await client.database.from("financial_data").insert(extendedPayload);
-
-      if (error && isMissingFinancialDataColumnError(error)) {
-        const retry = await client.database.from("financial_data").insert(basePayload);
-        error = retry.error;
-      }
+      const { error } = await client.database
+        .from("financial_snapshots")
+        .upsert([{
+          user_id: user.id,
+          period_date: periodDateValue,
+          data_source: "manual",
+          total_income: revenueValue,
+          total_expenses: expensesValue,
+          net_profit: revenueValue - expensesValue,
+          current_assets: cashValue,
+          current_liabilities: payablesValue,
+        }], { onConflict: "user_id,period_date" });
 
       if (error) {
         console.error("Error saving financial data:", error);
@@ -882,17 +751,17 @@ export default function DataPage() {
     formData.cash && formData.revenue && formData.expenses && formData.receivables;
 
   // CSV Upload Handlers
-  function handleDragOver(e: React.DragEvent) {
+  function _handleDragOver(e: React.DragEvent) {
     e.preventDefault();
     setIsDragging(true);
   }
 
-  function handleDragLeave(e: React.DragEvent) {
+  function _handleDragLeave(e: React.DragEvent) {
     e.preventDefault();
     setIsDragging(false);
   }
 
-  function handleDrop(e: React.DragEvent) {
+  function _handleDrop(e: React.DragEvent) {
     e.preventDefault();
     setIsDragging(false);
 
@@ -902,7 +771,7 @@ export default function DataPage() {
     }
   }
 
-  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+  function _handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files || []);
     if (files.length > 0) {
       processFiles(files);
@@ -1023,7 +892,7 @@ export default function DataPage() {
     return mapping;
   }
 
-  function handleColumnMappingChange(field: ColumnMappingKey, value: string) {
+  function _handleColumnMappingChange(field: ColumnMappingKey, value: string) {
     setColumnMapping({ ...columnMapping, [field]: value });
   }
 
@@ -1046,7 +915,7 @@ export default function DataPage() {
     const maxSize = 2 * 1024 * 1024;
     if (file.size > maxSize) {
       setUploadError(
-        "File is over 2 MB. Please use a smaller file or connect QuickBooks instead."
+        "File is over 2 MB. Please use a smaller file or enter data manually."
       );
       return;
     }
@@ -1064,16 +933,21 @@ export default function DataPage() {
         const workbook = XLSX.read(buffer, { type: "array" });
 
         if (workbook.SheetNames.length > 1) {
-          workbookRef.current = workbook;
-          setSheetNames(workbook.SheetNames);
-          setSelectedSheet(workbook.SheetNames[0]);
-          setUploadStep("sheet_select");
-          return;
+          // Combine all sheets so AI can extract from P&L, Balance Sheet, Cash Flow, etc.
+          const parts: string[] = [];
+          for (const name of workbook.SheetNames) {
+            const sheet = workbook.Sheets[name];
+            const csv = XLSX.utils.sheet_to_csv(sheet);
+            if (csv.trim()) {
+              parts.push(`=== SHEET: ${name} ===\n${csv}`);
+            }
+          }
+          fileContent = parts.join("\n\n");
+        } else {
+          const sheetName = workbook.SheetNames[0];
+          const sheet = workbook.Sheets[sheetName];
+          fileContent = XLSX.utils.sheet_to_csv(sheet);
         }
-
-        const sheetName = workbook.SheetNames[0];
-        const sheet = workbook.Sheets[sheetName];
-        fileContent = XLSX.utils.sheet_to_csv(sheet);
       } else {
         fileContent = await new Promise<string>((resolve, reject) => {
           const reader = new FileReader();
@@ -1104,36 +978,45 @@ export default function DataPage() {
     const client = getInsForgeClient();
 
     const completion = await client.ai.chat.completions.create({
-      model: "anthropic/claude-sonnet-4-5",
+      model: "anthropic/claude-sonnet-4.6",
       messages: [
         {
           role: "user",
-          content: `You are a financial data parser. Extract financial data from this spreadsheet content and return ONLY a JSON object with these exact fields (use null for any field not found, do not include markdown, backticks, or explanation):
+          content: `You are a financial data parser. The spreadsheet may contain data across multiple sheets (Profit & Loss, Balance Sheet, Cash Flow). Extract data from ALL sheets/sections.
+
+Return ONLY a JSON object (no markdown, no backticks, no explanation) with these fields. Use null for any field truly not found. All monetary values as plain numbers (no $ or commas). IMPORTANT: Return percentages and ratios as DECIMALS (e.g. 68.3% → 0.683, NOT 68.3).
+
 {
-  "period_date": "YYYY-MM-DD last day of month this data covers",
-  "total_income": number or null,
-  "gross_profit": number or null,
-  "total_expenses": number or null,
-  "net_operating_income": number or null,
-  "net_profit": number or null,
-  "gross_profit_margin": number or null,
-  "net_profit_margin": number or null,
-  "current_assets": number or null,
-  "fixed_assets": number or null,
-  "total_assets": number or null,
-  "current_liabilities": number or null,
-  "long_term_liabilities": number or null,
-  "equity": number or null,
-  "operating_activities": number or null,
-  "investing_activities": number or null,
-  "financing_activities": number or null,
-  "net_cash_flow": number or null,
-  "working_capital": number or null,
-  "current_ratio": number or null,
-  "roa": number or null,
-  "roe": number or null
+  "period_date": "YYYY-MM-DD last day of the month this data covers",
+  "total_income": total revenue/income/sales (number or null),
+  "gross_profit": gross profit (number or null),
+  "total_expenses": total expenses/operating expenses (number or null),
+  "net_operating_income": operating income/EBIT (number or null),
+  "net_profit": net income/net profit/bottom line (number or null),
+  "gross_profit_margin": as decimal e.g. 0.683 (number or null),
+  "net_profit_margin": as decimal e.g. 0.157 (number or null),
+  "current_assets": cash + receivables + inventory + other current assets (number or null),
+  "fixed_assets": property/equipment/long-term assets (number or null),
+  "total_assets": total assets (number or null),
+  "current_liabilities": AP + short-term debt + other current liabilities (number or null),
+  "long_term_liabilities": long-term debt/notes payable (number or null),
+  "equity": owner equity/retained earnings/shareholders equity (number or null),
+  "operating_activities": cash from operations (number or null),
+  "investing_activities": cash from investing (number or null),
+  "financing_activities": cash from financing (number or null),
+  "net_cash_flow": net change in cash (number or null),
+  "working_capital": current_assets minus current_liabilities — calculate if not explicit (number or null),
+  "current_ratio": current_assets / current_liabilities — calculate if not explicit (number or null),
+  "roa": net_profit / total_assets as decimal — calculate if not explicit (number or null),
+  "roe": net_profit / equity as decimal — calculate if not explicit (number or null)
 }
-Spreadsheet content: ${fileContent}`,
+
+Look for common labels: "Total Revenue", "Sales", "Income", "COGS", "Cost of Goods Sold", "Operating Expenses", "Cash and Cash Equivalents", "Accounts Receivable", "Accounts Payable", "Total Current Assets", "Fixed Assets", "Property Plant & Equipment", "Total Liabilities", "Owner's Equity", "Retained Earnings", "Cash from Operations", "Cash from Investing", "Cash from Financing".
+
+If working_capital, current_ratio, roa, or roe are not explicitly stated but can be calculated from other extracted values, calculate them.
+
+Spreadsheet content:
+${fileContent}`,
         },
       ],
       maxTokens: 2000,
@@ -1154,6 +1037,17 @@ Spreadsheet content: ${fileContent}`,
       return;
     }
 
+    // Fix percentages if AI returned them as whole numbers (68.3) instead of decimals (0.683)
+    const pctFields: (keyof AISnapshotData)[] = [
+      "gross_profit_margin", "net_profit_margin", "roa", "roe",
+    ];
+    for (const f of pctFields) {
+      const v = parsed[f];
+      if (typeof v === "number" && (v > 1 || v < -1)) {
+        (parsed as unknown as Record<string, number | null>)[f] = v / 100;
+      }
+    }
+
     setParsedSnapshot(parsed);
 
     if (parsed.period_date) {
@@ -1168,22 +1062,7 @@ Spreadsheet content: ${fileContent}`,
     setUploadStep("confirm");
   }
 
-  async function handleParseSheet() {
-    if (!workbookRef.current || !selectedSheet) return;
-
-    try {
-      const XLSX = (await import("xlsx")).default;
-      const sheet = workbookRef.current.Sheets[selectedSheet];
-      const fileContent = XLSX.utils.sheet_to_csv(sheet);
-      await sendContentToAI(fileContent);
-    } catch (error) {
-      console.error("Sheet parse error:", error);
-      setUploadError(
-        "We couldn\u2019t read this file format. Try a different file or connect QuickBooks instead."
-      );
-      setUploadStep("idle");
-    }
-  }
+  // handleParseSheet removed — all sheets are now combined automatically
 
   async function handleSaveAISnapshot() {
     if (!user || !parsedSnapshot) return;
@@ -1265,7 +1144,7 @@ Spreadsheet content: ${fileContent}`,
     }
   }
 
-  async function handleImport() {
+  async function _handleImport() {
     if (quickBooksModeLocked) {
       showToast(
         "error",
@@ -1307,15 +1186,21 @@ Spreadsheet content: ${fileContent}`,
             continue;
           }
 
-          const { error } = await client.database.from("financial_data").insert({
-            user_id: user.id,
-            period_date: periodDate,
-            revenue: isNaN(revenue) ? 0 : revenue,
-            expenses: isNaN(expenses) ? 0 : expenses,
-            cash_balance: isNaN(cashBalance) ? 0 : cashBalance,
-            receivables: 0, // Not mapped in CSV import
-            data_source: "spreadsheet",
-          });
+          const rev = isNaN(revenue) ? 0 : revenue;
+          const exp = isNaN(expenses) ? 0 : expenses;
+          const cash = isNaN(cashBalance) ? 0 : cashBalance;
+
+          const { error } = await client.database
+            .from("financial_snapshots")
+            .upsert([{
+              user_id: user.id,
+              period_date: periodDate,
+              data_source: "spreadsheet",
+              total_income: rev,
+              total_expenses: exp,
+              net_profit: rev - exp,
+              current_assets: cash,
+            }], { onConflict: "user_id,period_date" });
 
           if (error) {
             console.error("Error importing row:", error);
@@ -1391,6 +1276,7 @@ Spreadsheet content: ${fileContent}`,
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async function handleDisconnectQuickBooks() {
     if (!user) return;
 
@@ -1431,7 +1317,7 @@ Spreadsheet content: ${fileContent}`,
     }
   }
 
-  const isMappingValid =
+  const _isMappingValid =
     columnMapping.revenue && columnMapping.expenses && columnMapping.cashBalance;
 
   function selectTab(tab: Tab) {
@@ -1457,8 +1343,9 @@ Spreadsheet content: ${fileContent}`,
     setDeletingEntryId(entryId);
     try {
       const client = getInsForgeClient();
+
       const { error } = await client.database
-        .from("financial_data")
+        .from("financial_snapshots")
         .delete()
         .eq("id", entryId)
         .eq("user_id", user.id);
@@ -1549,7 +1436,10 @@ Spreadsheet content: ${fileContent}`,
                       : "text-text-secondary hover:text-text-primary"
                   }`}
                 >
-                  QuickBooks Sync
+                  <span className="flex items-center gap-2">
+                    QuickBooks Sync
+                    <span className="text-[10px] font-semibold text-orange bg-orange/10 px-1.5 py-0.5 rounded-full leading-none">Soon</span>
+                  </span>
                   {activeTab === "quickbooks" && (
                     <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange animate-slide-in" />
                   )}
@@ -1859,7 +1749,7 @@ Spreadsheet content: ${fileContent}`,
                         <input
                           ref={aiFileInputRef}
                           type="file"
-                          accept=".csv,.xlsx"
+                          accept=".csv"
                           onChange={(e) => {
                             const file = e.target.files?.[0];
                             if (file) void handleAIUpload(file);
@@ -1873,66 +1763,13 @@ Spreadsheet content: ${fileContent}`,
                           Choose File
                         </Button>
                         <p className="text-xs font-body text-text-muted mt-6">
-                          Accepts .csv and .xlsx files up to 2 MB
+                          Accepts .csv files up to 2 MB
                         </p>
                       </div>
                     </Card>
                   )}
 
                   {/* Sheet Selector */}
-                  {uploadStep === "sheet_select" && sheetNames.length > 1 && (
-                    <Card className="mb-8">
-                      <div className="mb-4">
-                        <h3 className="text-lg font-display text-text-primary mb-1">
-                          Multiple tabs detected
-                        </h3>
-                        {uploadFile?.name && (
-                          <p className="text-sm font-body text-text-secondary">
-                            {uploadFile.name} has {sheetNames.length} tabs
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="mb-6">
-                        <label className="block text-sm font-body font-medium text-text-secondary mb-2">
-                          Which tab contains your financial data?
-                        </label>
-                        <select
-                          value={selectedSheet}
-                          onChange={(e) => setSelectedSheet(e.target.value)}
-                          className="w-full sm:w-auto px-4 py-3 rounded-md border border-text-muted/30 bg-surface text-text-primary font-body focus:outline-none focus:ring-2 focus:ring-orange focus:border-transparent appearance-none"
-                          style={{
-                            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236B6560'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
-                            backgroundRepeat: "no-repeat",
-                            backgroundPosition: "right 0.75rem center",
-                            backgroundSize: "1.25rem",
-                            paddingRight: "2.5rem",
-                          }}
-                        >
-                          {sheetNames.map((name) => (
-                            <option key={name} value={name}>
-                              {name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div className="flex items-center gap-3">
-                        <Button
-                          variant="primary"
-                          onClick={() => {
-                            void handleParseSheet();
-                          }}
-                        >
-                          Parse This Tab
-                        </Button>
-                        <Button variant="cancel" onClick={resetAIUpload}>
-                          Cancel
-                        </Button>
-                      </div>
-                    </Card>
-                  )}
-
                   {/* Loading State */}
                   {(uploadStep === "reading" || uploadStep === "processing") && (
                     <Card className="mb-8">
@@ -1960,7 +1797,7 @@ Spreadsheet content: ${fileContent}`,
                             Here&apos;s what we found in your spreadsheet
                           </h3>
                           <p className="text-sm font-body text-text-secondary">
-                            Review before saving. Edit anything that looks off.
+                            Review before saving. Click any value to edit or fill in missing fields.
                           </p>
                         </div>
 
@@ -1977,45 +1814,112 @@ Spreadsheet content: ${fileContent}`,
                           />
                         </div>
 
-                        {/* Data Table */}
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-sm">
-                            <thead>
-                              <tr className="border-b border-text-muted/20">
-                                <th className="text-left font-body font-medium text-text-secondary py-3 px-4">
-                                  Field
-                                </th>
-                                <th className="text-right font-body font-medium text-text-secondary py-3 px-4">
-                                  Value Found
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {SNAPSHOT_FIELDS.map(({ key, label, format }) => {
-                                const val = parsedSnapshot[key];
-                                return (
-                                  <tr key={key} className="border-b border-text-muted/10">
-                                    <td className="py-3 px-4 font-body text-text-primary">
-                                      {label}
-                                    </td>
-                                    <td className="py-3 px-4 text-right font-body">
-                                      {val != null && typeof val === "number" ? (
-                                        <span className="text-text-primary">
-                                          {format === "currency"
-                                            ? formatCurrency(val)
-                                            : format === "percent"
-                                            ? `${val.toFixed(1)}%`
-                                            : val.toFixed(2)}
-                                        </span>
-                                      ) : (
-                                        <span className="text-text-muted">Not found</span>
-                                      )}
-                                    </td>
+                        {/* Data Table — grouped by section */}
+                        <div className="overflow-x-auto space-y-6">
+                          {SNAPSHOT_SECTIONS.map((section) => (
+                            <div key={section.title}>
+                              <h4 className="text-sm font-body font-semibold text-text-secondary uppercase tracking-wider mb-2 px-4">
+                                {section.title}
+                              </h4>
+                              <table className="w-full text-sm">
+                                <thead>
+                                  <tr className="border-b border-text-muted/20">
+                                    <th className="text-left font-body font-medium text-text-secondary py-2 px-4">
+                                      Field
+                                    </th>
+                                    <th className="text-right font-body font-medium text-text-secondary py-2 px-4">
+                                      Value
+                                    </th>
                                   </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
+                                </thead>
+                                <tbody>
+                                  {section.fields.map(({ key, label, format }) => {
+                                    const val = parsedSnapshot[key];
+                                    const isEditing = editingField === key;
+                                    const displayValue =
+                                      val != null && typeof val === "number"
+                                        ? format === "currency"
+                                          ? formatCurrency(val)
+                                          : format === "percent"
+                                          ? `${(val * 100).toFixed(1)}%`
+                                          : val.toFixed(2)
+                                        : null;
+
+                                    return (
+                                      <tr key={key} className="border-b border-text-muted/10">
+                                        <td className="py-3 px-4 font-body text-text-primary">
+                                          {label}
+                                        </td>
+                                        <td className="py-3 px-4 text-right font-body">
+                                          {isEditing ? (
+                                            <input
+                                              type="text"
+                                              autoFocus
+                                              defaultValue={
+                                                val != null && typeof val === "number"
+                                                  ? format === "percent"
+                                                    ? (val * 100).toFixed(1)
+                                                    : format === "currency"
+                                                    ? Math.round(val).toLocaleString("en-US")
+                                                    : val.toFixed(2)
+                                                  : ""
+                                              }
+                                              placeholder={
+                                                format === "currency"
+                                                  ? "$0"
+                                                  : format === "percent"
+                                                  ? "0.0%"
+                                                  : "0.00"
+                                              }
+                                              className="w-32 ml-auto text-right px-2 py-1 rounded border border-orange/50 bg-white text-text-primary font-body text-sm focus:outline-none focus:ring-2 focus:ring-orange"
+                                              onBlur={(e) => {
+                                                const raw = e.target.value.replace(/[$,%\s]/g, "").replace(/,/g, "");
+                                                const num = parseFloat(raw);
+                                                setParsedSnapshot((prev) => {
+                                                  if (!prev) return prev;
+                                                  return {
+                                                    ...prev,
+                                                    [key]: raw === "" || isNaN(num)
+                                                      ? null
+                                                      : format === "percent"
+                                                      ? num / 100
+                                                      : num,
+                                                  };
+                                                });
+                                                setEditingField(null);
+                                              }}
+                                              onKeyDown={(e) => {
+                                                if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                                                if (e.key === "Escape") setEditingField(null);
+                                              }}
+                                            />
+                                          ) : (
+                                            <button
+                                              type="button"
+                                              onClick={() => setEditingField(key)}
+                                              className={`inline-flex items-center gap-1.5 rounded px-2 py-1 transition-colors hover:bg-orange/10 ${
+                                                displayValue
+                                                  ? "text-text-primary"
+                                                  : "text-text-muted italic"
+                                              }`}
+                                              title="Click to edit"
+                                            >
+                                              {displayValue || "Not found"}
+                                              <Icon
+                                                icon="ph:pencil-simple"
+                                                className="w-3 h-3 text-text-muted opacity-0 group-hover:opacity-100"
+                                                style={{ opacity: 0.4 }}
+                                              />
+                                            </button>
+                                          )}
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          ))}
                         </div>
                       </Card>
 
@@ -2047,96 +1951,26 @@ Spreadsheet content: ${fileContent}`,
               className="animate-fade-in"
               style={{ animationDelay: "0.3s" }}
             >
-              <Card className="mb-6 border border-[#2CA01C]/30 bg-[#2CA01C]/[0.04]">
-                <div className="flex flex-col gap-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                    <div>
-                      <h3 className="text-xl font-display text-text-primary">QuickBooks Sync</h3>
-                      <p className="text-sm font-body text-text-secondary mt-1">
-                        Sync on demand. Each sync writes a new row to your Data ledger.
-                      </p>
-                    </div>
-                    {!qbConnected ? (
-                      <Button
-                        type="button"
-                        variant="primary"
-                        onClick={handleConnectQuickBooks}
-                        disabled={qbConnecting}
-                      >
-                        {qbConnecting ? "Connecting..." : "Connect QuickBooks"}
-                      </Button>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          onClick={() => {
-                            void syncQuickBooksToFinancialData();
-                          }}
-                          disabled={qbSyncing || qbDisconnecting}
-                        >
-                          {qbSyncing ? "Syncing..." : "Sync Now"}
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="cancel"
-                          onClick={() => {
-                            void handleDisconnectQuickBooks();
-                          }}
-                          disabled={qbDisconnecting || qbSyncing}
-                        >
-                          {qbDisconnecting ? "Disconnecting..." : "Disconnect"}
-                        </Button>
-                      </div>
-                    )}
+              <Card className="mb-6 border border-text-muted/20 bg-surface">
+                <div className="flex flex-col items-center text-center py-8 px-4 gap-4">
+                  <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center">
+                    <img
+                      src="/quickbooks.png"
+                      alt="QuickBooks"
+                      className="w-10 h-10 object-contain grayscale"
+                    />
                   </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm font-body">
-                    <div className="rounded-md bg-white/70 border border-text-muted/20 px-3 py-2">
-                      <p className="text-text-muted">Status</p>
-                      <p className="text-text-primary font-medium">
-                        {qbConnected ? "Connected" : "Not Connected"}
-                      </p>
-                    </div>
-                    <div className="rounded-md bg-white/70 border border-text-muted/20 px-3 py-2">
-                      <p className="text-text-muted">Company ID</p>
-                      <p className="text-text-primary font-medium">{qbRealmId || "—"}</p>
-                    </div>
-                    <div className="rounded-md bg-white/70 border border-text-muted/20 px-3 py-2">
-                      <p className="text-text-muted">Last Sync</p>
-                      <p className="text-text-primary font-medium">
-                        {qbLastSyncAt ? formatDate(qbLastSyncAt) : "Never"}
-                      </p>
+                  <div>
+                    <div className="flex items-center justify-center gap-2 mb-2">
+                      <h3 className="text-xl font-display text-text-primary">QuickBooks Integration</h3>
+                      <span className="inline-flex items-center gap-1.5 px-3 py-0.5 bg-orange/10 rounded-full text-xs font-semibold text-orange">
+                        Coming Soon
+                      </span>
                     </div>
                   </div>
-
-                  <p className="text-xs font-body text-text-secondary">
-                    Manual mode: data updates only when you click <span className="font-semibold">Sync Now</span>.
-                  </p>
-                  {qbConnected && (
-                    <p className="text-xs font-body text-text-secondary">
-                      QuickBooks is the active source for this account. Manual and spreadsheet
-                      updates are locked while connected.
-                    </p>
-                  )}
                 </div>
               </Card>
 
-              {!qbConnected && (
-                <Card className="text-center py-12">
-                  <p className="font-body text-text-secondary mb-4">
-                    Connect QuickBooks to sync your accounting data into ProfitPulse.
-                  </p>
-                  <Button
-                    type="button"
-                    variant="primary"
-                    onClick={handleConnectQuickBooks}
-                    disabled={qbConnecting}
-                  >
-                    {qbConnecting ? "Connecting..." : "Connect QuickBooks"}
-                  </Button>
-                </Card>
-              )}
             </div>
           )}
 
@@ -2218,7 +2052,16 @@ Spreadsheet content: ${fileContent}`,
                               {formatPeriodDisplay(entry.period)}
                             </td>
                             <td className="py-3 px-4">
-                              <span className="inline-flex items-center rounded-full bg-background px-2 py-1 text-xs font-body text-text-secondary">
+                              <span
+                                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-medium leading-4 ${
+                                  entry.dataSource === "quickbooks"
+                                    ? "bg-emerald-50 text-emerald-700"
+                                    : "bg-gray-100 text-gray-500"
+                                }`}
+                              >
+                                {entry.dataSource === "quickbooks" && (
+                                  <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                                )}
                                 {formatDataSourceLabel(entry.dataSource)}
                               </span>
                             </td>
@@ -2266,5 +2109,13 @@ Spreadsheet content: ${fileContent}`,
         </div>
       </div>
     </AppLayout>
+  );
+}
+
+export default function DataPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <DataContent />
+    </Suspense>
   );
 }
