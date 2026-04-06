@@ -12,7 +12,6 @@ import { calculateHealthScore, getHealthStatus } from "@/lib/healthScore";
 import type { HealthAssessment, FinancialSnapshot } from "@/lib/database.types";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { InfoTooltip } from "@/components/ui/MetricTooltip";
-import Link from "next/link";
 import {
   BarChart,
   Bar,

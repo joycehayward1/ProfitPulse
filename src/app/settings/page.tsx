@@ -702,7 +702,7 @@ function SettingsContent() {
                       try {
                         const headers = await getAuthHeaders();
                         if (!headers) {
-                          showToast("Please log in to save preferences", "error");
+                          showToast("error", "Please log in to save preferences");
                           return;
                         }
                         const res = await fetch("/api/notifications/preferences", {
@@ -711,9 +711,9 @@ function SettingsContent() {
                           body: JSON.stringify(emailNotifications),
                         });
                         if (!res.ok) throw new Error("Failed to save");
-                        showToast("Notification preferences saved!", "success");
+                        showToast("success", "Notification preferences saved!");
                       } catch {
-                        showToast("Failed to save preferences", "error");
+                        showToast("error", "Failed to save preferences");
                       } finally {
                         setSavingNotifications(false);
                       }
