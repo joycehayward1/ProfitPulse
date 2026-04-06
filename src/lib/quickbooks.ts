@@ -243,12 +243,15 @@ export async function getConnectionStatus(userId: string): Promise<{
 }> {
   const admin = getInsForgeAdmin();
 
-  let { data: connection, error } = await admin.database
+  const result = await admin.database
     .from("quickbooks_connections")
     .select("realm_id, last_sync_at, created_at")
     .eq("user_id", userId)
     .limit(1)
     .single();
+
+  let connection: QuickBooksConnection | null = result.data as QuickBooksConnection | null;
+  let error = result.error;
 
   // Backward compatibility for projects where created_at does not exist yet.
   if (error && isMissingCreatedAtColumnError(error)) {

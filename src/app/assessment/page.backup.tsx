@@ -215,7 +215,7 @@ export default function AssessmentPage() {
     setUploadedFiles(prev => [...prev, ...files.map(f => f.name)]);
 
     // Aggregate data from all files
-    let aggregatedData = {
+    const aggregatedData = {
       cash: '',
       revenue: '',
       expenses: '',

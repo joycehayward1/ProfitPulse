@@ -147,10 +147,30 @@ function SettingsContent() {
   // Notification preferences
   const [emailNotifications, setEmailNotifications] = useState({
     weekly_summary: true,
-    health_alerts: true,
-    scenario_results: false,
     product_updates: true,
   });
+  const [savingNotifications, setSavingNotifications] = useState(false);
+
+  // Load saved notification preferences
+  useEffect(() => {
+    async function loadPrefs() {
+      const headers = await getAuthHeaders();
+      if (!headers) return;
+      try {
+        const res = await fetch("/api/notifications/preferences", { headers });
+        if (res.ok) {
+          const data = await res.json();
+          setEmailNotifications({
+            weekly_summary: data.weekly_summary ?? true,
+            product_updates: data.product_updates ?? true,
+          });
+        }
+      } catch {
+        // Use defaults
+      }
+    }
+    loadPrefs();
+  }, [getAuthHeaders]);
 
   // Handle QB OAuth callback results from URL params
   useEffect(() => {
@@ -634,16 +654,6 @@ function SettingsContent() {
                     description: "Get a weekly recap of your business health and key metrics",
                   },
                   {
-                    id: "health_alerts",
-                    title: "Health Alerts",
-                    description: "Receive alerts when your health score drops or needs attention",
-                  },
-                  {
-                    id: "scenario_results",
-                    title: "Scenario Results",
-                    description: "Get notified when your saved scenarios are processed",
-                  },
-                  {
                     id: "product_updates",
                     title: "Product Updates",
                     description: "Stay informed about new features and improvements",
@@ -684,7 +694,33 @@ function SettingsContent() {
                 ))}
 
                 <div className="pt-md">
-                  <Button variant="primary">Save Preferences</Button>
+                  <Button
+                    variant="primary"
+                    disabled={savingNotifications}
+                    onClick={async () => {
+                      setSavingNotifications(true);
+                      try {
+                        const headers = await getAuthHeaders();
+                        if (!headers) {
+                          showToast("Please log in to save preferences", "error");
+                          return;
+                        }
+                        const res = await fetch("/api/notifications/preferences", {
+                          method: "POST",
+                          headers: { ...headers, "Content-Type": "application/json" },
+                          body: JSON.stringify(emailNotifications),
+                        });
+                        if (!res.ok) throw new Error("Failed to save");
+                        showToast("Notification preferences saved!", "success");
+                      } catch {
+                        showToast("Failed to save preferences", "error");
+                      } finally {
+                        setSavingNotifications(false);
+                      }
+                    }}
+                  >
+                    {savingNotifications ? "Saving..." : "Save Preferences"}
+                  </Button>
                 </div>
               </div>
             </div>
@@ -701,7 +737,7 @@ function SettingsContent() {
                     <p className="text-small text-text-secondary">Professional Plan</p>
                   </div>
                   <div className="text-right">
-                    <div className="font-display text-[32px] text-text-primary">$97</div>
+                    <div className="font-display text-[32px] text-text-primary">$59</div>
                     <div className="text-small text-text-secondary">per month</div>
                   </div>
                 </div>

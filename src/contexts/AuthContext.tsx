@@ -11,6 +11,8 @@ interface User {
   profile?: {
     name?: string;
     avatar_url?: string;
+    business_name?: string;
+    industry?: string;
   };
 }
 
@@ -40,11 +42,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const sessionUser = data.session.user;
+
+      // Fetch latest profile data from database
+      const { data: profileData } = await client.database
+        .from("profiles")
+        .select("name, avatar_url, business_name, industry")
+        .eq("user_id", sessionUser.id)
+        .maybeSingle();
+
+      const profile = profileData ?? sessionUser.profile ?? undefined;
+
       setUser({
         id: sessionUser.id,
         email: sessionUser.email || "",
-        name: sessionUser.profile?.name,
-        profile: sessionUser.profile,
+        name: profile?.name || sessionUser.profile?.name,
+        profile,
       });
     } catch (error) {
       console.error("Error loading user:", error);

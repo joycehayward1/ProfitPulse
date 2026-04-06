@@ -47,7 +47,7 @@ export default function HiringPage() {
         const client = getInsForgeClient();
 
         const { data, error } = await client.database
-          .from('financial_data')
+          .from('financial_snapshots')
           .select('*')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false })
@@ -55,7 +55,7 @@ export default function HiringPage() {
           .single();
 
         if (data) {
-          const profit = data.revenue - data.expenses;
+          const profit = (data.total_income ?? 0) - (data.total_expenses ?? 0);
           setCurrentProfit(profit);
           return;
         }

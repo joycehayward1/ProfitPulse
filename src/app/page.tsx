@@ -168,33 +168,13 @@ const scenarios = [
   },
 ];
 
-const tiers = [
-  {
-    name: "Starter",
-    price: 49,
-    popular: false,
-    cta: "Start with Clarity",
-    features: [
-      "Your financial health score",
-      "Enter data manually or upload CSV",
-      "Break-even calculator",
-      "Weekly scorecard in your inbox",
-      "Dashboard you actually understand",
-    ],
-  },
-  {
-    name: "Growth",
-    price: 99,
-    popular: true,
-    cta: "Get the Full Picture",
-    features: [
-      "Everything in Starter",
-      "All 4 scenario calculators",
-      "AI insights in plain English",
-      "Alerts before problems hit",
-      "Priority email support",
-    ],
-  },
+const planFeatures = [
+  "Your financial health score",
+  "Dashboard you actually understand",
+  "All 4 scenario calculators",
+  "Enter data manually or upload CSV",
+  "Weekly scorecard in your inbox",
+  "Email support",
 ];
 
 const faqs = [
@@ -423,6 +403,7 @@ function RevealSection({
 export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [isAnnual, setIsAnnual] = useState(false);
   const router = useRouter();
 
   const navLinks = [
@@ -534,7 +515,7 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-xl lg:gap-2xl items-center">
             {/* Left: Copy */}
             <div>
-              <p className="font-body text-small uppercase tracking-[0.2em] text-[#E65100] mb-md">
+              <p className="font-body text-[14px] md:text-[16px] uppercase tracking-[0.2em] text-[#E65100] mb-md font-bold">
                 CEO Dashboard for Service Businesses
               </p>
 
@@ -572,7 +553,7 @@ export default function LandingPage() {
             </div>
 
             {/* Right: Dashboard Preview */}
-            <div className="hidden lg:block">
+            <div className="hidden lg:block lg:scale-[1.15] lg:origin-center lg:translate-x-6">
               <DashboardPreview />
             </div>
           </div>
@@ -966,57 +947,79 @@ export default function LandingPage() {
             </div>
           </RevealSection>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-md max-w-3xl mx-auto">
-            {tiers.map((tier, i) => (
-              <RevealSection key={tier.name} delay={i * 150}>
-                <Card
-                  variant={tier.popular ? "featured" : "standard"}
-                  className={`flex flex-col h-full ${
-                    tier.popular
-                      ? "md:scale-[1.04] relative shadow-medium border-l-[3px] border-l-orange ring-1 ring-[#E65100]/10"
-                      : ""
+          <RevealSection delay={150}>
+            <div className="max-w-md mx-auto">
+              {/* Billing Toggle */}
+              <div className="flex items-center justify-center gap-3 mb-lg">
+                <span className={`font-body text-body ${!isAnnual ? 'text-text-primary font-semibold' : 'text-text-muted'}`}>
+                  Monthly
+                </span>
+                <button
+                  onClick={() => setIsAnnual(!isAnnual)}
+                  className={`relative w-14 h-7 rounded-full transition-colors ${
+                    isAnnual ? 'bg-orange' : 'bg-border'
                   }`}
                 >
-                  {tier.popular && (
-                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-orange text-white font-body text-small font-semibold px-4 py-1 rounded-full whitespace-nowrap shadow-glow-orange">
-                      Most Popular
+                  <span
+                    className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform ${
+                      isAnnual ? 'translate-x-7' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+                <span className={`font-body text-body ${isAnnual ? 'text-text-primary font-semibold' : 'text-text-muted'}`}>
+                  Annual
+                </span>
+                {isAnnual && (
+                  <span className="bg-[#E8F5E9] text-[#2E7D32] font-body text-small font-semibold px-2 py-0.5 rounded-full">
+                    Save 17%
+                  </span>
+                )}
+              </div>
+
+              <Card
+                variant="featured"
+                className="flex flex-col relative shadow-medium border-l-[3px] border-l-orange ring-1 ring-[#E65100]/10"
+              >
+                <div className="mb-md text-center">
+                  <h3 className="font-display text-h3 text-text-primary">ProfitPulse</h3>
+                  <div className="mt-xs flex items-baseline justify-center gap-1">
+                    <span className="font-display text-[48px] text-text-primary">
+                      ${isAnnual ? 49 : 59}
                     </span>
-                  )}
-
-                  <div className="mb-md">
-                    <h3 className="font-display text-h3 text-text-primary">{tier.name}</h3>
-                    <div className="mt-xs flex items-baseline gap-1">
-                      <span className="font-display text-[40px] text-text-primary">${tier.price}</span>
-                      <span className="font-body text-body text-text-muted">/mo</span>
-                    </div>
-                    <p className="font-body text-small text-text-muted mt-1">Billed monthly</p>
+                    <span className="font-body text-body text-text-muted">/mo</span>
                   </div>
+                  <p className="font-body text-small text-text-muted mt-1">
+                    {isAnnual ? 'Billed annually' : 'Billed monthly'}
+                  </p>
+                  <p className="font-body text-small text-orange font-semibold mt-2">
+                    7-day free trial included
+                  </p>
+                </div>
 
-                  <ul className="space-y-[12px] mb-lg flex-1">
-                    {tier.features.map((feature) => (
-                      <li key={feature} className="flex items-start gap-[8px] font-body text-body text-text-secondary">
-                        <CheckIcon />
-                        {feature}
-                      </li>
-                    ))}
-                  </ul>
+                <ul className="space-y-[12px] mb-lg flex-1">
+                  {planFeatures.map((feature) => (
+                    <li key={feature} className="flex items-start gap-[8px] font-body text-body text-text-secondary">
+                      <CheckIcon />
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
 
-                  <Button
-                    variant={tier.popular ? "primary" : "secondary"}
-                    fullWidth
-                    size="lg"
-                    onClick={() => router.push("/signup")}
-                  >
-                    {tier.cta}
-                  </Button>
-                </Card>
-              </RevealSection>
-            ))}
-          </div>
+                <Button
+                  variant="primary"
+                  fullWidth
+                  size="lg"
+                  onClick={() => router.push("/signup")}
+                >
+                  Start Your Free Trial
+                </Button>
+              </Card>
+            </div>
+          </RevealSection>
 
           <RevealSection delay={300}>
             <p className="text-center font-body text-small text-text-muted mt-lg">
-              Both plans include a 14-day money-back guarantee. No questions asked.
+              7-day free trial. No credit card required to start. Cancel anytime.
             </p>
           </RevealSection>
         </div>

@@ -7,11 +7,16 @@ interface CurrentSessionResponse {
   };
 }
 
+interface AuthenticatedUser {
+  id: string;
+  email: string;
+}
+
 /**
- * Resolve authenticated user id from Bearer access token.
+ * Resolve authenticated user from Bearer access token.
  * Returns null when token is missing/invalid.
  */
-export async function getAuthenticatedUserId(request: NextRequest): Promise<string | null> {
+export async function getAuthenticatedUser(request: NextRequest): Promise<AuthenticatedUser | null> {
   const authHeader = request.headers.get("authorization");
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return null;
@@ -40,5 +45,16 @@ export async function getAuthenticatedUserId(request: NextRequest): Promise<stri
   }
 
   const data = (await response.json()) as CurrentSessionResponse;
-  return data.user?.id ?? null;
+  if (!data.user?.id || !data.user?.email) {
+    return null;
+  }
+  return { id: data.user.id, email: data.user.email };
+}
+
+/**
+ * Backward-compatible helper that returns just the user ID.
+ */
+export async function getAuthenticatedUserId(request: NextRequest): Promise<string | null> {
+  const user = await getAuthenticatedUser(request);
+  return user?.id ?? null;
 }

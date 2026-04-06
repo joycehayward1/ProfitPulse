@@ -62,7 +62,7 @@ export default function ChatPage() {
         .single();
 
       const { data: financialData } = await client.database
-        .from('financial_data')
+        .from('financial_snapshots')
         .select('*')
         .eq('user_id', user!.id)
         .order('created_at', { ascending: false })
@@ -85,9 +85,11 @@ export default function ChatPage() {
         context += `- Monthly profit: $${profit.toLocaleString()}\n`;
         context += `- Cash runway: ${runway} months\n`;
       } else if (financialData) {
-        context += `- Cash balance: $${financialData.cash_balance?.toLocaleString() || 0}\n`;
-        context += `- Revenue: $${financialData.revenue?.toLocaleString() || 0}\n`;
-        context += `- Expenses: $${financialData.expenses?.toLocaleString() || 0}\n`;
+        context += `- Total income: $${financialData.total_income?.toLocaleString() || 0}\n`;
+        context += `- Total expenses: $${financialData.total_expenses?.toLocaleString() || 0}\n`;
+        context += `- Net profit: $${financialData.net_profit?.toLocaleString() || 0}\n`;
+        context += `- Current assets: $${financialData.current_assets?.toLocaleString() || 0}\n`;
+        context += `- Current liabilities: $${financialData.current_liabilities?.toLocaleString() || 0}\n`;
       } else {
         context = "No financial data available yet. User should complete the health assessment first.";
       }
@@ -153,7 +155,7 @@ IMPORTANT Guidelines:
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey && !loading) {
       e.preventDefault();
-      handleSubmit(e as any);
+      handleSubmit(e as unknown as React.FormEvent);
     }
   };
 

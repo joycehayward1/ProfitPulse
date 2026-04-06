@@ -14,7 +14,7 @@ import { useRequireAuth } from "@/hooks/useRequireAuth";
 export default function AssessmentResultsPage() {
   const router = useRouter();
   const { showToast } = useToast();
-  const { user, loading: authLoading } = useRequireAuth();
+  const { user, loading: _authLoading } = useRequireAuth();
   const [breakdown, setBreakdown] = useState<HealthScoreBreakdown | null>(null);
   const [loading, setLoading] = useState(true);
   const [aiSummary, setAiSummary] = useState<string | null>(null);

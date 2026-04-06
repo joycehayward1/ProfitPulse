@@ -42,7 +42,7 @@ export default function BreakEvenPage() {
         const client = getInsForgeClient();
 
         const { data, error } = await client.database
-          .from('financial_data')
+          .from('financial_snapshots')
           .select('*')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false })
@@ -50,7 +50,7 @@ export default function BreakEvenPage() {
           .single();
 
         if (data) {
-          setFixedExpenses(data.expenses.toString());
+          setFixedExpenses((data.total_expenses ?? 0).toString());
           return;
         }
 
@@ -299,7 +299,7 @@ export default function BreakEvenPage() {
                       name="currentSales"
                       value={currentSales}
                       onChange={(e) => setCurrentSales(e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-lg font-body text-text-primary focus:outline-none focus:ring-2 focus:ring-orange focus:border-transparent transition-all"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-lg font-body text-text-primary focus:outline-none focus:ring-2 focus:ring-orange focus:border-transparent transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       placeholder="40"
                     />
                     <span className="absolute right-4 top-1/2 -translate-y-1/2 text-text-muted font-body text-sm">

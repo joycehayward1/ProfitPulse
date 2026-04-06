@@ -79,7 +79,7 @@ export default function SignUpPage() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [loading, setLoading] = useState(false);
   const [showVerification, setShowVerification] = useState(false);
-  const [verificationEmail, setVerificationEmail] = useState("");
+  const [verificationEmail, _setVerificationEmail] = useState("");
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();

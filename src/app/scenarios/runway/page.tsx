@@ -53,7 +53,7 @@ export default function RunwayPage() {
         const client = getInsForgeClient();
 
         const { data, error } = await client.database
-          .from('financial_data')
+          .from('financial_snapshots')
           .select('*')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false })
@@ -61,8 +61,8 @@ export default function RunwayPage() {
           .single();
 
         if (data) {
-          setCurrentCash(data.cash_balance.toString());
-          setMonthlyBurn(data.expenses.toString());
+          setCurrentCash((data.current_assets ?? 0).toString());
+          setMonthlyBurn((data.total_expenses ?? 0).toString());
           return;
         }
 

@@ -52,7 +52,7 @@ export default function GoalPlanningPage() {
         const client = getInsForgeClient();
 
         const { data, error } = await client.database
-          .from('financial_data')
+          .from('financial_snapshots')
           .select('*')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false })
@@ -60,10 +60,8 @@ export default function GoalPlanningPage() {
           .single();
 
         if (data) {
-          if (data.revenue) setCurrentMonthly(data.revenue.toString());
-          if (data.expenses) setCurrentMonthlyExpenses(data.expenses.toString());
-          if (data.ytd_revenue) setYtdRevenue(data.ytd_revenue.toString());
-          if (data.ytd_expenses) setYtdExpenses(data.ytd_expenses.toString());
+          if (data.total_income) setCurrentMonthly(data.total_income.toString());
+          if (data.total_expenses) setCurrentMonthlyExpenses(data.total_expenses.toString());
           return;
         }
 

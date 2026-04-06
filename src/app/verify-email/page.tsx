@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useState, FormEvent, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { Button, Input } from "@/components/ui";
 import { useAuth } from "@/contexts/AuthContext";
 
-export default function VerifyEmailPage() {
+function VerifyEmailContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { refreshUser } = useAuth();
@@ -37,7 +37,7 @@ export default function VerifyEmailPage() {
       const { getInsForgeClient } = await import("@/lib/insforge");
       const client = getInsForgeClient();
 
-      const { data, error: verifyError } = await client.auth.verifyEmail({
+      const { data: _data, error: verifyError } = await client.auth.verifyEmail({
         email,
         otp: code,
       });
@@ -139,5 +139,13 @@ export default function VerifyEmailPage() {
         </div>
       </form>
     </AuthLayout>
+  );
+}
+
+export default function VerifyEmailPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <VerifyEmailContent />
+    </Suspense>
   );
 }

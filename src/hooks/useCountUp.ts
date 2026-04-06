@@ -62,7 +62,7 @@ export function useCountUp({
 }: UseCountUpOptions): number {
   const [count, setCount] = useState(start);
   const frameRef = useRef<number>();
-  const startTimeRef = useRef<number>();
+  const _startTimeRef = useRef<number>();
 
   useEffect(() => {
     let startTimestamp: number;

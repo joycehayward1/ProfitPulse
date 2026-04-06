@@ -9,7 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
  * Redirects to /login if user is not authenticated.
  */
 export function useRequireAuth() {
-  const { user, loading } = useAuth();
+  const { user, loading, refreshUser } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -18,5 +18,5 @@ export function useRequireAuth() {
     }
   }, [user, loading, router]);
 
-  return { user, loading };
+  return { user, loading, refreshUser };
 }
