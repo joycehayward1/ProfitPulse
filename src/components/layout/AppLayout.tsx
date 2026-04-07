@@ -7,6 +7,9 @@ import { usePathname, useRouter } from "next/navigation";
 import { Icon } from "@iconify/react";
 import { useAuth } from "@/contexts/AuthContext";
 import { PulseAssistant } from "@/components/PulseAssistant";
+import { TrialBanner } from "@/components/TrialBanner";
+import { PaywallScreen } from "@/components/PaywallScreen";
+import { getUserAccessLevel } from "@/lib/feature-gate";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -69,7 +72,8 @@ function getPulseMessage(pathname: string): string {
 export function AppLayout({ children, pulseMessage }: AppLayoutProps) {
   const pathname = usePathname();
   const _router = useRouter();
-  const { user, signOut } = useAuth();
+  const { user, subscription, loading: authLoading, signOut } = useAuth();
+  const accessLevel = getUserAccessLevel(subscription);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
@@ -374,9 +378,16 @@ export function AppLayout({ children, pulseMessage }: AppLayoutProps) {
           </>
         )}
 
-        {/* Main Content */}
+        {/* Trial countdown banner — only renders when in active trial */}
+        <TrialBanner subscription={subscription} />
+
+        {/* Main Content — paywall replaces content when locked */}
         <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-          {children}
+          {!authLoading && accessLevel === "locked" && user ? (
+            <PaywallScreen />
+          ) : (
+            children
+          )}
         </main>
       </div>
 

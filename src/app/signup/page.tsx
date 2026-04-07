@@ -122,6 +122,18 @@ export default function SignUpPage() {
           business_name: businessName,
           industry: industry,
         }).eq("id", data.user.id);
+
+        // Start the user's 7-day trial (creates subscriptions row)
+        try {
+          await fetch("/api/auth/start-trial", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId: data.user.id }),
+          });
+        } catch (trialError) {
+          console.error("Failed to start trial:", trialError);
+          // Non-blocking — user can still proceed to dashboard
+        }
       }
 
       // Check if email verification is required

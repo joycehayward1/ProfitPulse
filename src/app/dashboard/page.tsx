@@ -11,6 +11,9 @@ import type { HealthStatus } from "@/components/ui/TrafficLightDot";
 import { calculateHealthScore, getHealthStatus } from "@/lib/healthScore";
 import type { HealthAssessment, FinancialSnapshot } from "@/lib/database.types";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
+import { useAuth } from "@/contexts/AuthContext";
+import { isInTrial } from "@/lib/feature-gate";
+import { LockedFeature } from "@/components/LockedFeature";
 import { InfoTooltip } from "@/components/ui/MetricTooltip";
 import {
   BarChart,
@@ -287,6 +290,8 @@ function ScoreRubricModal({ open, onClose }: { open: boolean; onClose: () => voi
 
 export default function DashboardPage() {
   const { user, loading: _authLoading } = useRequireAuth();
+  const { subscription } = useAuth();
+  const trialMode = isInTrial(subscription);
   const [loading, setLoading] = useState(true);
   const [assessment, setAssessment] = useState<HealthAssessment | null>(null);
   const [rubricOpen, setRubricOpen] = useState(false);
@@ -646,16 +651,18 @@ export default function DashboardPage() {
             />
 
             {/* Runway Card */}
-            <MetricCard
-              label="Runway"
-              value={formatRunway(assessment.cash_on_hand, assessment.monthly_expenses)}
-              statusText={getRunwayStatus(assessment.cash_on_hand, assessment.monthly_expenses)}
-              status={getRunwayHealthStatus(assessment.cash_on_hand, assessment.monthly_expenses)}
-              delay="800ms"
-              icon="ph:timer-bold"
-              iconColor="#7B1FA2"
-              tooltip="How many months your business can operate at current spending levels with the cash you have on hand."
-            />
+            <LockedFeature locked={trialMode} className="rounded-xl">
+              <MetricCard
+                label="Runway"
+                value={formatRunway(assessment.cash_on_hand, assessment.monthly_expenses)}
+                statusText={getRunwayStatus(assessment.cash_on_hand, assessment.monthly_expenses)}
+                status={getRunwayHealthStatus(assessment.cash_on_hand, assessment.monthly_expenses)}
+                delay="800ms"
+                icon="ph:timer-bold"
+                iconColor="#7B1FA2"
+                tooltip="How many months your business can operate at current spending levels with the cash you have on hand."
+              />
+            </LockedFeature>
           </div>
         )}
 

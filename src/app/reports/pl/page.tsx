@@ -6,6 +6,9 @@ import { Icon } from "@iconify/react";
 import { InfoTooltip } from "@/components/ui/MetricTooltip";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
+import { useAuth } from "@/contexts/AuthContext";
+import { isInTrial } from "@/lib/feature-gate";
+import { LockedFeature } from "@/components/LockedFeature";
 import type { FinancialSnapshot } from "@/lib/database.types";
 import {
   BarChart,
@@ -63,6 +66,8 @@ function pctChange(
 
 export default function PLPage() {
   const { user, loading: authLoading } = useRequireAuth();
+  const { subscription } = useAuth();
+  const trialMode = isInTrial(subscription);
   const [snapshots, setSnapshots] = useState<FinancialSnapshot[]>([]);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<PeriodOption>("3");
@@ -430,6 +435,7 @@ export default function PLPage() {
         </div>
 
         {/* P&L Summary Table */}
+        <LockedFeature locked={trialMode} className="rounded-xl">
         <div className="bg-surface rounded-xl border border-border-light shadow-soft overflow-hidden">
           <div className="p-lg pb-0">
             <h2 className="text-small font-semibold uppercase tracking-wider text-text-muted mb-md">
@@ -507,6 +513,7 @@ export default function PLPage() {
             </table>
           </div>
         </div>
+        </LockedFeature>
       </div>
     </AppLayout>
   );

@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getInsForgeClient } from "@/lib/insforge";
+import type { Subscription } from "@/lib/database.types";
 
 interface User {
   id: string;
@@ -18,6 +19,7 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
+  subscription: Subscription | null;
   loading: boolean;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -27,6 +29,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
@@ -37,20 +40,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (error || !data?.session) {
         setUser(null);
+        setSubscription(null);
         setLoading(false);
         return;
       }
 
       const sessionUser = data.session.user;
 
-      // Fetch latest profile data from database
-      const { data: profileData } = await client.database
-        .from("profiles")
-        .select("name, avatar_url, business_name, industry")
-        .eq("user_id", sessionUser.id)
-        .maybeSingle();
+      // Fetch latest profile data + subscription in parallel
+      const [profileResult, subResult] = await Promise.all([
+        client.database
+          .from("profiles")
+          .select("name, avatar_url, business_name, industry")
+          .eq("user_id", sessionUser.id)
+          .maybeSingle(),
+        client.database
+          .from("subscriptions")
+          .select("*")
+          .eq("user_id", sessionUser.id)
+          .maybeSingle(),
+      ]);
 
-      const profile = profileData ?? sessionUser.profile ?? undefined;
+      const profile = profileResult.data ?? sessionUser.profile ?? undefined;
 
       setUser({
         id: sessionUser.id,
@@ -58,9 +69,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         name: profile?.name || sessionUser.profile?.name,
         profile,
       });
+      setSubscription((subResult.data as Subscription | null) ?? null);
     } catch (error) {
       console.error("Error loading user:", error);
       setUser(null);
+      setSubscription(null);
     } finally {
       setLoading(false);
     }
@@ -71,6 +84,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const client = getInsForgeClient();
       await client.auth.signOut();
       setUser(null);
+      setSubscription(null);
       router.push("/login");
     } catch (error) {
       console.error("Error signing out:", error);
@@ -89,7 +103,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, signOut, refreshUser }}>
+    <AuthContext.Provider value={{ user, subscription, loading, signOut, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

@@ -5,6 +5,12 @@ import { useRouter } from "next/navigation";
 import { Icon } from "@iconify/react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
+import { useAuth } from "@/contexts/AuthContext";
+import { isInTrial } from "@/lib/feature-gate";
+import { LockedFeature } from "@/components/LockedFeature";
+
+// Calculators available during trial — others are locked behind Pro
+const TRIAL_FREE_SCENARIOS = new Set(["break-even", "goal-planning"]);
 
 interface SavedScenario {
   id: string;
@@ -49,6 +55,8 @@ const scenarioTypes = [
 export default function ScenariosPage() {
   const router = useRouter();
   const { user } = useRequireAuth();
+  const { subscription } = useAuth();
+  const trialMode = isInTrial(subscription);
   const [savedScenarios, setSavedScenarios] = useState<SavedScenario[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -133,9 +141,10 @@ export default function ScenariosPage() {
           {/* Scenario Type Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 lg:gap-8 mb-16">
             {scenarioTypes.map((scenario, index) => {
+              const isLocked = trialMode && !TRIAL_FREE_SCENARIOS.has(scenario.id);
               return (
+                <LockedFeature key={scenario.id} locked={isLocked} className="rounded-2xl">
                 <button
-                  key={scenario.id}
                   onClick={() => router.push(`/scenarios/${scenario.id}`)}
                   className="group relative bg-white rounded-2xl p-8 shadow-sm hover:shadow-xl transition-all duration-500 border border-gray-100 hover:border-orange/20 text-left overflow-hidden"
                   style={{
@@ -185,6 +194,7 @@ export default function ScenariosPage() {
                     style={{ backgroundColor: scenario.color }}
                   />
                 </button>
+                </LockedFeature>
               );
             })}
           </div>

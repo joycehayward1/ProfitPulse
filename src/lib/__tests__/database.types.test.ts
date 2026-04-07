@@ -79,19 +79,31 @@ describe("Type shape validation", () => {
     expect(profile.employee_count).toBeNull();
   });
 
-  it("Subscription type has correct tier values", () => {
+  it("Subscription type holds Authorize.net trial fields", () => {
     const sub: Subscription = {
       id: "uuid-1",
       user_id: "user-1",
-      stripe_customer_id: "cus_123",
-      stripe_subscription_id: "sub_123",
-      tier: "growth",
-      status: "active",
-      current_period_end: "2026-02-01T00:00:00Z",
+      plan: "none",
+      billing_interval: null,
+      subscription_status: "trial",
+      trial_start_date: "2026-01-01T00:00:00Z",
+      trial_end_date: "2026-01-08T00:00:00Z",
+      anet_customer_profile_id: null,
+      anet_payment_profile_id: null,
+      anet_subscription_id: null,
+      billing_cycle_start_date: null,
+      current_period_end: null,
+      next_billing_date: null,
+      pending_switch_to: null,
+      pending_switch_sub_id: null,
+      last_payment_date: null,
+      last_payment_amount: null,
+      last_payment_status: null,
       created_at: "2026-01-01T00:00:00Z",
+      updated_at: "2026-01-01T00:00:00Z",
     };
-    expect(sub.tier).toBe("growth");
-    expect(["starter", "growth", "scale"]).toContain(sub.tier);
+    expect(sub.subscription_status).toBe("trial");
+    expect(sub.plan).toBe("none");
   });
 
   it("HealthAssessment type stores financial data and score", () => {
@@ -203,8 +215,15 @@ describe("Type shape validation", () => {
   });
 
   it("SubscriptionStatus includes all valid states", () => {
-    const statuses: SubscriptionStatus[] = ["active", "canceled", "past_due", "trialing"];
-    expect(statuses).toHaveLength(4);
+    const statuses: SubscriptionStatus[] = [
+      "trial",
+      "active",
+      "past_due",
+      "canceled",
+      "terminated",
+      "expired",
+    ];
+    expect(statuses).toHaveLength(6);
   });
 });
 
