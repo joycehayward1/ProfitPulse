@@ -14,7 +14,17 @@ export type ScenarioType =
   | "goal-planning"
   | "hiring"
   | "runway";
-export type SubscriptionStatus = "active" | "canceled" | "past_due" | "trialing";
+export type SubscriptionStatus =
+  | "trial"
+  | "active"
+  | "past_due"
+  | "canceled"
+  | "terminated"
+  | "expired";
+export type SubscriptionPlan = "pro" | "none";
+export type BillingInterval = "monthly" | "annual";
+export type PaymentRecordType = "subscription" | "plan_switch" | "renewal" | "refund";
+export type PaymentRecordStatus = "success" | "failed" | "voided" | "refunded";
 
 // ─── Tables ───────────────────────────────────────────────────────────────────
 
@@ -28,15 +38,53 @@ export interface Profile {
   created_at: string;
 }
 
-/** Stripe subscription record */
+/** Subscription record (Authorize.net ARB) */
 export interface Subscription {
   id: string;
   user_id: string;
-  stripe_customer_id: string | null;
-  stripe_subscription_id: string | null;
-  tier: "starter" | "growth" | "scale";
-  status: SubscriptionStatus;
+
+  // Plan info
+  plan: SubscriptionPlan;
+  billing_interval: BillingInterval | null;
+  subscription_status: SubscriptionStatus;
+
+  // Trial tracking
+  trial_start_date: string | null;
+  trial_end_date: string | null;
+
+  // Authorize.net references
+  anet_customer_profile_id: string | null;
+  anet_payment_profile_id: string | null;
+  anet_subscription_id: string | null;
+
+  // Billing cycle tracking
+  billing_cycle_start_date: string | null;
   current_period_end: string | null;
+  next_billing_date: string | null;
+
+  // Plan switch tracking
+  pending_switch_to: BillingInterval | null;
+  pending_switch_sub_id: string | null;
+
+  // Last payment snapshot
+  last_payment_date: string | null;
+  last_payment_amount: number | null;
+  last_payment_status: "success" | "failed" | null;
+
+  created_at: string;
+  updated_at: string;
+}
+
+/** Payment history record (Authorize.net transaction) */
+export interface PaymentRecord {
+  id: string;
+  user_id: string;
+  anet_transaction_id: string;
+  type: PaymentRecordType;
+  amount: number;
+  status: PaymentRecordStatus;
+  billing_interval: BillingInterval;
+  description: string;
   created_at: string;
 }
 
@@ -165,7 +213,8 @@ export interface QuickBooksConnection {
 // ─── Insert Types (omit auto-generated fields) ───────────────────────────────
 
 export type ProfileInsert = Omit<Profile, "id" | "created_at">;
-export type SubscriptionInsert = Omit<Subscription, "id" | "created_at">;
+export type SubscriptionInsert = Omit<Subscription, "id" | "created_at" | "updated_at">;
+export type PaymentRecordInsert = Omit<PaymentRecord, "id" | "created_at">;
 export type HealthAssessmentInsert = Omit<HealthAssessment, "id" | "created_at">;
 export type FinancialDataInsert = Omit<FinancialData, "id" | "created_at">;
 export type ExpenseCategoryInsert = Omit<ExpenseCategory, "id">;
@@ -180,6 +229,7 @@ export type QuickBooksConnectionInsert = Omit<QuickBooksConnection, "id">;
 
 export type ProfileUpdate = Partial<Omit<Profile, "id" | "user_id" | "created_at">>;
 export type SubscriptionUpdate = Partial<Omit<Subscription, "id" | "user_id" | "created_at">>;
+export type PaymentRecordUpdate = Partial<Omit<PaymentRecord, "id" | "user_id" | "created_at">>;
 export type HealthAssessmentUpdate = Partial<Omit<HealthAssessment, "id" | "user_id" | "created_at">>;
 export type FinancialDataUpdate = Partial<Omit<FinancialData, "id" | "user_id" | "created_at">>;
 export type AlertConfigUpdate = Partial<Omit<AlertConfig, "id" | "user_id" | "created_at">>;
@@ -198,6 +248,7 @@ export const TABLE_NAMES = {
   scenarios: "scenarios",
   quickbooks_connections: "quickbooks_connections",
   financial_snapshots: "financial_snapshots",
+  payment_records: "payment_records",
 } as const;
 
 export type TableName = (typeof TABLE_NAMES)[keyof typeof TABLE_NAMES];
