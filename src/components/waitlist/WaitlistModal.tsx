@@ -229,7 +229,7 @@ export function WaitlistModal({ open, onClose }: WaitlistModalProps) {
               </button>
 
               <p className="text-small text-text-muted text-center">
-                No spam. We'll only email you when ProfitPulse goes live.
+                No spam. We&apos;ll only email you when ProfitPulse goes live.
               </p>
             </form>
           </>

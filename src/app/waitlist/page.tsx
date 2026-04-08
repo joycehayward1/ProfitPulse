@@ -169,7 +169,7 @@ const scenarios = [
   },
 ];
 
-const planFeatures = [
+const _planFeatures = [
   "Your financial health score",
   "Dashboard you actually understand",
   "All 4 scenario calculators",
@@ -209,7 +209,7 @@ const faqs = [
    UTILITY ICONS
    ══════════════════════════════════════════════════════════════════ */
 
-function CheckIcon() {
+function _CheckIcon() {
   return (
     <svg
       width="18"
