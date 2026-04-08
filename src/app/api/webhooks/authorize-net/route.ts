@@ -181,22 +181,41 @@ async function processEvent(event: WebhookEvent): Promise<void> {
       }
 
       const now = new Date();
-      const billingInterval = sub.billing_interval as BillingInterval;
+      // If the user had a pending switch (annual → monthly) and this is the
+      // first charge on the dormant monthly ARB, finalize the switch.
+      const finalizingPendingSwitch =
+        sub.pending_switch_to &&
+        sub.pending_switch_sub_id === details.subscriptionId;
+
+      const billingInterval = (
+        finalizingPendingSwitch ? sub.pending_switch_to : sub.billing_interval
+      ) as BillingInterval;
       const periodEnd = computePeriodEnd(billingInterval, now);
       const amount = details.amount ?? getPlanAmount(billingInterval);
 
+      const updatePayload: Record<string, unknown> = {
+        subscription_status: "active",
+        billing_interval: billingInterval,
+        billing_cycle_start_date: now.toISOString(),
+        current_period_end: periodEnd.toISOString(),
+        next_billing_date: periodEnd.toISOString(),
+        last_payment_date: now.toISOString(),
+        last_payment_amount: amount,
+        last_payment_status: "success",
+        updated_at: now.toISOString(),
+      };
+
+      if (finalizingPendingSwitch) {
+        updatePayload.pending_switch_to = null;
+        updatePayload.pending_switch_sub_id = null;
+        console.log(
+          `[webhook] finalizing pending switch for user ${sub.user_id} → ${billingInterval}`
+        );
+      }
+
       const { error: updateError } = await client.database
         .from("subscriptions")
-        .update({
-          subscription_status: "active",
-          billing_cycle_start_date: now.toISOString(),
-          current_period_end: periodEnd.toISOString(),
-          next_billing_date: periodEnd.toISOString(),
-          last_payment_date: now.toISOString(),
-          last_payment_amount: amount,
-          last_payment_status: "success",
-          updated_at: now.toISOString(),
-        })
+        .update(updatePayload)
         .eq("user_id", sub.user_id);
 
       if (updateError) {

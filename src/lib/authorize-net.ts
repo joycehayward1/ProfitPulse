@@ -288,7 +288,89 @@ export async function createARBSubscription(
   return { subscriptionId: result.subscriptionId };
 }
 
-// ─── 4. getTransactionDetailsRequest ─────────────────────────────────────────
+// ─── 4. ARBCancelSubscriptionRequest ─────────────────────────────────────────
+
+interface ARBCancelSubscriptionResponse {
+  messages: AnetMessages;
+}
+
+/**
+ * Cancel an active ARB subscription. Used by plan switching (Flow 4/5) and
+ * cancel (Flow 6).
+ */
+export async function cancelARBSubscription(subscriptionId: string): Promise<void> {
+  const payload = {
+    ARBCancelSubscriptionRequest: {
+      merchantAuthentication: merchantAuth(),
+      subscriptionId,
+    },
+  };
+
+  const result = await callAnet<ARBCancelSubscriptionResponse>(payload);
+  assertOk(result, "cancelARBSubscription");
+}
+
+// ─── 5. chargeCustomerProfile (createTransaction with profile) ───────────────
+
+export interface ChargeCustomerProfileArgs {
+  amount: number;
+  customerProfileId: string;
+  customerPaymentProfileId: string;
+  description?: string;
+  email?: string;
+}
+
+/**
+ * Charge a stored customer profile (vault card) without collecting a new
+ * nonce. Used when upgrading a user from monthly → annual — their card is
+ * already on file from the original subscribe flow.
+ */
+export async function chargeCustomerProfile(
+  args: ChargeCustomerProfileArgs
+): Promise<CreateTransactionResult> {
+  const payload = {
+    createTransactionRequest: {
+      merchantAuthentication: merchantAuth(),
+      transactionRequest: {
+        transactionType: "authCaptureTransaction",
+        amount: args.amount.toFixed(2),
+        profile: {
+          customerProfileId: args.customerProfileId,
+          paymentProfile: {
+            paymentProfileId: args.customerPaymentProfileId,
+          },
+        },
+        ...(args.email && { customer: { email: args.email } }),
+        transactionSettings: {
+          setting: [{ settingName: "emailCustomer", settingValue: "true" }],
+        },
+      },
+    },
+  };
+
+  const result = await callAnet<CreateTransactionResponse>(payload);
+
+  if (result.messages?.resultCode !== "Ok") {
+    assertOk(result, "chargeCustomerProfile");
+  }
+
+  const tx = result.transactionResponse;
+  if (!tx || tx.responseCode !== "1") {
+    const first = tx?.errors?.error?.[0];
+    const err: AnetError = new Error(
+      `[chargeCustomerProfile] ${first?.errorText ?? "Transaction declined"}`
+    );
+    err.code = first?.errorCode;
+    throw err;
+  }
+
+  return {
+    transId: tx.transId,
+    authCode: tx.messages?.message?.[0]?.code,
+  };
+}
+
+// ─── 6. getTransactionDetailsRequest ─────────────────────────────────────────
 
 interface GetTransactionDetailsResponse {
   transaction: {
