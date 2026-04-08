@@ -288,6 +288,61 @@ export async function createARBSubscription(
   return { subscriptionId: result.subscriptionId };
 }
 
+// ─── 4. getTransactionDetailsRequest ─────────────────────────────────────────
+
+interface GetTransactionDetailsResponse {
+  transaction: {
+    transId: string;
+    transactionType: string;
+    transactionStatus: string;
+    authAmount?: number;
+    settleAmount?: number;
+    subscription?: {
+      id: string;
+      payNum: string;
+    };
+    customer?: {
+      email?: string;
+    };
+  };
+  messages: AnetMessages;
+}
+
+export interface TransactionDetails {
+  transId: string;
+  amount: number | null;
+  subscriptionId: string | null;
+  payNum: string | null;
+  customerEmail: string | null;
+}
+
+/**
+ * Fetch full details about a transaction. Needed for webhook handling since
+ * ARB renewal webhook payloads do NOT include the subscription ID — we have
+ * to look it up via the transaction.
+ */
+export async function getTransactionDetails(
+  transId: string
+): Promise<TransactionDetails> {
+  const payload = {
+    getTransactionDetailsRequest: {
+      merchantAuthentication: merchantAuth(),
+      transId,
+    },
+  };
+
+  const result = await callAnet<GetTransactionDetailsResponse>(payload);
+  assertOk(result, "getTransactionDetails");
+
+  return {
+    transId: result.transaction.transId,
+    amount: result.transaction.settleAmount ?? result.transaction.authAmount ?? null,
+    subscriptionId: result.transaction.subscription?.id ?? null,
+    payNum: result.transaction.subscription?.payNum ?? null,
+    customerEmail: result.transaction.customer?.email ?? null,
+  };
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 export function getPlanAmount(billingInterval: BillingInterval): number {

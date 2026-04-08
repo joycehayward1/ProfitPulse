@@ -8,6 +8,7 @@ import { Icon } from "@iconify/react";
 import { useAuth } from "@/contexts/AuthContext";
 import { PulseAssistant } from "@/components/PulseAssistant";
 import { TrialBanner } from "@/components/TrialBanner";
+import { DunningBanner } from "@/components/DunningBanner";
 import { PaywallScreen } from "@/components/PaywallScreen";
 import { getUserAccessLevel } from "@/lib/feature-gate";
 
@@ -380,6 +381,9 @@ export function AppLayout({ children, pulseMessage }: AppLayoutProps) {
 
         {/* Trial countdown banner — only renders when in active trial */}
         <TrialBanner subscription={subscription} />
+
+        {/* Dunning banner — only renders when past_due */}
+        <DunningBanner subscription={subscription} />
 
         {/* Main Content — paywall replaces content when locked */}
         <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6 sm:py-8">

@@ -51,8 +51,9 @@ does not carry over. You must re-register on the live account.
   - [ ] `net.authorize.customer.subscription.suspended`
   - [ ] `net.authorize.customer.subscription.terminated`
   - [ ] `net.authorize.customer.subscription.cancelled`
-- [ ] Copy the endpoint signature key → `ANET_WEBHOOK_SIGNATURE_KEY` in Vercel Production
-  (this is a **different** key from `ANET_SIGNATURE_KEY`)
+- [ ] Verify webhook HMAC uses `ANET_SIGNATURE_KEY` (from Security Settings → API
+  Credentials & Keys → Signature Key). Authorize.net does **not** have per-endpoint
+  webhook keys — it uses the same API Signature Key for all webhook HMAC verification.
 
 ## 4. Authorize.net — Smoke test
 
@@ -120,8 +121,7 @@ below has a Production-scoped value and it is NOT pointing at sandbox:
 | `RESEND_API_KEY` | Production Resend |
 | `ANET_API_LOGIN_ID` | Live merchant |
 | `ANET_TRANSACTION_KEY` | Live merchant |
-| `ANET_SIGNATURE_KEY` | Live merchant |
-| `ANET_WEBHOOK_SIGNATURE_KEY` | From live webhook registration |
+| `ANET_SIGNATURE_KEY` | Live merchant (also used for webhook HMAC) |
 | `NEXT_PUBLIC_ANET_API_LOGIN_ID` | Live merchant |
 | `NEXT_PUBLIC_ANET_CLIENT_KEY` | Live merchant |
 | `NEXT_PUBLIC_ANET_ENVIRONMENT` | `PRODUCTION` |
