@@ -54,7 +54,7 @@ export function DunningBanner({ subscription }: DunningBannerProps) {
         </div>
       </div>
       <Link
-        href="/settings#billing"
+        href="/billing"
         className="px-4 py-2 rounded-md text-small font-medium whitespace-nowrap bg-error text-white hover:bg-[#B91C1C] transition-colors"
       >
         Update card

@@ -432,7 +432,44 @@ export async function createCustomerPaymentProfile(
   return { customerPaymentProfileId: result.customerPaymentProfileId };
 }
 
-// ─── 7. getTransactionDetailsRequest ─────────────────────────────────────────
+// ─── 7. ARBUpdateSubscriptionRequest ─────────────────────────────────────────
+
+interface ARBUpdateSubscriptionResponse {
+  messages: AnetMessages;
+}
+
+export interface UpdateARBSubscriptionArgs {
+  subscriptionId: string;
+  customerProfileId: string;
+  customerPaymentProfileId: string;
+}
+
+/**
+ * Swap an active ARB subscription's payment method to a new customer payment
+ * profile. Used by Flow 8 (Update Card) to move a subscription onto a newly
+ * added card.
+ */
+export async function updateARBSubscription(
+  args: UpdateARBSubscriptionArgs
+): Promise<void> {
+  const payload = {
+    ARBUpdateSubscriptionRequest: {
+      merchantAuthentication: merchantAuth(),
+      subscriptionId: args.subscriptionId,
+      subscription: {
+        profile: {
+          customerProfileId: args.customerProfileId,
+          customerPaymentProfileId: args.customerPaymentProfileId,
+        },
+      },
+    },
+  };
+
+  const result = await callAnet<ARBUpdateSubscriptionResponse>(payload);
+  assertOk(result, "updateARBSubscription");
+}
+
+// ─── 8. getTransactionDetailsRequest ─────────────────────────────────────────
 
 interface GetTransactionDetailsResponse {
   transaction: {
