@@ -10,6 +10,7 @@ import { PulseAssistant } from "@/components/PulseAssistant";
 import { TrialBanner } from "@/components/TrialBanner";
 import { DunningBanner } from "@/components/DunningBanner";
 import { PaywallScreen } from "@/components/PaywallScreen";
+import { BearOnboarding, hasCompletedOnboarding } from "@/components/BearOnboarding";
 import { getUserAccessLevel } from "@/lib/feature-gate";
 
 interface AppLayoutProps {
@@ -75,6 +76,12 @@ export function AppLayout({ children, pulseMessage }: AppLayoutProps) {
   const _router = useRouter();
   const { user, subscription, loading: authLoading, signOut } = useAuth();
   const accessLevel = getUserAccessLevel(subscription);
+
+  // Track onboarding state so we can hide PulseAssistant during the intro
+  const [onboardingDone, setOnboardingDone] = useState(false);
+  useEffect(() => {
+    if (user?.id) setOnboardingDone(hasCompletedOnboarding(user.id));
+  }, [user?.id]);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
@@ -395,11 +402,21 @@ export function AppLayout({ children, pulseMessage }: AppLayoutProps) {
         </main>
       </div>
 
-      {/* Pulse Assistant */}
-      <PulseAssistant
-        message={pulseMessage || getPulseMessage(pathname || "")}
-        page={pathname || ""}
-      />
+      {/* Pulse Assistant — hidden until onboarding is complete */}
+      {onboardingDone && (
+        <PulseAssistant
+          message={pulseMessage || getPulseMessage(pathname || "")}
+          page={pathname || ""}
+        />
+      )}
+
+      {/* First-time onboarding overlay */}
+      {user?.id && (
+        <BearOnboarding
+          userId={user.id}
+          onComplete={() => setOnboardingDone(true)}
+        />
+      )}
 
       {/* Animations */}
       <style jsx>{`

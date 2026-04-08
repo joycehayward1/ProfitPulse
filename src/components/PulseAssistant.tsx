@@ -93,7 +93,7 @@ export function PulseAssistant({ message }: PulseAssistantProps) {
         {/* Warm glow ring */}
         <div className="w-[80px] h-[100px] drop-shadow-lg group-hover:drop-shadow-xl transition-all duration-300 group-hover:scale-105">
           <Image
-            src="/pulse-bear.png"
+            src="/pulse-bear-2.png"
             alt="Pulse — your financial buddy"
             width={160}
             height={200}

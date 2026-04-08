@@ -1,0 +1,232 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import Image from "next/image";
+import { Icon } from "@iconify/react";
+
+const MESSAGES = [
+  {
+    title: "Hey there!",
+    body: "I'm **ProfitBear** — your financial buddy. I'll be hanging out in your dashboard, keeping an eye on your numbers so you don't have to stress.",
+  },
+  {
+    title: "I've got your back",
+    body: "I'll watch your cash, your runway, and your margins, and let you know when something needs your attention — whether that's a risk or an opportunity to save.",
+  },
+  {
+    title: "We'll grow together",
+    body: "The more data you give me, the sharper my insights get. Insert your numbers or upload a spreadsheet and I'll start making sense of it all.",
+  },
+  {
+    title: "Let's get started",
+    body: "Take a look around. I'll pop in now and then with helpful nudges to keep you on track.",
+  },
+];
+
+export function getOnboardingStorageKey(userId: string): string {
+  return `profitpulse_onboarded_${userId}`;
+}
+
+/** Reads onboarding completion flag. Only call on the client. */
+export function hasCompletedOnboarding(userId: string): boolean {
+  if (typeof window === "undefined") return false;
+  return window.localStorage.getItem(getOnboardingStorageKey(userId)) !== null;
+}
+
+interface BearOnboardingProps {
+  userId: string;
+  onComplete?: () => void;
+}
+
+/**
+ * First-time onboarding overlay featuring a large ProfitBear and a 4-step
+ * speech sequence introducing the app.
+ *
+ * Renders nothing if the user has already completed onboarding (tracked
+ * per-user in localStorage). Showing state is hydrated after mount to
+ * avoid SSR flash.
+ */
+export function BearOnboarding({ userId, onComplete }: BearOnboardingProps) {
+  const [visible, setVisible] = useState(false);
+  const [step, setStep] = useState(0);
+  const [entering, setEntering] = useState(true);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const done = window.localStorage.getItem(getOnboardingStorageKey(userId));
+    if (!done) {
+      setVisible(true);
+      // Give one frame for the initial "entering" animation
+      const t = setTimeout(() => setEntering(false), 50);
+      return () => clearTimeout(t);
+    }
+  }, [userId]);
+
+  if (!visible) return null;
+
+  const isLast = step === MESSAGES.length - 1;
+  const current = MESSAGES[step];
+
+  function advance() {
+    if (isLast) {
+      finish();
+    } else {
+      setStep((s) => s + 1);
+    }
+  }
+
+  function finish() {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(
+        getOnboardingStorageKey(userId),
+        new Date().toISOString()
+      );
+    }
+    setVisible(false);
+    onComplete?.();
+  }
+
+  // Render the message with **bold** segments
+  const bodyParts = current.body.split(/(\*\*[^*]+\*\*)/g);
+
+  return (
+    <div
+      className={[
+        "fixed inset-0 z-[100]",
+        "flex items-end md:items-center justify-center",
+        "bg-black/50 backdrop-blur-sm",
+        "transition-opacity duration-300",
+        entering ? "opacity-0" : "opacity-100",
+      ].join(" ")}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="bear-onboarding-title"
+    >
+      <div
+        className={[
+          "relative w-full md:max-w-2xl",
+          "mx-md mb-md md:mb-0",
+          "flex flex-col md:flex-row items-center md:items-end gap-lg",
+          "transition-all duration-500",
+          entering ? "translate-y-8 opacity-0" : "translate-y-0 opacity-100",
+        ].join(" ")}
+      >
+        {/* Bear */}
+        <div className="relative flex-shrink-0">
+          <div
+            className={[
+              "w-[240px] h-[300px] md:w-[280px] md:h-[350px]",
+              "drop-shadow-2xl",
+              "transition-transform duration-500",
+            ].join(" ")}
+            style={{
+              animation: entering ? undefined : "bearBounceIn 0.6s ease-out",
+            }}
+          >
+            <Image
+              src="/pulse-bear-2.png"
+              alt="ProfitBear"
+              width={560}
+              height={700}
+              className="w-full h-full object-contain"
+              priority
+            />
+          </div>
+        </div>
+
+        {/* Speech bubble */}
+        <div
+          className={[
+            "relative flex-1 w-full",
+            "bg-white rounded-2xl shadow-2xl",
+            "border border-[#E5E0DA]",
+            "p-lg md:p-xl",
+            "max-w-md md:max-w-none",
+          ].join(" ")}
+        >
+          {/* Speech bubble tail — points at bear (hidden on mobile) */}
+          <div
+            className="hidden md:block absolute top-1/2 -left-3 w-6 h-6 bg-white border-l border-b border-[#E5E0DA] rotate-45 -translate-y-1/2"
+            aria-hidden="true"
+          />
+
+          {/* Step indicator */}
+          <div className="flex items-center gap-1.5 mb-sm">
+            {MESSAGES.map((_, i) => (
+              <span
+                key={i}
+                className={[
+                  "h-1.5 rounded-full transition-all duration-300",
+                  i === step ? "w-8 bg-orange" : "w-1.5 bg-[#E5E0DA]",
+                ].join(" ")}
+              />
+            ))}
+          </div>
+
+          <h3
+            id="bear-onboarding-title"
+            className="font-display text-h3 text-text-primary mb-xs"
+          >
+            {current.title}
+          </h3>
+          <p className="text-body text-text-secondary mb-lg leading-relaxed">
+            {bodyParts.map((part, i) => {
+              if (part.startsWith("**") && part.endsWith("**")) {
+                return (
+                  <strong key={i} className="text-text-primary font-semibold">
+                    {part.slice(2, -2)}
+                  </strong>
+                );
+              }
+              return <span key={i}>{part}</span>;
+            })}
+          </p>
+
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              onClick={finish}
+              className="text-small text-text-muted hover:text-text-secondary transition-colors"
+            >
+              Skip intro
+            </button>
+            <button
+              type="button"
+              onClick={advance}
+              className={[
+                "inline-flex items-center gap-2 px-5 py-2.5 rounded-md",
+                "bg-orange text-white text-body font-medium",
+                "hover:bg-[#BF4400] active:bg-[#A33B00] transition-colors",
+                "shadow-[0_2px_8px_rgba(230,81,0,0.25)]",
+              ].join(" ")}
+            >
+              {isLast ? "Let's go!" : "Next"}
+              <Icon
+                icon={isLast ? "lucide:check" : "lucide:arrow-right"}
+                width={16}
+                height={16}
+              />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <style jsx>{`
+        @keyframes bearBounceIn {
+          0% {
+            transform: translateY(40px) scale(0.8);
+            opacity: 0;
+          }
+          60% {
+            transform: translateY(-10px) scale(1.05);
+            opacity: 1;
+          }
+          100% {
+            transform: translateY(0) scale(1);
+            opacity: 1;
+          }
+        }
+      `}</style>
+    </div>
+  );
+}
