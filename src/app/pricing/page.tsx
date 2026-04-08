@@ -2,11 +2,15 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Icon } from "@iconify/react";
 import { PricingCards, type BillingInterval } from "@/components/payments/PricingCards";
 import { PaymentForm } from "@/components/payments/PaymentForm";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function PricingPage() {
+  const router = useRouter();
+  const { user, refreshUser } = useAuth();
   const [selected, setSelected] = useState<BillingInterval | null>(null);
   const [step, setStep] = useState<"select" | "pay">("select");
 
@@ -73,14 +77,26 @@ export default function PricingPage() {
               </p>
             </div>
 
-            <PaymentForm
-              billingInterval={selected}
-              onNonce={(nonce) => {
-                // eslint-disable-next-line no-console
-                console.log("[PricingPage] got nonce from PaymentForm:", nonce);
-              }}
-              onBack={() => setStep("select")}
-            />
+            {user ? (
+              <PaymentForm
+                billingInterval={selected}
+                userId={user.id}
+                userEmail={user.email}
+                onSuccess={async () => {
+                  await refreshUser();
+                  router.push("/dashboard");
+                }}
+                onBack={() => setStep("select")}
+              />
+            ) : (
+              <p className="text-center text-body text-text-secondary">
+                Please{" "}
+                <Link href="/login" className="text-orange underline">
+                  log in
+                </Link>{" "}
+                to continue.
+              </p>
+            )}
           </>
         )}
       </main>

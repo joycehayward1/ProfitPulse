@@ -7,8 +7,16 @@ import type { BillingInterval } from "./PricingCards";
 
 interface PaymentFormProps {
   billingInterval: BillingInterval;
-  /** Optional callback invoked once Accept.js returns a nonce. */
-  onNonce?: (nonce: { dataDescriptor: string; dataValue: string }) => void;
+  /** Current authenticated user id — required for /api/payments/subscribe. */
+  userId: string;
+  /** User's email, used for receipts + AVS. */
+  userEmail?: string;
+  /** Callback after a successful subscription. */
+  onSuccess?: (result: {
+    transactionId: string;
+    subscriptionId: string;
+    currentPeriodEnd: string;
+  }) => void;
   /** Optional "Back" button handler. */
   onBack?: () => void;
 }
@@ -28,7 +36,13 @@ const AMOUNTS: Record<BillingInterval, string> = {
  * POST it to `/api/payments/subscribe` along with the selected billing
  * interval.
  */
-export function PaymentForm({ billingInterval, onNonce, onBack }: PaymentFormProps) {
+export function PaymentForm({
+  billingInterval,
+  userId,
+  userEmail,
+  onSuccess,
+  onBack,
+}: PaymentFormProps) {
   const { dispatchData, loading: scriptLoading, error: scriptError } = useAcceptJs({
     environment: "SANDBOX",
     authData: {
@@ -69,19 +83,50 @@ export function PaymentForm({ billingInterval, onNonce, onBack }: PaymentFormPro
         },
       });
 
-      if (response.messages.resultCode === "Ok") {
-        // eslint-disable-next-line no-console
-        console.log("[Accept.js] nonce received:", {
-          billingInterval,
-          amount: AMOUNTS[billingInterval],
-          dataDescriptor: response.opaqueData.dataDescriptor,
-          dataValue: response.opaqueData.dataValue,
-        });
-        onNonce?.(response.opaqueData);
-      } else {
+      if (response.messages.resultCode !== "Ok") {
         const msg = response.messages.message?.[0]?.text ?? "Tokenization failed.";
         setErrorMsg(msg);
+        return;
       }
+
+      // Split "Jane Smith" into first + last for billTo
+      const nameParts = fullName.trim().split(/\s+/);
+      const firstName = nameParts[0] || undefined;
+      const lastName = nameParts.slice(1).join(" ") || undefined;
+
+      const subRes = await fetch("/api/payments/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId,
+          billingInterval,
+          nonce: response.opaqueData,
+          customer: {
+            email: userEmail,
+            firstName,
+            lastName,
+            zip: zip || undefined,
+          },
+        }),
+      });
+
+      const subJson = await subRes.json();
+
+      if (!subRes.ok || subJson.error) {
+        setErrorMsg(subJson.error ?? "Subscription failed. Please try again.");
+        return;
+      }
+
+      if (subJson.warning) {
+        setErrorMsg(subJson.warning);
+        return;
+      }
+
+      onSuccess?.({
+        transactionId: subJson.transactionId,
+        subscriptionId: subJson.subscriptionId,
+        currentPeriodEnd: subJson.currentPeriodEnd,
+      });
     } catch (err: unknown) {
       const msg =
         (err as { messages?: { message?: { text?: string }[] } })?.messages?.message?.[0]
