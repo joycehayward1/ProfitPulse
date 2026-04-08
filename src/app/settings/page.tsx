@@ -6,6 +6,7 @@ import { Icon } from "@iconify/react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/Button";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/Toast";
 
 type SettingsTab = "profile" | "business" | "integrations" | "notifications" | "billing" | "account";
@@ -37,7 +38,10 @@ interface QbTestResult {
 
 function SettingsContent() {
   const { user, refreshUser } = useRequireAuth();
+  const { subscription, refreshUser: refreshAuth } = useAuth();
   const { showToast } = useToast();
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
   const [isSaving, setIsSaving] = useState(false);
 
@@ -728,45 +732,90 @@ function SettingsContent() {
 
           {/* Billing Tab */}
           {activeTab === "billing" && (
-            <div className="space-y-md">
+            <div id="billing" className="space-y-md">
               {/* Current Plan */}
               <div className="bg-gradient-to-br from-orange/5 via-surface to-surface rounded-xl p-xl border border-orange/20 shadow-sm">
-                <div className="flex items-start justify-between mb-lg">
-                  <div>
-                    <h3 className="font-display text-h3 text-text-primary mb-xs">Current Plan</h3>
-                    <p className="text-small text-text-secondary">Professional Plan</p>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-display text-[32px] text-text-primary">$59</div>
-                    <div className="text-small text-text-secondary">per month</div>
-                  </div>
-                </div>
+                {(() => {
+                  const status = subscription?.subscription_status ?? "none";
+                  const interval = subscription?.billing_interval;
+                  const periodEnd = subscription?.current_period_end
+                    ? new Date(subscription.current_period_end).toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })
+                    : null;
 
-                <div className="space-y-sm mb-lg">
-                  {[
-                    "Unlimited financial data entries",
-                    "AI-powered insights & analysis",
-                    "What-if scenario planning",
-                    "QuickBooks integration (coming soon)",
-                    "Priority email support",
-                  ].map((feature) => (
-                    <div key={feature} className="flex items-center gap-2">
-                      <Icon icon="ph:check-circle-fill" className="w-5 h-5 text-success flex-shrink-0" />
-                      <span className="text-small text-text-primary">{feature}</span>
-                    </div>
-                  ))}
-                </div>
+                  const priceLabel =
+                    interval === "annual" ? "$49.99" : "$59.99";
+                  const priceSub = interval === "annual" ? "/month (annual)" : "/month";
 
-                <div className="flex gap-md">
-                  <Button variant="secondary" size="sm">
-                    <Icon icon="ph:credit-card-bold" className="w-4 h-4 mr-2" />
-                    Update Payment Method
-                  </Button>
-                  <Button variant="secondary" size="sm">
-                    <Icon icon="ph:download-simple-bold" className="w-4 h-4 mr-2" />
-                    Download Invoices
-                  </Button>
-                </div>
+                  return (
+                    <>
+                      <div className="flex items-start justify-between mb-lg">
+                        <div>
+                          <h3 className="font-display text-h3 text-text-primary mb-xs">
+                            Current Plan
+                          </h3>
+                          <p className="text-small text-text-secondary">
+                            {status === "trial" && "Free Trial"}
+                            {status === "active" && `ProfitPulse Pro — ${interval ?? ""}`}
+                            {status === "canceled" && `Canceled — access until ${periodEnd}`}
+                            {status === "past_due" && "Payment past due"}
+                            {(status === "terminated" || status === "expired") &&
+                              "Subscription ended"}
+                            {status === "none" && "No active plan"}
+                          </p>
+                        </div>
+                        {status === "active" && (
+                          <div className="text-right">
+                            <div className="font-display text-[32px] text-text-primary">
+                              {priceLabel}
+                            </div>
+                            <div className="text-small text-text-secondary">{priceSub}</div>
+                          </div>
+                        )}
+                      </div>
+
+                      {status === "active" && periodEnd && (
+                        <p className="text-small text-text-secondary mb-md">
+                          Next billing date: <strong>{periodEnd}</strong>
+                        </p>
+                      )}
+
+                      <div className="flex flex-wrap gap-md">
+                        {status === "active" && (
+                          <>
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => setShowCancelModal(true)}
+                            >
+                              <Icon icon="ph:x-circle-bold" className="w-4 h-4 mr-2" />
+                              Cancel Subscription
+                            </Button>
+                          </>
+                        )}
+                        {(status === "trial" ||
+                          status === "canceled" ||
+                          status === "terminated" ||
+                          status === "expired" ||
+                          status === "none") && (
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            onClick={() => (window.location.href = "/pricing")}
+                          >
+                            <Icon icon="ph:arrow-up-right-bold" className="w-4 h-4 mr-2" />
+                            {status === "canceled" || status === "terminated" || status === "expired"
+                              ? "Resubscribe"
+                              : "Upgrade to Pro"}
+                          </Button>
+                        )}
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
 
               {/* Billing History */}
@@ -777,6 +826,74 @@ function SettingsContent() {
                   <p className="text-small text-text-secondary">
                     No billing history yet. Your first invoice will appear here.
                   </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Cancel confirmation modal */}
+          {showCancelModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-md">
+              <div className="max-w-md w-full bg-surface rounded-xl shadow-elevated border border-[#E5E0DA] p-xl">
+                <div className="flex items-center gap-sm mb-md">
+                  <div className="w-10 h-10 rounded-full bg-error/10 flex items-center justify-center">
+                    <Icon icon="lucide:alert-triangle" className="text-error" width={20} height={20} />
+                  </div>
+                  <h3 className="font-display text-h3 text-text-primary">Cancel subscription?</h3>
+                </div>
+                <p className="text-body text-text-secondary mb-lg">
+                  You&apos;ll keep Pro access until{" "}
+                  <strong className="text-text-primary">
+                    {subscription?.current_period_end
+                      ? new Date(subscription.current_period_end).toLocaleDateString("en-US", {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        })
+                      : "the end of your current billing period"}
+                  </strong>
+                  , then your plan will end. You can resubscribe at any time.
+                </p>
+                <div className="flex gap-sm justify-end">
+                  <Button
+                    variant="secondary"
+                    size="md"
+                    onClick={() => setShowCancelModal(false)}
+                    disabled={cancelling}
+                  >
+                    Keep subscription
+                  </Button>
+                  <button
+                    type="button"
+                    disabled={cancelling}
+                    onClick={async () => {
+                      if (!user?.id) return;
+                      setCancelling(true);
+                      try {
+                        const res = await fetch("/api/payments/cancel", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ userId: user.id }),
+                        });
+                        const json = await res.json();
+                        if (!res.ok || json.error) {
+                          showToast("error", json.error ?? "Failed to cancel subscription");
+                          setCancelling(false);
+                          return;
+                        }
+                        showToast("success", "Subscription canceled");
+                        await refreshAuth();
+                        setShowCancelModal(false);
+                      } catch {
+                        showToast("error", "Failed to cancel subscription");
+                      } finally {
+                        setCancelling(false);
+                      }
+                    }}
+                    className="px-6 py-3 rounded-md bg-error text-white text-body font-medium hover:bg-[#B91C1C] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {cancelling ? "Canceling..." : "Yes, cancel"}
+                  </button>
                 </div>
               </div>
             </div>

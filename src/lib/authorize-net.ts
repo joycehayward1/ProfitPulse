@@ -370,7 +370,69 @@ export async function chargeCustomerProfile(
   };
 }
 
-// ─── 6. getTransactionDetailsRequest ─────────────────────────────────────────
+// ─── 6. createCustomerPaymentProfileRequest ─────────────────────────────────
+
+interface CreateCustomerPaymentProfileResponse {
+  customerPaymentProfileId: string;
+  messages: AnetMessages;
+}
+
+export interface CreateCustomerPaymentProfileArgs {
+  customerProfileId: string;
+  nonce: {
+    dataDescriptor: string;
+    dataValue: string;
+  };
+  billTo?: {
+    firstName?: string;
+    lastName?: string;
+    zip?: string;
+  };
+}
+
+/**
+ * Add a new payment profile (card) under an existing Customer Profile.
+ * Used in Flow 7 (Resubscribe with new card) and Flow 8 (Update Card).
+ */
+export async function createCustomerPaymentProfile(
+  args: CreateCustomerPaymentProfileArgs
+): Promise<{ customerPaymentProfileId: string }> {
+  const payload = {
+    createCustomerPaymentProfileRequest: {
+      merchantAuthentication: merchantAuth(),
+      customerProfileId: args.customerProfileId,
+      paymentProfile: {
+        ...(args.billTo && {
+          billTo: {
+            ...(args.billTo.firstName && { firstName: args.billTo.firstName }),
+            ...(args.billTo.lastName && { lastName: args.billTo.lastName }),
+            ...(args.billTo.zip && { zip: args.billTo.zip }),
+          },
+        }),
+        payment: {
+          opaqueData: {
+            dataDescriptor: args.nonce.dataDescriptor,
+            dataValue: args.nonce.dataValue,
+          },
+        },
+      },
+      validationMode: "liveMode",
+    },
+  };
+
+  const result = await callAnet<CreateCustomerPaymentProfileResponse>(payload);
+  assertOk(result, "createCustomerPaymentProfile");
+
+  if (!result.customerPaymentProfileId) {
+    throw new Error(
+      "[createCustomerPaymentProfile] Missing customerPaymentProfileId in response"
+    );
+  }
+
+  return { customerPaymentProfileId: result.customerPaymentProfileId };
+}
+
+// ─── 7. getTransactionDetailsRequest ─────────────────────────────────────────
 
 interface GetTransactionDetailsResponse {
   transaction: {

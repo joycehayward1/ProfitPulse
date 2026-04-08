@@ -3,6 +3,8 @@ import { createClient } from "@insforge/sdk";
 import {
   createTransaction,
   createCustomerProfileFromTransaction,
+  createCustomerPaymentProfile,
+  chargeCustomerProfile,
   createARBSubscription,
   getPlanAmount,
   computePeriodEnd,
@@ -12,10 +14,15 @@ import type { BillingInterval } from "@/components/payments/PricingCards";
 interface SubscribeRequestBody {
   userId: string;
   billingInterval: BillingInterval;
-  nonce: {
+  /** New nonce from Accept.js. Optional only when user opts to reuse the
+   *  card already on file (see `useExistingCard`). */
+  nonce?: {
     dataDescriptor: string;
     dataValue: string;
   };
+  /** When true and the user already has a stored customer profile, charge
+   *  that profile directly without needing a new nonce. */
+  useExistingCard?: boolean;
   customer?: {
     email?: string;
     firstName?: string;
@@ -27,16 +34,21 @@ interface SubscribeRequestBody {
 /**
  * POST /api/payments/subscribe
  *
- * Executes Flow 2 from PAYMENTS_PLAN.md:
- *   1. Charge first period in real time (createTransaction)
- *   2. Vault the card (createCustomerProfileFromTransaction)
- *   3. Create recurring ARB subscription
- *   4. Update subscriptions row in InsForge
- *   5. Insert payment_records row
- *   6. Return success
+ * Handles three scenarios from PAYMENTS_PLAN.md:
  *
- * If any step fails, returns a 400/500 with a descriptive error. The user
- * can then retry from the frontend.
+ *   Scenario A — Fresh signup (Flow 2, no existing customer profile):
+ *     1. createTransaction(nonce)
+ *     2. createCustomerProfileFromTransaction
+ *     3. createARBSubscription
+ *
+ *   Scenario B — Resubscribe with same card (Flow 7, useExistingCard=true):
+ *     1. chargeCustomerProfile(existing customerProfileId + paymentProfileId)
+ *     2. createARBSubscription
+ *
+ *   Scenario C — Resubscribe with new card (Flow 7, nonce + existing profile):
+ *     1. createCustomerPaymentProfile(existing profileId, nonce) → new paymentProfileId
+ *     2. chargeCustomerProfile(existing profileId + new paymentProfileId)
+ *     3. createARBSubscription
  */
 export async function POST(request: NextRequest) {
   let body: SubscribeRequestBody;
@@ -55,51 +67,117 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   }
-  if (!body.nonce?.dataDescriptor || !body.nonce?.dataValue) {
+
+  const amount = getPlanAmount(body.billingInterval);
+  const client = createClient({
+    baseUrl: process.env.NEXT_PUBLIC_INSFORGE_URL!,
+    anonKey: process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY!,
+  });
+
+  // Check if this user already has a stored customer profile (resubscribe flow)
+  const { data: existingSub } = await client.database
+    .from("subscriptions")
+    .select("*")
+    .eq("user_id", body.userId)
+    .maybeSingle();
+
+  const hasStoredProfile = Boolean(
+    existingSub?.anet_customer_profile_id && existingSub?.anet_payment_profile_id
+  );
+
+  if (existingSub?.subscription_status === "active") {
+    return NextResponse.json(
+      { error: "You already have an active subscription" },
+      { status: 400 }
+    );
+  }
+
+  // Determine which scenario
+  let scenario: "A-fresh" | "B-reuse-card" | "C-new-card";
+  if (!hasStoredProfile) {
+    scenario = "A-fresh";
+  } else if (body.useExistingCard) {
+    scenario = "B-reuse-card";
+  } else {
+    scenario = "C-new-card";
+  }
+
+  if (scenario !== "B-reuse-card" && (!body.nonce?.dataDescriptor || !body.nonce?.dataValue)) {
     return NextResponse.json(
       { error: "Payment nonce is missing or malformed" },
       { status: 400 }
     );
   }
 
-  const amount = getPlanAmount(body.billingInterval);
-
   try {
-    // ─── Step 1: Charge first period ────────────────────────────────────────
-    const transaction = await createTransaction({
-      amount,
-      nonce: body.nonce,
-      customer: body.customer,
-      description: `ProfitPulse Pro — ${body.billingInterval} (first period)`,
-    });
+    let transactionId: string;
+    let customerProfileId: string;
+    let customerPaymentProfileId: string;
 
-    // ─── Step 2: Vault the card as a Customer Profile ───────────────────────
-    const profile = await createCustomerProfileFromTransaction(transaction.transId);
+    if (scenario === "A-fresh") {
+      // ─── Scenario A: Fresh signup ────────────────────────────────────────
+      const txn = await createTransaction({
+        amount,
+        nonce: body.nonce!,
+        customer: body.customer,
+        description: `ProfitPulse Pro — ${body.billingInterval} (first period)`,
+      });
+      transactionId = txn.transId;
 
-    // ─── Step 3: Create ARB subscription for ongoing billing ────────────────
+      const profile = await createCustomerProfileFromTransaction(txn.transId);
+      customerProfileId = profile.customerProfileId;
+      customerPaymentProfileId = profile.customerPaymentProfileId;
+    } else {
+      // ─── Scenarios B + C: Resubscribe with existing customer profile ─────
+      customerProfileId = existingSub!.anet_customer_profile_id as string;
+
+      if (scenario === "C-new-card") {
+        // Add a new payment profile under the existing customer
+        const newProfile = await createCustomerPaymentProfile({
+          customerProfileId,
+          nonce: body.nonce!,
+          billTo: {
+            firstName: body.customer?.firstName,
+            lastName: body.customer?.lastName,
+            zip: body.customer?.zip,
+          },
+        });
+        customerPaymentProfileId = newProfile.customerPaymentProfileId;
+      } else {
+        // Scenario B: reuse the stored payment profile
+        customerPaymentProfileId = existingSub!.anet_payment_profile_id as string;
+      }
+
+      // Charge the first period via the stored profile
+      const txn = await chargeCustomerProfile({
+        amount,
+        customerProfileId,
+        customerPaymentProfileId,
+        description: `ProfitPulse Pro — ${body.billingInterval} (resubscribe)`,
+        email: body.customer?.email,
+      });
+      transactionId = txn.transId;
+    }
+
+    // ─── Create the ARB for ongoing billing ──────────────────────────────
     const now = new Date();
     const periodEnd = computePeriodEnd(body.billingInterval, now);
 
     const arb = await createARBSubscription({
       billingInterval: body.billingInterval,
-      customerProfileId: profile.customerProfileId,
-      customerPaymentProfileId: profile.customerPaymentProfileId,
+      customerProfileId,
+      customerPaymentProfileId,
       nextBillingDate: periodEnd,
       customerEmail: body.customer?.email,
     });
 
-    // ─── Step 4 + 5: Update InsForge ────────────────────────────────────────
-    const client = createClient({
-      baseUrl: process.env.NEXT_PUBLIC_INSFORGE_URL!,
-      anonKey: process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY!,
-    });
-
+    // ─── Update subscriptions row ────────────────────────────────────────
     const subscriptionUpdate = {
       plan: "pro" as const,
       billing_interval: body.billingInterval,
       subscription_status: "active" as const,
-      anet_customer_profile_id: profile.customerProfileId,
-      anet_payment_profile_id: profile.customerPaymentProfileId,
+      anet_customer_profile_id: customerProfileId,
+      anet_payment_profile_id: customerPaymentProfileId,
       anet_subscription_id: arb.subscriptionId,
       billing_cycle_start_date: now.toISOString(),
       current_period_end: periodEnd.toISOString(),
@@ -107,10 +185,11 @@ export async function POST(request: NextRequest) {
       last_payment_date: now.toISOString(),
       last_payment_amount: amount,
       last_payment_status: "success" as const,
+      pending_switch_to: null,
+      pending_switch_sub_id: null,
       updated_at: now.toISOString(),
     };
 
-    // Upsert — if no row exists yet, create one; otherwise update
     const { error: upsertError } = await client.database
       .from("subscriptions")
       .upsert(
@@ -120,42 +199,41 @@ export async function POST(request: NextRequest) {
 
     if (upsertError) {
       console.error("[subscribe] Failed to update subscription:", upsertError);
-      // Payment DID succeed — return a warning but don't fail the request,
-      // so the user doesn't get double-charged on retry.
       return NextResponse.json(
         {
           warning:
             "Payment succeeded but we couldn't update your account. Contact support.",
-          transactionId: transaction.transId,
+          transactionId,
         },
         { status: 200 }
       );
     }
 
-    // Payment record
+    const isResubscribe = scenario !== "A-fresh";
     const { error: paymentError } = await client.database
       .from("payment_records")
       .insert({
         user_id: body.userId,
-        anet_transaction_id: transaction.transId,
+        anet_transaction_id: transactionId,
         type: "subscription",
         amount,
         status: "success",
         billing_interval: body.billingInterval,
-        description: `ProfitPulse Pro ${body.billingInterval} — first period`,
+        description: `ProfitPulse Pro ${body.billingInterval} — ${
+          isResubscribe ? "resubscribe" : "first period"
+        }`,
       });
 
     if (paymentError) {
-      // Log but don't fail — the subscription is active
       console.error("[subscribe] Failed to insert payment record:", paymentError);
     }
 
-    // ─── Step 6: Return success ─────────────────────────────────────────────
     return NextResponse.json({
       success: true,
-      transactionId: transaction.transId,
+      scenario,
+      transactionId,
       subscriptionId: arb.subscriptionId,
-      customerProfileId: profile.customerProfileId,
+      customerProfileId,
       currentPeriodEnd: periodEnd.toISOString(),
     });
   } catch (err: unknown) {
