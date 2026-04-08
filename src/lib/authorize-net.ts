@@ -343,6 +343,97 @@ export async function getTransactionDetails(
   };
 }
 
+// ─── 5. ARBGetSubscriptionRequest ────────────────────────────────────────────
+
+interface ARBGetSubscriptionResponse {
+  subscription: {
+    name: string;
+    paymentSchedule?: {
+      startDate: string;
+      totalOccurrences: string;
+    };
+    amount?: number;
+    status?: string;
+    arbTransactions?: {
+      arbTransaction?:
+        | {
+            response?: string;
+            submitTimeUTC?: string;
+            payNum?: string;
+            attemptNum?: string;
+            transId?: string;
+          }
+        | {
+            response?: string;
+            submitTimeUTC?: string;
+            payNum?: string;
+            attemptNum?: string;
+            transId?: string;
+          }[];
+    };
+  };
+  messages: AnetMessages;
+}
+
+export interface ARBSubscriptionStatus {
+  subscriptionId: string;
+  status: string;
+  lastTransaction: {
+    transId: string;
+    payNum: string;
+    submitTimeUTC: string;
+    response: string;
+  } | null;
+}
+
+/**
+ * Fetch full details about an ARB subscription including all past billing
+ * attempts. Used by the reconciliation cron to detect recent renewal
+ * charges that may have missed the webhook.
+ */
+export async function getARBSubscription(
+  subscriptionId: string
+): Promise<ARBSubscriptionStatus> {
+  const payload = {
+    ARBGetSubscriptionRequest: {
+      merchantAuthentication: merchantAuth(),
+      refId: "reconcile",
+      subscriptionId,
+      includeTransactions: true,
+    },
+  };
+
+  const result = await callAnet<ARBGetSubscriptionResponse>(payload);
+  assertOk(result, "getARBSubscription");
+
+  const sub = result.subscription;
+  const arbTxRaw = sub.arbTransactions?.arbTransaction;
+  const arbTxs = Array.isArray(arbTxRaw) ? arbTxRaw : arbTxRaw ? [arbTxRaw] : [];
+
+  // Find the most recent successful transaction (response code "1" = approved)
+  const successful = arbTxs
+    .filter((t) => t.response === "1" && t.transId)
+    .sort((a, b) => {
+      const aTime = new Date(a.submitTimeUTC ?? 0).getTime();
+      const bTime = new Date(b.submitTimeUTC ?? 0).getTime();
+      return bTime - aTime;
+    });
+  const latest = successful[0] ?? null;
+
+  return {
+    subscriptionId,
+    status: sub.status ?? "unknown",
+    lastTransaction: latest
+      ? {
+          transId: latest.transId!,
+          payNum: latest.payNum ?? "",
+          submitTimeUTC: latest.submitTimeUTC ?? "",
+          response: latest.response ?? "",
+        }
+      : null,
+  };
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 export function getPlanAmount(billingInterval: BillingInterval): number {

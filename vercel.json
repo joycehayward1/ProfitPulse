@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/weekly-summary",
       "schedule": "0 9 * * 1"
+    },
+    {
+      "path": "/api/cron/arb-reconcile",
+      "schedule": "0 10 * * *"
     }
   ]
 }

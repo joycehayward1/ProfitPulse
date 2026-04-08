@@ -65,10 +65,9 @@ function verifySignature(rawBody: string, header: string | null): boolean {
     return false;
   }
 
-  // Authorize.net signature keys are hex strings; decode before using as HMAC key
-  const keyBuf = Buffer.from(signatureKey, "hex");
+  // Authorize.net uses the signature key directly (UTF-8), NOT hex-decoded.
   const expected = crypto
-    .createHmac("sha512", keyBuf)
+    .createHmac("sha512", signatureKey)
     .update(rawBody, "utf8")
     .digest("hex")
     .toUpperCase();
@@ -135,9 +134,15 @@ async function processEvent(event: WebhookEvent): Promise<void> {
 
   switch (eventType) {
     case "net.authorize.payment.authcapture.created": {
+      console.log("[webhook] authcapture full event:", JSON.stringify(event));
       const transId = payload.id;
       if (!transId) {
-        console.warn("[webhook] authcapture event missing transaction id");
+        console.warn("[webhook] authcapture event missing transaction id — skipping");
+        return;
+      }
+      // Skip zero-amount noise events
+      if (!payload.authAmount || payload.authAmount === 0) {
+        console.log("[webhook] authcapture has zero amount — skipping");
         return;
       }
 
