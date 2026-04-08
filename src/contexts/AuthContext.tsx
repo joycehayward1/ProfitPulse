@@ -69,7 +69,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         name: profile?.name || sessionUser.profile?.name,
         profile,
       });
-      setSubscription((subResult.data as Subscription | null) ?? null);
+
+      let subRow = (subResult.data as Subscription | null) ?? null;
+
+      // First-login trial backfill: if the user is authenticated but has no
+      // subscription row yet (e.g. signup went through email verification and
+      // the signup page's trial call was skipped), create one now.
+      if (!subRow) {
+        try {
+          const res = await fetch("/api/auth/start-trial", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId: sessionUser.id }),
+          });
+          if (res.ok) {
+            const json = await res.json();
+            subRow = (json.subscription as Subscription | null) ?? null;
+          }
+        } catch (err) {
+          console.error("Failed to backfill trial:", err);
+        }
+      }
+
+      setSubscription(subRow);
     } catch (error) {
       console.error("Error loading user:", error);
       setUser(null);

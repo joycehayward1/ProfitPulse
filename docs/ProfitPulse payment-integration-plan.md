@@ -75,7 +75,6 @@ Locked features are **visible but blurred** with a lock icon and "Upgrade to Pro
 ---
 
 ## Authorize.net Credentials & Environment
-
 ### Environment Variables
 
 ```env
