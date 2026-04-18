@@ -155,7 +155,7 @@ export function WaitlistModal({ open, onClose }: WaitlistModalProps) {
               Join the waitlist
             </h2>
             <p className="text-body text-text-secondary mb-lg">
-              Be the first to know when ProfitPulse goes live. Early access, early pricing.
+              Be the first to know when ProfitPulse goes live.
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-md">
@@ -228,9 +228,6 @@ export function WaitlistModal({ open, onClose }: WaitlistModalProps) {
                 {submitting ? "Joining..." : "Join Waitlist"}
               </button>
 
-              <p className="text-small text-text-muted text-center">
-                No spam. We&apos;ll only email you when ProfitPulse goes live.
-              </p>
             </form>
           </>
         )}

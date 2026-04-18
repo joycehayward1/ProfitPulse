@@ -67,22 +67,17 @@ export function buildWaitlistWelcomeEmail(args: WelcomeEmailArgs): {
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#FAF8F5;border-radius:8px;padding:20px;">
                 <tr>
                   <td style="padding:8px 0;font-size:15px;color:#2D2A26;">
-                    ✓ A daily business health score, in plain English
+                    ✓ Your business health score — in plain English, no accounting degree required
                   </td>
                 </tr>
                 <tr>
                   <td style="padding:8px 0;font-size:15px;color:#2D2A26;">
-                    ✓ Cash runway, profit, and what-if planning — all in one place
+                    ✓ Cash flow, profit, and runway all in one simple dashboard
                   </td>
                 </tr>
                 <tr>
                   <td style="padding:8px 0;font-size:15px;color:#2D2A26;">
-                    ✓ Proactive alerts before small issues become big ones
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding:8px 0;font-size:15px;color:#2D2A26;">
-                    ✓ Early-access pricing as a thank you for joining the waitlist
+                    ✓ What-if calculators to plan hires, growth, and goals with confidence
                   </td>
                 </tr>
               </table>
@@ -134,10 +129,9 @@ export function buildWaitlistWelcomeEmail(args: WelcomeEmailArgs): {
 Thanks for joining the ProfitPulse waitlist. You're officially in line for early access to the financial dashboard built for service-based business owners.
 
 What you'll get:
-  - A daily business health score, in plain English
-  - Cash runway, profit, and what-if planning in one place
-  - Proactive alerts before small issues become big ones
-  - Early-access pricing as a thank you for joining
+  - Your business health score in plain English — no accounting degree required
+  - Cash flow, profit, and runway all in one simple dashboard
+  - What-if calculators to plan hires, growth, and goals with confidence
 
 What happens next:
 We'll email you the moment ProfitPulse goes live. No spam, no pitch decks.

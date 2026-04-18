@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { Icon } from "@iconify/react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { HealthScoreGauge } from "@/components/ui/HealthScoreGauge";
@@ -290,6 +291,7 @@ function ScoreRubricModal({ open, onClose }: { open: boolean; onClose: () => voi
 
 export default function DashboardPage() {
   const { user, loading: _authLoading } = useRequireAuth();
+  const router = useRouter();
   const { subscription } = useAuth();
   const trialMode = isInTrial(subscription);
   const [loading, setLoading] = useState(true);
@@ -513,7 +515,7 @@ export default function DashboardPage() {
                 <Button
                   variant="primary"
                   size="lg"
-                  onClick={() => (window.location.href = "/assessment")}
+                  onClick={() => (router.push("/assessment"))}
                   className="text-[16px] px-2xl py-md shadow-lg hover:shadow-xl transition-all duration-300"
                 >
                   Complete Your Assessment
@@ -606,7 +608,7 @@ export default function DashboardPage() {
                     <Button
                       variant="secondary"
                       size="md"
-                      onClick={() => (window.location.href = "/assessment/results")}
+                      onClick={() => (router.push("/assessment/results"))}
                       className="text-[14px]"
                     >
                       View Full Breakdown
@@ -800,7 +802,7 @@ export default function DashboardPage() {
               <Button
                 variant="primary"
                 size="lg"
-                onClick={() => (window.location.href = "/scenarios")}
+                onClick={() => (router.push("/scenarios"))}
                 className="w-full md:w-auto whitespace-nowrap text-[15px] px-xl py-lg shadow-lg hover:shadow-xl transition-all duration-300"
               >
                 Run a Scenario
