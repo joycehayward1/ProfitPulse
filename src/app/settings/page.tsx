@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Icon } from "@iconify/react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/Button";
@@ -74,6 +74,7 @@ function SettingsContent() {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [qbTesting, setQbTesting] = useState(false);
   const searchParams = useSearchParams();
+  const router = useRouter();
   const handledQbResultRef = useRef<string | null>(null);
 
   const getAuthHeaders = useCallback(async (): Promise<Record<string, string> | null> => {
@@ -804,7 +805,7 @@ function SettingsContent() {
                           <Button
                             variant="primary"
                             size="sm"
-                            onClick={() => (window.location.href = "/pricing")}
+                            onClick={() => router.push("/pricing")}
                           >
                             <Icon icon="ph:arrow-up-right-bold" className="w-4 h-4 mr-2" />
                             {status === "canceled" || status === "terminated" || status === "expired"
