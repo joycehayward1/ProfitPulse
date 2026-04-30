@@ -143,7 +143,7 @@ export default function ScenariosPage() {
             {scenarioTypes.map((scenario, index) => {
               const isLocked = trialMode && !TRIAL_FREE_SCENARIOS.has(scenario.id);
               return (
-                <LockedFeature key={scenario.id} locked={isLocked} className="rounded-2xl">
+                <LockedFeature key={scenario.id} locked={isLocked} visibleWhenLocked className="rounded-2xl">
                 <button
                   onClick={() => router.push(`/scenarios/${scenario.id}`)}
                   className="group relative bg-white rounded-2xl p-8 shadow-sm hover:shadow-xl transition-all duration-500 border border-gray-100 hover:border-orange/20 text-left overflow-hidden"

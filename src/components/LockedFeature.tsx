@@ -12,6 +12,8 @@ interface LockedFeatureProps {
   label?: string;
   /** Optional className applied to the wrapper. */
   className?: string;
+  /** When true, content is fully visible (no blur) but clicking still navigates to upgrade. */
+  visibleWhenLocked?: boolean;
 }
 
 /**
@@ -26,9 +28,18 @@ export function LockedFeature({
   children,
   label = "Upgrade to Pro",
   className = "",
+  visibleWhenLocked = false,
 }: LockedFeatureProps) {
   if (!locked) {
     return <>{children}</>;
+  }
+
+  if (visibleWhenLocked) {
+    return (
+      <Link href="/pricing" className={`block ${className}`} aria-label={label}>
+        {children}
+      </Link>
+    );
   }
 
   return (
