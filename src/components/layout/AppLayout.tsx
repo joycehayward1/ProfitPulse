@@ -52,6 +52,12 @@ const navSections: NavSection[] = [
       { label: "Settings", href: "/settings", icon: "ph:gear-six-bold" },
     ],
   },
+  {
+    title: "HELP",
+    items: [
+      { label: "Glossary", href: "/glossary", icon: "ph:book-open-bold" },
+    ],
+  },
 ];
 
 const PULSE_MESSAGES: Record<string, string> = {
