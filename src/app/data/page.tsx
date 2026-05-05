@@ -1144,6 +1144,27 @@ ${fileContent}`,
         return;
       }
 
+      // Auto-update health assessment from the most recent month
+      const mostRecent = parsedSnapshots[parsedSnapshots.length - 1];
+      const cash = mostRecent.current_assets ?? 0;
+      const revenue = mostRecent.total_income ?? 0;
+      const expenses = mostRecent.total_expenses ?? 0;
+
+      try {
+        await client.database
+          .from("health_assessments")
+          .upsert([{
+            user_id: user.id,
+            cash_on_hand: cash,
+            monthly_revenue: revenue,
+            monthly_expenses: expenses,
+            accounts_receivable: 0,
+          }], { onConflict: "user_id" });
+      } catch (e) {
+        // Non-critical — health score will just use previous data
+        console.warn("Could not update health assessment:", e);
+      }
+
       const monthCount = parsedSnapshots.length;
       showToast("success", monthCount > 1 ? `${monthCount} months of data saved` : "Your data has been saved");
       resetAIUpload();

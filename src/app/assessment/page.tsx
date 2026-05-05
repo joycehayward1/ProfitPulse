@@ -180,7 +180,9 @@ function AssessmentContent() {
   });
 
   // AI snapshot data (upload flow)
-  const [parsedSnapshot, setParsedSnapshot] = useState<AISnapshotData | null>(null);
+  const [parsedSnapshots, setParsedSnapshots] = useState<AISnapshotData[]>([]);
+  const [activeSnapshotIndex, setActiveSnapshotIndex] = useState(0);
+  const parsedSnapshot = parsedSnapshots[activeSnapshotIndex] ?? null;
   const [confirmPeriod, setConfirmPeriod] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -549,34 +551,40 @@ function AssessmentContent() {
         messages: [
           {
             role: "user",
-            content: `You are a financial data parser. The spreadsheet may contain data across multiple sheets (Profit & Loss, Balance Sheet, Cash Flow). Extract data from ALL sheets/sections.
+            content: `You are a financial data parser. The spreadsheet may contain data for ONE month or MULTIPLE months, and may span multiple sheets (Profit & Loss, Balance Sheet, Cash Flow). Extract data from ALL sheets/sections and ALL months.
 
-Return ONLY a JSON object (no markdown, no backticks, no explanation) with these fields. Use null for any field truly not found. All monetary values as plain numbers (no $ or commas). IMPORTANT: Return percentages and ratios as DECIMALS (e.g. 68.3% → 0.683, NOT 68.3).
+IMPORTANT: The spreadsheet may have columns for different months (e.g. Jan, Feb, Mar) or separate sheets per month. Extract EACH month as a separate object.
 
-{
-  "period_date": "YYYY-MM-DD last day of the month this data covers",
-  "total_income": total revenue/income/sales (number or null),
-  "gross_profit": gross profit (number or null),
-  "total_expenses": total expenses/operating expenses (number or null),
-  "net_operating_income": operating income/EBIT (number or null),
-  "net_profit": net income/net profit/bottom line (number or null),
-  "gross_profit_margin": as decimal e.g. 0.683 (number or null),
-  "net_profit_margin": as decimal e.g. 0.157 (number or null),
-  "current_assets": cash + receivables + inventory + other current assets (number or null),
-  "fixed_assets": property/equipment/long-term assets (number or null),
-  "total_assets": total assets (number or null),
-  "current_liabilities": AP + short-term debt + other current liabilities (number or null),
-  "long_term_liabilities": long-term debt/notes payable (number or null),
-  "equity": owner equity/retained earnings/shareholders equity (number or null),
-  "operating_activities": cash from operations (number or null),
-  "investing_activities": cash from investing (number or null),
-  "financing_activities": cash from financing (number or null),
-  "net_cash_flow": net change in cash (number or null),
-  "working_capital": current_assets minus current_liabilities — calculate if not explicit (number or null),
-  "current_ratio": current_assets / current_liabilities — calculate if not explicit (number or null),
-  "roa": net_profit / total_assets as decimal — calculate if not explicit (number or null),
-  "roe": net_profit / equity as decimal — calculate if not explicit (number or null)
-}
+Return ONLY a JSON array (no markdown, no backticks, no explanation). Each element is one month. Use null for any field truly not found. All monetary values as plain numbers (no $ or commas). Return percentages and ratios as DECIMALS (e.g. 68.3% → 0.683, NOT 68.3).
+
+If the data only covers one month, return an array with one element.
+
+[
+  {
+    "period_date": "YYYY-MM-DD last day of the month this data covers",
+    "total_income": total revenue/income/sales (number or null),
+    "gross_profit": gross profit (number or null),
+    "total_expenses": total expenses/operating expenses (number or null),
+    "net_operating_income": operating income/EBIT (number or null),
+    "net_profit": net income/net profit/bottom line (number or null),
+    "gross_profit_margin": as decimal e.g. 0.683 (number or null),
+    "net_profit_margin": as decimal e.g. 0.157 (number or null),
+    "current_assets": cash + receivables + inventory + other current assets (number or null),
+    "fixed_assets": property/equipment/long-term assets (number or null),
+    "total_assets": total assets (number or null),
+    "current_liabilities": AP + short-term debt + other current liabilities (number or null),
+    "long_term_liabilities": long-term debt/notes payable (number or null),
+    "equity": owner equity/retained earnings/shareholders equity (number or null),
+    "operating_activities": cash from operations (number or null),
+    "investing_activities": cash from investing (number or null),
+    "financing_activities": cash from financing (number or null),
+    "net_cash_flow": net change in cash (number or null),
+    "working_capital": current_assets minus current_liabilities — calculate if not explicit (number or null),
+    "current_ratio": current_assets / current_liabilities — calculate if not explicit (number or null),
+    "roa": net_profit / total_assets as decimal — calculate if not explicit (number or null),
+    "roe": net_profit / equity as decimal — calculate if not explicit (number or null)
+  }
+]
 
 Look for common labels: "Total Revenue", "Sales", "Income", "COGS", "Cost of Goods Sold", "Operating Expenses", "Cash and Cash Equivalents", "Accounts Receivable", "Accounts Payable", "Total Current Assets", "Fixed Assets", "Property Plant & Equipment", "Total Liabilities", "Owner's Equity", "Retained Earnings", "Cash from Operations", "Cash from Investing", "Cash from Financing".
 
@@ -592,31 +600,46 @@ ${allContent}`,
       const aiContent = aiResponse.choices[0]?.message?.content || "";
       console.log("🤖 AI response:", aiContent);
 
-      const jsonMatch = aiContent.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
+      let parsedArray: AISnapshotData[];
+      const arrayMatch = aiContent.match(/\[[\s\S]*\]/);
+      const objectMatch = aiContent.match(/\{[\s\S]*\}/);
+
+      if (arrayMatch) {
+        parsedArray = JSON.parse(arrayMatch[0]) as AISnapshotData[];
+      } else if (objectMatch) {
+        parsedArray = [JSON.parse(objectMatch[0]) as AISnapshotData];
+      } else {
         showToast("error", "Could not parse financial data from your files. Try a different file.");
         setIsProcessing(false);
         return;
       }
 
-      const parsed = JSON.parse(jsonMatch[0]) as AISnapshotData;
+      if (!Array.isArray(parsedArray) || parsedArray.length === 0) {
+        showToast("error", "Could not parse financial data from your files. Try a different file.");
+        setIsProcessing(false);
+        return;
+      }
 
       // Fix percentages if AI returned them as whole numbers (68.3) instead of decimals (0.683)
       const pctFields: (keyof AISnapshotData)[] = [
         "gross_profit_margin", "net_profit_margin", "roa", "roe",
       ];
-      for (const f of pctFields) {
-        const v = parsed[f];
-        if (typeof v === "number" && (v > 1 || v < -1)) {
-          (parsed as unknown as Record<string, number | null>)[f] = v / 100;
+      for (const snap of parsedArray) {
+        for (const f of pctFields) {
+          const v = snap[f];
+          if (typeof v === "number" && (v > 1 || v < -1)) {
+            (snap as unknown as Record<string, number | null>)[f] = v / 100;
+          }
         }
       }
 
-      setParsedSnapshot(parsed);
+      setParsedSnapshots(parsedArray);
+      setActiveSnapshotIndex(0);
 
-      // Set confirm period from AI-detected date
-      if (parsed.period_date) {
-        const d = new Date(parsed.period_date);
+      // Set confirm period from the most recent month
+      const mostRecent = parsedArray[parsedArray.length - 1];
+      if (mostRecent.period_date) {
+        const d = new Date(mostRecent.period_date);
         if (!isNaN(d.getTime())) {
           const year = d.getFullYear();
           const month = String(d.getMonth() + 1).padStart(2, "0");
@@ -624,12 +647,13 @@ ${allContent}`,
         }
       }
 
-      const foundCount = Object.entries(parsed).filter(
-        ([k, v]) => k !== "period_date" && v != null
-      ).length;
+      const totalFields = parsedArray.reduce((sum, snap) => {
+        return sum + Object.entries(snap).filter(([k, v]) => k !== "period_date" && v != null).length;
+      }, 0);
 
-      console.log(`✅ Found ${foundCount} of 21 financial fields`);
-      showToast("success", `Found ${foundCount} financial fields in your files!`);
+      const monthLabel = parsedArray.length > 1 ? `${parsedArray.length} months, ` : "";
+      console.log(`✅ Found ${totalFields} financial fields across ${parsedArray.length} month(s)`);
+      showToast("success", `Found ${monthLabel}${totalFields} financial fields in your files!`);
     } catch (aiError) {
       console.error("AI extraction failed:", aiError);
       showToast("error", "AI analysis failed. Please try again.");
@@ -649,13 +673,14 @@ ${allContent}`,
       const { getInsForgeClient } = await import("@/lib/insforge");
       const client = getInsForgeClient();
 
-      // Upload flow with full snapshot
-      if (dataSource === "upload" && parsedSnapshot) {
-        // Derive basic fields from snapshot for health score
-        const cash = parsedSnapshot.current_assets ?? 0;
-        const revenue = parsedSnapshot.total_income ?? 0;
-        const expenses = parsedSnapshot.total_expenses ?? 0;
-        const receivables = 0; // Not a discrete field in snapshot
+      // Upload flow with full snapshot(s)
+      if (dataSource === "upload" && parsedSnapshots.length > 0) {
+        // Use the most recent month for the health assessment
+        const mostRecent = parsedSnapshots[parsedSnapshots.length - 1];
+        const cash = mostRecent.current_assets ?? 0;
+        const revenue = mostRecent.total_income ?? 0;
+        const expenses = mostRecent.total_expenses ?? 0;
+        const receivables = 0;
 
         const healthScore = calculateHealthScore(cash, revenue, expenses, receivables);
 
@@ -687,41 +712,50 @@ ${allContent}`,
           return;
         }
 
-        // Upsert to financial_snapshots with full 22-field schema
-        const [year, month] = confirmPeriod.split("-").map(Number);
-        const lastDay = new Date(year, month, 0).getDate();
-        const periodDate = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+        // Upsert ALL months to financial_snapshots
+        const snapshotRows = parsedSnapshots.map((snap) => {
+          let periodDate = snap.period_date;
+          if (periodDate) {
+            const d = new Date(periodDate);
+            if (!isNaN(d.getTime())) {
+              const y = d.getFullYear();
+              const m = d.getMonth() + 1;
+              const lastDay = new Date(y, m, 0).getDate();
+              periodDate = `${y}-${String(m).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+            }
+          }
 
-        const snapshotData = {
-          user_id: user.id,
-          period_date: periodDate,
-          data_source: "spreadsheet",
-          total_income: parsedSnapshot.total_income,
-          gross_profit: parsedSnapshot.gross_profit,
-          total_expenses: parsedSnapshot.total_expenses,
-          net_operating_income: parsedSnapshot.net_operating_income,
-          net_profit: parsedSnapshot.net_profit,
-          gross_profit_margin: parsedSnapshot.gross_profit_margin,
-          net_profit_margin: parsedSnapshot.net_profit_margin,
-          current_assets: parsedSnapshot.current_assets,
-          fixed_assets: parsedSnapshot.fixed_assets,
-          total_assets: parsedSnapshot.total_assets,
-          current_liabilities: parsedSnapshot.current_liabilities,
-          long_term_liabilities: parsedSnapshot.long_term_liabilities,
-          equity: parsedSnapshot.equity,
-          operating_activities: parsedSnapshot.operating_activities,
-          investing_activities: parsedSnapshot.investing_activities,
-          financing_activities: parsedSnapshot.financing_activities,
-          net_cash_flow: parsedSnapshot.net_cash_flow,
-          working_capital: parsedSnapshot.working_capital,
-          current_ratio: parsedSnapshot.current_ratio,
-          roa: parsedSnapshot.roa,
-          roe: parsedSnapshot.roe,
-        };
+          return {
+            user_id: user.id,
+            period_date: periodDate,
+            data_source: "spreadsheet",
+            total_income: snap.total_income,
+            gross_profit: snap.gross_profit,
+            total_expenses: snap.total_expenses,
+            net_operating_income: snap.net_operating_income,
+            net_profit: snap.net_profit,
+            gross_profit_margin: snap.gross_profit_margin,
+            net_profit_margin: snap.net_profit_margin,
+            current_assets: snap.current_assets,
+            fixed_assets: snap.fixed_assets,
+            total_assets: snap.total_assets,
+            current_liabilities: snap.current_liabilities,
+            long_term_liabilities: snap.long_term_liabilities,
+            equity: snap.equity,
+            operating_activities: snap.operating_activities,
+            investing_activities: snap.investing_activities,
+            financing_activities: snap.financing_activities,
+            net_cash_flow: snap.net_cash_flow,
+            working_capital: snap.working_capital,
+            current_ratio: snap.current_ratio,
+            roa: snap.roa,
+            roe: snap.roe,
+          };
+        });
 
         const { error: snapshotError } = await client.database
           .from("financial_snapshots")
-          .upsert([snapshotData], { onConflict: "user_id,period_date" });
+          .upsert(snapshotRows, { onConflict: "user_id,period_date" });
 
         if (snapshotError) {
           console.error("Error saving financial snapshot:", snapshotError);
@@ -1365,16 +1399,19 @@ ${allContent}`,
                                         onBlur={(e) => {
                                           const raw = e.target.value.replace(/[$,%\s]/g, "").replace(/,/g, "");
                                           const num = parseFloat(raw);
-                                          setParsedSnapshot((prev) => {
-                                            if (!prev) return prev;
-                                            return {
-                                              ...prev,
+                                          setParsedSnapshots((prev) => {
+                                            const updated = [...prev];
+                                            const current = updated[activeSnapshotIndex];
+                                            if (!current) return prev;
+                                            updated[activeSnapshotIndex] = {
+                                              ...current,
                                               [key]: raw === "" || isNaN(num)
                                                 ? null
                                                 : format === "percent"
                                                 ? num / 100
                                                 : num,
                                             };
+                                            return updated;
                                           });
                                           setEditingField(null);
                                         }}
