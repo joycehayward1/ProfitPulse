@@ -866,7 +866,7 @@ export default function DashboardPage() {
                     }}
                   />
                   <Bar dataKey="Income" fill="#E8541A" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="Expenses" fill="#94a3b8" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="Expenses" fill="#5B21B6" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>

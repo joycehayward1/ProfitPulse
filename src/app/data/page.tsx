@@ -286,8 +286,15 @@ function DataContent() {
   const [uploadStep, setUploadStep] = useState<UploadStep>("idle");
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [parsedSnapshot, setParsedSnapshot] = useState<AISnapshotData | null>(null);
-  const [confirmPeriod, setConfirmPeriod] = useState(getCurrentPeriod());
+  const [parsedSnapshots, setParsedSnapshots] = useState<AISnapshotData[]>([]);
+  const [activeSnapshotIndex, setActiveSnapshotIndex] = useState(0);
+  // Legacy single-snapshot aliases for backward compat in UI
+  const parsedSnapshot = parsedSnapshots[activeSnapshotIndex] ?? null;
+  const confirmPeriod = parsedSnapshot?.period_date ? (() => {
+    const d = new Date(parsedSnapshot.period_date!);
+    if (isNaN(d.getTime())) return getCurrentPeriod();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  })() : getCurrentPeriod();
   const [editingField, setEditingField] = useState<string | null>(null);
   const [_sheetNames, setSheetNames] = useState<string[]>([]);
   const [_selectedSheet, setSelectedSheet] = useState("");
@@ -982,34 +989,40 @@ function DataContent() {
       messages: [
         {
           role: "user",
-          content: `You are a financial data parser. The spreadsheet may contain data across multiple sheets (Profit & Loss, Balance Sheet, Cash Flow). Extract data from ALL sheets/sections.
+          content: `You are a financial data parser. The spreadsheet may contain data for ONE month or MULTIPLE months, and may span multiple sheets (Profit & Loss, Balance Sheet, Cash Flow). Extract data from ALL sheets/sections and ALL months.
 
-Return ONLY a JSON object (no markdown, no backticks, no explanation) with these fields. Use null for any field truly not found. All monetary values as plain numbers (no $ or commas). IMPORTANT: Return percentages and ratios as DECIMALS (e.g. 68.3% → 0.683, NOT 68.3).
+IMPORTANT: The spreadsheet may have columns for different months (e.g. Jan, Feb, Mar) or separate sheets per month. Extract EACH month as a separate object.
 
-{
-  "period_date": "YYYY-MM-DD last day of the month this data covers",
-  "total_income": total revenue/income/sales (number or null),
-  "gross_profit": gross profit (number or null),
-  "total_expenses": total expenses/operating expenses (number or null),
-  "net_operating_income": operating income/EBIT (number or null),
-  "net_profit": net income/net profit/bottom line (number or null),
-  "gross_profit_margin": as decimal e.g. 0.683 (number or null),
-  "net_profit_margin": as decimal e.g. 0.157 (number or null),
-  "current_assets": cash + receivables + inventory + other current assets (number or null),
-  "fixed_assets": property/equipment/long-term assets (number or null),
-  "total_assets": total assets (number or null),
-  "current_liabilities": AP + short-term debt + other current liabilities (number or null),
-  "long_term_liabilities": long-term debt/notes payable (number or null),
-  "equity": owner equity/retained earnings/shareholders equity (number or null),
-  "operating_activities": cash from operations (number or null),
-  "investing_activities": cash from investing (number or null),
-  "financing_activities": cash from financing (number or null),
-  "net_cash_flow": net change in cash (number or null),
-  "working_capital": current_assets minus current_liabilities — calculate if not explicit (number or null),
-  "current_ratio": current_assets / current_liabilities — calculate if not explicit (number or null),
-  "roa": net_profit / total_assets as decimal — calculate if not explicit (number or null),
-  "roe": net_profit / equity as decimal — calculate if not explicit (number or null)
-}
+Return ONLY a JSON array (no markdown, no backticks, no explanation). Each element is one month with these fields. Use null for any field truly not found. All monetary values as plain numbers (no $ or commas). Return percentages and ratios as DECIMALS (e.g. 68.3% → 0.683, NOT 68.3).
+
+If the data only covers one month, return an array with one element.
+
+[
+  {
+    "period_date": "YYYY-MM-DD last day of the month this data covers",
+    "total_income": total revenue/income/sales (number or null),
+    "gross_profit": gross profit (number or null),
+    "total_expenses": total expenses/operating expenses (number or null),
+    "net_operating_income": operating income/EBIT (number or null),
+    "net_profit": net income/net profit/bottom line (number or null),
+    "gross_profit_margin": as decimal e.g. 0.683 (number or null),
+    "net_profit_margin": as decimal e.g. 0.157 (number or null),
+    "current_assets": cash + receivables + inventory + other current assets (number or null),
+    "fixed_assets": property/equipment/long-term assets (number or null),
+    "total_assets": total assets (number or null),
+    "current_liabilities": AP + short-term debt + other current liabilities (number or null),
+    "long_term_liabilities": long-term debt/notes payable (number or null),
+    "equity": owner equity/retained earnings/shareholders equity (number or null),
+    "operating_activities": cash from operations (number or null),
+    "investing_activities": cash from investing (number or null),
+    "financing_activities": cash from financing (number or null),
+    "net_cash_flow": net change in cash (number or null),
+    "working_capital": current_assets minus current_liabilities — calculate if not explicit (number or null),
+    "current_ratio": current_assets / current_liabilities — calculate if not explicit (number or null),
+    "roa": net_profit / total_assets as decimal — calculate if not explicit (number or null),
+    "roe": net_profit / equity as decimal — calculate if not explicit (number or null)
+  }
+]
 
 Look for common labels: "Total Revenue", "Sales", "Income", "COGS", "Cost of Goods Sold", "Operating Expenses", "Cash and Cash Equivalents", "Accounts Receivable", "Accounts Payable", "Total Current Assets", "Fixed Assets", "Property Plant & Equipment", "Total Liabilities", "Owner's Equity", "Retained Earnings", "Cash from Operations", "Cash from Investing", "Cash from Financing".
 
@@ -1024,11 +1037,23 @@ ${fileContent}`,
 
     const aiResponse = completion.choices[0]?.message?.content || "";
 
-    let parsed: AISnapshotData;
+    let parsedArray: AISnapshotData[];
     try {
-      const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error("No JSON found");
-      parsed = JSON.parse(jsonMatch[0]) as AISnapshotData;
+      // Try to parse as array first, then fall back to single object
+      const arrayMatch = aiResponse.match(/\[[\s\S]*\]/);
+      const objectMatch = aiResponse.match(/\{[\s\S]*\}/);
+
+      if (arrayMatch) {
+        parsedArray = JSON.parse(arrayMatch[0]) as AISnapshotData[];
+      } else if (objectMatch) {
+        parsedArray = [JSON.parse(objectMatch[0]) as AISnapshotData];
+      } else {
+        throw new Error("No JSON found");
+      }
+
+      if (!Array.isArray(parsedArray) || parsedArray.length === 0) {
+        throw new Error("Empty result");
+      }
     } catch {
       setUploadError(
         "We couldn\u2019t read this file format. Try a different file or connect QuickBooks instead."
@@ -1041,71 +1066,73 @@ ${fileContent}`,
     const pctFields: (keyof AISnapshotData)[] = [
       "gross_profit_margin", "net_profit_margin", "roa", "roe",
     ];
-    for (const f of pctFields) {
-      const v = parsed[f];
-      if (typeof v === "number" && (v > 1 || v < -1)) {
-        (parsed as unknown as Record<string, number | null>)[f] = v / 100;
+    for (const snap of parsedArray) {
+      for (const f of pctFields) {
+        const v = snap[f];
+        if (typeof v === "number" && (v > 1 || v < -1)) {
+          (snap as unknown as Record<string, number | null>)[f] = v / 100;
+        }
       }
     }
 
-    setParsedSnapshot(parsed);
-
-    if (parsed.period_date) {
-      const d = new Date(parsed.period_date);
-      if (!isNaN(d.getTime())) {
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, "0");
-        setConfirmPeriod(`${year}-${month}`);
-      }
-    }
-
+    setParsedSnapshots(parsedArray);
+    setActiveSnapshotIndex(0);
     setUploadStep("confirm");
   }
 
   // handleParseSheet removed — all sheets are now combined automatically
 
   async function handleSaveAISnapshot() {
-    if (!user || !parsedSnapshot) return;
+    if (!user || parsedSnapshots.length === 0) return;
 
     setUploadStep("saving");
     try {
       const { getInsForgeClient: getClient } = await import("@/lib/insforge");
       const client = getClient();
 
-      const [year, month] = confirmPeriod.split("-").map(Number);
-      const lastDay = new Date(year, month, 0).getDate();
-      const periodDate = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+      const snapshotRows = parsedSnapshots.map((snap) => {
+        let periodDate = snap.period_date;
+        if (periodDate) {
+          const d = new Date(periodDate);
+          if (!isNaN(d.getTime())) {
+            const year = d.getFullYear();
+            const month = d.getMonth() + 1;
+            const lastDay = new Date(year, month, 0).getDate();
+            periodDate = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+          }
+        }
 
-      const snapshotData = {
-        user_id: user.id,
-        period_date: periodDate,
-        data_source: "spreadsheet",
-        total_income: parsedSnapshot.total_income,
-        gross_profit: parsedSnapshot.gross_profit,
-        total_expenses: parsedSnapshot.total_expenses,
-        net_operating_income: parsedSnapshot.net_operating_income,
-        net_profit: parsedSnapshot.net_profit,
-        gross_profit_margin: parsedSnapshot.gross_profit_margin,
-        net_profit_margin: parsedSnapshot.net_profit_margin,
-        current_assets: parsedSnapshot.current_assets,
-        fixed_assets: parsedSnapshot.fixed_assets,
-        total_assets: parsedSnapshot.total_assets,
-        current_liabilities: parsedSnapshot.current_liabilities,
-        long_term_liabilities: parsedSnapshot.long_term_liabilities,
-        equity: parsedSnapshot.equity,
-        operating_activities: parsedSnapshot.operating_activities,
-        investing_activities: parsedSnapshot.investing_activities,
-        financing_activities: parsedSnapshot.financing_activities,
-        net_cash_flow: parsedSnapshot.net_cash_flow,
-        working_capital: parsedSnapshot.working_capital,
-        current_ratio: parsedSnapshot.current_ratio,
-        roa: parsedSnapshot.roa,
-        roe: parsedSnapshot.roe,
-      };
+        return {
+          user_id: user.id,
+          period_date: periodDate,
+          data_source: "spreadsheet",
+          total_income: snap.total_income,
+          gross_profit: snap.gross_profit,
+          total_expenses: snap.total_expenses,
+          net_operating_income: snap.net_operating_income,
+          net_profit: snap.net_profit,
+          gross_profit_margin: snap.gross_profit_margin,
+          net_profit_margin: snap.net_profit_margin,
+          current_assets: snap.current_assets,
+          fixed_assets: snap.fixed_assets,
+          total_assets: snap.total_assets,
+          current_liabilities: snap.current_liabilities,
+          long_term_liabilities: snap.long_term_liabilities,
+          equity: snap.equity,
+          operating_activities: snap.operating_activities,
+          investing_activities: snap.investing_activities,
+          financing_activities: snap.financing_activities,
+          net_cash_flow: snap.net_cash_flow,
+          working_capital: snap.working_capital,
+          current_ratio: snap.current_ratio,
+          roa: snap.roa,
+          roe: snap.roe,
+        };
+      });
 
       const { error } = await client.database
         .from("financial_snapshots")
-        .upsert([snapshotData], { onConflict: "user_id,period_date" });
+        .upsert(snapshotRows, { onConflict: "user_id,period_date" });
 
       if (error) {
         const dbError = error as DatabaseErrorLike;
@@ -1117,7 +1144,8 @@ ${fileContent}`,
         return;
       }
 
-      showToast("success", "Your data has been saved");
+      const monthCount = parsedSnapshots.length;
+      showToast("success", monthCount > 1 ? `${monthCount} months of data saved` : "Your data has been saved");
       resetAIUpload();
 
       setLoadingHistory(true);
@@ -1134,8 +1162,8 @@ ${fileContent}`,
     setUploadStep("idle");
     setUploadFile(null);
     setUploadError(null);
-    setParsedSnapshot(null);
-    setConfirmPeriod(getCurrentPeriod());
+    setParsedSnapshots([]);
+    setActiveSnapshotIndex(0);
     setSheetNames([]);
     setSelectedSheet("");
     workbookRef.current = null;
@@ -1702,7 +1730,27 @@ ${fileContent}`,
                           <p className="text-[14px] text-red-700">{uploadError}</p>
                         </div>
                       )}
-                      <div className="border-2 border-dashed border-[#E4E4E7] rounded-xl p-8 text-center hover:border-[#E65100] hover:bg-[#FFF7F2] transition-colors">
+                      <div
+                        className="border-2 border-dashed border-[#E4E4E7] rounded-xl p-8 text-center hover:border-[#E65100] hover:bg-[#FFF7F2] transition-colors cursor-pointer"
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          e.currentTarget.classList.add("border-[#E65100]", "bg-[#FFF7F2]");
+                        }}
+                        onDragLeave={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          e.currentTarget.classList.remove("border-[#E65100]", "bg-[#FFF7F2]");
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          e.currentTarget.classList.remove("border-[#E65100]", "bg-[#FFF7F2]");
+                          const file = e.dataTransfer.files?.[0];
+                          if (file) void handleAIUpload(file);
+                        }}
+                        onClick={() => aiFileInputRef.current?.click()}
+                      >
                         <svg
                           className="w-10 h-10 mx-auto mb-4 text-[#8B8B8B]"
                           fill="none"
@@ -1720,12 +1768,12 @@ ${fileContent}`,
                           Upload your financial spreadsheet
                         </h3>
                         <p className="text-[14px] text-[#4B4B4B] mb-6">
-                          Our AI will read your file and extract the numbers automatically
+                          Drag and drop your file here, or click to browse
                         </p>
                         <input
                           ref={aiFileInputRef}
                           type="file"
-                          accept=".csv"
+                          accept=".csv,.xlsx,.xls"
                           onChange={(e) => {
                             const file = e.target.files?.[0];
                             if (file) void handleAIUpload(file);
@@ -1734,13 +1782,16 @@ ${fileContent}`,
                         />
                         <button
                           type="button"
-                          onClick={() => aiFileInputRef.current?.click()}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            aiFileInputRef.current?.click();
+                          }}
                           className="bg-[#E65100] text-white rounded-lg px-6 py-2.5 text-[14px] font-medium hover:bg-[#D84A00] transition-colors"
                         >
                           Choose File
                         </button>
                         <p className="text-[12px] text-[#8B8B8B] mt-6">
-                          Accepts .csv files up to 2 MB
+                          Accepts .csv and .xlsx files up to 10 MB
                         </p>
                       </div>
                     </div>
@@ -1773,21 +1824,67 @@ ${fileContent}`,
                             Here&apos;s what we found in your spreadsheet
                           </h3>
                           <p className="text-[14px] text-[#4B4B4B]">
-                            Review before saving. Click any value to edit or fill in missing fields.
+                            {parsedSnapshots.length > 1
+                              ? `We found ${parsedSnapshots.length} months of data. Review each month before saving.`
+                              : "Review before saving. Click any value to edit or fill in missing fields."}
                           </p>
                         </div>
 
-                        {/* Period Selector */}
+                        {/* Month tabs for multi-month uploads */}
+                        {parsedSnapshots.length > 1 && (
+                          <div className="flex flex-wrap gap-2 mb-6">
+                            {parsedSnapshots.map((snap, idx) => {
+                              const label = snap.period_date
+                                ? new Date(snap.period_date).toLocaleDateString("en-US", { month: "short", year: "numeric" })
+                                : `Month ${idx + 1}`;
+                              return (
+                                <button
+                                  key={idx}
+                                  onClick={() => setActiveSnapshotIndex(idx)}
+                                  className={[
+                                    "px-3 py-1.5 rounded-lg text-[13px] font-medium border transition-colors",
+                                    activeSnapshotIndex === idx
+                                      ? "bg-orange/10 border-orange text-orange"
+                                      : "bg-transparent border-[#E4E4E7] text-[#4B4B4B] hover:border-[#111111]",
+                                  ].join(" ")}
+                                >
+                                  {label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        {/* Period display */}
                         <div className="mb-6">
                           <label className="text-[13px] font-medium text-[#111111] mb-1.5 block">
-                            Which month does this data cover?
+                            {parsedSnapshots.length > 1 ? "Viewing data for:" : "Which month does this data cover?"}
                           </label>
-                          <input
-                            type="month"
-                            value={confirmPeriod}
-                            onChange={(e) => setConfirmPeriod(e.target.value)}
-                            className="w-full sm:w-auto h-10 px-3 rounded-lg border border-[#E4E4E7] bg-white text-[14px] text-[#111111] placeholder:text-[#8B8B8B] focus:border-[#E65100] focus:ring-2 focus:ring-[#E65100]/15 focus:outline-none transition-colors"
-                          />
+                          {parsedSnapshots.length <= 1 ? (
+                            <input
+                              type="month"
+                              value={confirmPeriod}
+                              onChange={(e) => {
+                                const newDate = e.target.value;
+                                setParsedSnapshots(prev => {
+                                  const updated = [...prev];
+                                  if (updated[0]) {
+                                    const [y, m] = newDate.split("-").map(Number);
+                                    const lastDay = new Date(y, m, 0).getDate();
+                                    updated[0] = { ...updated[0], period_date: `${y}-${String(m).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}` };
+                                  }
+                                  return updated;
+                                });
+                              }}
+                              className="w-full sm:w-auto h-10 px-3 rounded-lg border border-[#E4E4E7] bg-white text-[14px] text-[#111111] placeholder:text-[#8B8B8B] focus:border-[#E65100] focus:ring-2 focus:ring-[#E65100]/15 focus:outline-none transition-colors"
+                            />
+                          ) : (
+                            <p className="text-[14px] text-[#111111] font-medium">
+                              {parsedSnapshot?.period_date
+                                ? new Date(parsedSnapshot.period_date).toLocaleDateString("en-US", { month: "long", year: "numeric" })
+                                : "Unknown period"}
+                            </p>
+                          )}
                         </div>
 
                         {/* Data Table — grouped by section */}
@@ -1851,16 +1948,19 @@ ${fileContent}`,
                                               onBlur={(e) => {
                                                 const raw = e.target.value.replace(/[$,%\s]/g, "").replace(/,/g, "");
                                                 const num = parseFloat(raw);
-                                                setParsedSnapshot((prev) => {
-                                                  if (!prev) return prev;
-                                                  return {
-                                                    ...prev,
+                                                setParsedSnapshots((prev) => {
+                                                  const updated = [...prev];
+                                                  const current = updated[activeSnapshotIndex];
+                                                  if (!current) return prev;
+                                                  updated[activeSnapshotIndex] = {
+                                                    ...current,
                                                     [key]: raw === "" || isNaN(num)
                                                       ? null
                                                       : format === "percent"
                                                       ? num / 100
                                                       : num,
                                                   };
+                                                  return updated;
                                                 });
                                                 setEditingField(null);
                                               }}
@@ -1908,7 +2008,7 @@ ${fileContent}`,
                           disabled={uploadStep === "saving"}
                           className="bg-[#E65100] text-white rounded-lg px-6 py-2.5 text-[14px] font-medium hover:bg-[#D84A00] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
-                          {uploadStep === "saving" ? "Saving..." : "Save to Dashboard"}
+                          {uploadStep === "saving" ? "Saving..." : parsedSnapshots.length > 1 ? `Save All ${parsedSnapshots.length} Months` : "Save to Dashboard"}
                         </button>
                         <button
                           type="button"

@@ -426,7 +426,7 @@ export default function PLPage() {
                   wrapperStyle={{ fontSize: "12px", paddingTop: "8px" }}
                 />
                 <Bar dataKey="Income" fill="#E65100" radius={[6, 6, 0, 0]} />
-                <Bar dataKey="Expenses" fill="#a3a3a3" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="Expenses" fill="#5B21B6" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           ) : (
