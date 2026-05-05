@@ -146,7 +146,7 @@ function KpiCard({ label, icon, iconColor, value, priorValue, negative, delay, t
         <Variance current={value} prior={priorValue} />
       </div>
 
-      <h3 className="font-body text-small tracking-[0.1em] uppercase text-text-muted mb-xs flex items-center gap-1.5">
+      <h3 className="font-body text-[14px] font-medium text-text-secondary mb-xs flex items-center gap-1.5">
         {label}
         {tooltip && <InfoTooltip text={tooltip} />}
       </h3>

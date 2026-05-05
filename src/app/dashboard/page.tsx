@@ -209,7 +209,7 @@ function MetricCard({
       </div>
 
       {/* Label */}
-      <h3 className="font-body text-small tracking-[0.1em] uppercase text-text-muted mb-sm flex items-center gap-1.5">
+      <h3 className="font-body text-[14px] font-medium text-text-secondary mb-sm flex items-center gap-1.5">
         {label}
         {tooltip && <InfoTooltip text={tooltip} />}
       </h3>
@@ -448,7 +448,7 @@ export default function DashboardPage() {
 
   return (
     <AppLayout pulseMessage={pulseText}>
-      <div className="space-y-2xl">
+      <div className="space-y-xl">
         {/* Greeting Section - Editorial style with staggered reveal */}
         <div
           className="space-y-xs animate-fadeIn"
@@ -541,7 +541,7 @@ export default function DashboardPage() {
             <div className="relative z-10 p-2xl">
               {/* Section Label */}
               <div className="mb-lg animate-fadeIn flex items-center gap-2" style={{ animationDelay: "500ms" }}>
-                <span className="text-small font-body tracking-[0.15em] uppercase text-orange font-semibold">
+                <span className="text-[14px] font-body tracking-[0.12em] uppercase text-orange font-semibold">
                   Your Business Health
                 </span>
                 <button
@@ -671,14 +671,14 @@ export default function DashboardPage() {
         {/* Cash Position Section */}
         {!loading && assessment && (
           <div
-            className="bg-surface rounded-xl p-2xl border border-background shadow-sm animate-fadeIn"
+            className="bg-surface rounded-xl p-xl border border-background shadow-sm animate-fadeIn"
             style={{ animationDelay: "900ms" }}
           >
-            <h2 className="font-body text-small tracking-[0.1em] uppercase text-text-muted mb-lg">
+            <h2 className="font-display text-h3 font-semibold text-text-primary tracking-tight mb-md">
               Cash Position
             </h2>
 
-            <div className="space-y-2xl">
+            <div className="space-y-lg">
               {/* Current Cash */}
               <div className="text-center md:text-left">
                 <AnimatedCurrency
@@ -815,10 +815,10 @@ export default function DashboardPage() {
         {!loading && (
           latestSnapshot ? (
             <div
-              className="bg-surface rounded-xl p-2xl border border-background shadow-sm animate-fadeIn"
+              className="bg-surface rounded-xl p-xl border border-background shadow-sm animate-fadeIn"
               style={{ animationDelay: "1100ms" }}
             >
-              <h2 className="font-body text-small tracking-[0.1em] uppercase text-text-muted mb-lg">
+              <h2 className="font-display text-h3 font-semibold text-text-primary tracking-tight mb-md">
                 P&L Snapshot{" "}
                 <span className="ml-1 normal-case tracking-normal text-text-secondary">
                   — {new Date(latestSnapshot.period_date + "T00:00:00").toLocaleDateString("en-US", { month: "long", year: "numeric" })}
@@ -881,10 +881,10 @@ export default function DashboardPage() {
         {!loading && (
           incomeChartData.length >= 2 ? (
             <div
-              className="bg-surface rounded-xl p-2xl border border-background shadow-sm animate-fadeIn"
+              className="bg-surface rounded-xl p-xl border border-background shadow-sm animate-fadeIn"
               style={{ animationDelay: "1200ms" }}
             >
-              <h2 className="font-body text-small tracking-[0.1em] uppercase text-text-muted mb-lg">
+              <h2 className="font-display text-h3 font-semibold text-text-primary tracking-tight mb-md">
                 Income Trend
               </h2>
 
@@ -925,7 +925,7 @@ export default function DashboardPage() {
               className="bg-surface rounded-xl px-2xl py-lg border border-background shadow-sm animate-fadeIn"
               style={{ animationDelay: "1200ms" }}
             >
-              <h2 className="font-body text-small tracking-[0.1em] uppercase text-text-muted mb-sm">
+              <h2 className="font-display text-h3 font-semibold text-text-primary tracking-tight mb-sm">
                 Income Trend
               </h2>
               <p className="text-body text-text-secondary">

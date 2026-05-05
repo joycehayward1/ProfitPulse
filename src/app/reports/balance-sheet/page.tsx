@@ -86,7 +86,7 @@ function KPICard({ label, value, change, changeLabel, isHealthy, icon, delay, to
         />
       </div>
 
-      <h3 className="font-body text-small tracking-[0.1em] uppercase text-text-muted mb-sm flex items-center gap-1.5">
+      <h3 className="font-body text-[14px] font-medium text-text-secondary mb-sm flex items-center gap-1.5">
         {label}
         {tooltip && <InfoTooltip text={tooltip} />}
       </h3>
@@ -126,7 +126,7 @@ function SummaryTable({ rows, delay }: { rows: TableRowData[]; delay: string }) 
       style={{ animationDelay: delay }}
     >
       <div className="px-lg py-md border-b border-background">
-        <h3 className="font-body text-small tracking-[0.1em] uppercase text-text-muted">
+        <h3 className="font-display text-h3 font-semibold text-text-primary tracking-tight">
           Balance Sheet Summary
         </h3>
       </div>
@@ -520,7 +520,7 @@ export default function BalanceSheetPage() {
             className="bg-surface rounded-xl border border-background shadow-sm p-lg animate-fadeIn"
             style={{ animationDelay: "600ms" }}
           >
-            <h3 className="font-body text-small tracking-[0.1em] uppercase text-text-muted mb-md">
+            <h3 className="font-display text-h3 font-semibold text-text-primary tracking-tight mb-md">
               Current Ratio Trend
             </h3>
             <div className="h-64">
@@ -578,7 +578,7 @@ export default function BalanceSheetPage() {
             className="bg-surface rounded-xl border border-background shadow-sm p-lg animate-fadeIn"
             style={{ animationDelay: "700ms" }}
           >
-            <h3 className="font-body text-small tracking-[0.1em] uppercase text-text-muted mb-md">
+            <h3 className="font-display text-h3 font-semibold text-text-primary tracking-tight mb-md">
               Working Capital Trend
             </h3>
             <div className="h-64">
