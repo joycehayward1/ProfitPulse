@@ -7,7 +7,7 @@ import { Icon } from "@iconify/react";
 const MESSAGES = [
   {
     title: "Hey there!",
-    body: "I'm **ProfitBear** — your financial buddy. I'll be hanging out in your dashboard, keeping an eye on your numbers so you don't have to stress.",
+    body: "I'm **Pulse** — your financial assistant. I'll be hanging out in your dashboard, keeping an eye on your numbers so you don't have to stress.",
   },
   {
     title: "I've got your back",
@@ -27,7 +27,6 @@ export function getOnboardingStorageKey(userId: string): string {
   return `profitpulse_onboarded_${userId}`;
 }
 
-/** Reads onboarding completion flag. Only call on the client. */
 export function hasCompletedOnboarding(userId: string): boolean {
   if (typeof window === "undefined") return false;
   return window.localStorage.getItem(getOnboardingStorageKey(userId)) !== null;
@@ -38,14 +37,6 @@ interface BearOnboardingProps {
   onComplete?: () => void;
 }
 
-/**
- * First-time onboarding overlay featuring a large ProfitBear and a 4-step
- * speech sequence introducing the app.
- *
- * Renders nothing if the user has already completed onboarding (tracked
- * per-user in localStorage). Showing state is hydrated after mount to
- * avoid SSR flash.
- */
 export function BearOnboarding({ userId, onComplete }: BearOnboardingProps) {
   const [visible, setVisible] = useState(false);
   const [step, setStep] = useState(0);
@@ -56,7 +47,6 @@ export function BearOnboarding({ userId, onComplete }: BearOnboardingProps) {
     const done = window.localStorage.getItem(getOnboardingStorageKey(userId));
     if (!done) {
       setVisible(true);
-      // Give one frame for the initial "entering" animation
       const t = setTimeout(() => setEntering(false), 50);
       return () => clearTimeout(t);
     }
@@ -86,7 +76,6 @@ export function BearOnboarding({ userId, onComplete }: BearOnboardingProps) {
     onComplete?.();
   }
 
-  // Render the message with **bold** segments
   const bodyParts = current.body.split(/(\*\*[^*]+\*\*)/g);
 
   return (
@@ -111,24 +100,25 @@ export function BearOnboarding({ userId, onComplete }: BearOnboardingProps) {
           entering ? "translate-y-8 opacity-0" : "translate-y-0 opacity-100",
         ].join(" ")}
       >
-        {/* Bear */}
+        {/* Mascot */}
         <div className="relative flex-shrink-0">
           <div
             className={[
-              "w-[240px] h-[300px] md:w-[280px] md:h-[350px]",
-              "drop-shadow-2xl",
+              "w-[200px] h-[200px] md:w-[240px] md:h-[240px]",
+              "rounded-3xl overflow-hidden",
+              "shadow-elevated ring-4 ring-white/80",
               "transition-transform duration-500",
             ].join(" ")}
             style={{
-              animation: entering ? undefined : "bearBounceIn 0.6s ease-out",
+              animation: entering ? undefined : "mascotBounceIn 0.6s ease-out",
             }}
           >
             <Image
-              src="/pulse-bear-2.png"
-              alt="ProfitBear"
-              width={560}
-              height={700}
-              className="w-full h-full object-contain"
+              src="/profit-pulse-mascot.png"
+              alt="Pulse — your financial assistant"
+              width={480}
+              height={480}
+              className="w-full h-full object-cover scale-[1.15]"
               priority
             />
           </div>
@@ -138,15 +128,15 @@ export function BearOnboarding({ userId, onComplete }: BearOnboardingProps) {
         <div
           className={[
             "relative flex-1 w-full",
-            "bg-white rounded-2xl shadow-2xl",
-            "border border-[#E5E0DA]",
+            "bg-white rounded-2xl shadow-elevated",
+            "border border-border-light",
             "p-lg md:p-xl",
             "max-w-md md:max-w-none",
           ].join(" ")}
         >
-          {/* Speech bubble tail — points at bear (hidden on mobile) */}
+          {/* Speech bubble tail */}
           <div
-            className="hidden md:block absolute top-1/2 -left-3 w-6 h-6 bg-white border-l border-b border-[#E5E0DA] rotate-45 -translate-y-1/2"
+            className="hidden md:block absolute top-1/2 -left-3 w-6 h-6 bg-white border-l border-b border-border-light rotate-45 -translate-y-1/2"
             aria-hidden="true"
           />
 
@@ -157,7 +147,7 @@ export function BearOnboarding({ userId, onComplete }: BearOnboardingProps) {
                 key={i}
                 className={[
                   "h-1.5 rounded-full transition-all duration-300",
-                  i === step ? "w-8 bg-orange" : "w-1.5 bg-[#E5E0DA]",
+                  i === step ? "w-8 bg-orange" : "w-1.5 bg-border",
                 ].join(" ")}
               />
             ))}
@@ -165,7 +155,7 @@ export function BearOnboarding({ userId, onComplete }: BearOnboardingProps) {
 
           <h3
             id="bear-onboarding-title"
-            className="font-display text-h3 text-text-primary mb-xs"
+            className="text-heading font-semibold text-text-primary mb-xs"
           >
             {current.title}
           </h3>
@@ -186,7 +176,7 @@ export function BearOnboarding({ userId, onComplete }: BearOnboardingProps) {
             <button
               type="button"
               onClick={finish}
-              className="text-small text-text-muted hover:text-text-secondary transition-colors"
+              className="text-body-sm text-text-muted hover:text-text-secondary transition-colors"
             >
               Skip intro
             </button>
@@ -194,10 +184,10 @@ export function BearOnboarding({ userId, onComplete }: BearOnboardingProps) {
               type="button"
               onClick={advance}
               className={[
-                "inline-flex items-center gap-2 px-5 py-2.5 rounded-md",
+                "inline-flex items-center gap-2 px-5 py-2.5 rounded-lg",
                 "bg-orange text-white text-body font-medium",
                 "hover:bg-[#BF4400] active:bg-[#A33B00] transition-colors",
-                "shadow-[0_2px_8px_rgba(230,81,0,0.25)]",
+                "shadow-sm",
               ].join(" ")}
             >
               {isLast ? "Let's go!" : "Next"}
@@ -212,7 +202,7 @@ export function BearOnboarding({ userId, onComplete }: BearOnboardingProps) {
       </div>
 
       <style jsx>{`
-        @keyframes bearBounceIn {
+        @keyframes mascotBounceIn {
           0% {
             transform: translateY(40px) scale(0.8);
             opacity: 0;

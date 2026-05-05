@@ -14,12 +14,10 @@ export function PulseAssistant({ message }: PulseAssistantProps) {
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
-    // Delay mount animation slightly so it feels natural
     const timer = setTimeout(() => setMounted(true), 500);
     return () => clearTimeout(timer);
   }, []);
 
-  // Auto-open the bubble on first load after mount animation
   useEffect(() => {
     if (!mounted) return;
     const timer = setTimeout(() => setOpen(true), 600);
@@ -49,9 +47,8 @@ export function PulseAssistant({ message }: PulseAssistantProps) {
       {/* Speech Bubble */}
       {open && !dismissed && (
         <div
-          className="relative max-w-[280px] px-4 py-3.5 rounded-2xl shadow-xl border border-orange/10"
+          className="relative max-w-[280px] px-4 py-3.5 rounded-2xl shadow-elevated border border-border-light bg-white"
           style={{
-            background: "linear-gradient(135deg, #FFFBF7, #FFF8F2)",
             animation: "bubbleIn 300ms ease-out forwards",
           }}
         >
@@ -67,19 +64,18 @@ export function PulseAssistant({ message }: PulseAssistantProps) {
           </button>
 
           {/* Message */}
-          <p className="text-[13px] leading-relaxed text-text-primary font-body pr-4">
+          <p className="text-[13px] leading-relaxed text-text-primary pr-4">
             {message}
           </p>
 
           {/* Triangle pointer */}
           <div
-            className="absolute -bottom-[7px] right-8 w-3.5 h-3.5 rotate-45 border-r border-b border-orange/10"
-            style={{ background: "#FFF8F2" }}
+            className="absolute -bottom-[6px] right-10 w-3 h-3 rotate-45 border-r border-b border-border-light bg-white"
           />
         </div>
       )}
 
-      {/* Bear Avatar */}
+      {/* Mascot Avatar */}
       <button
         onClick={handleToggle}
         className="relative group"
@@ -87,23 +83,21 @@ export function PulseAssistant({ message }: PulseAssistantProps) {
       >
         {/* Pulse dot — only when bubble is closed */}
         {!open && (
-          <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-orange animate-ping" style={{ animationDuration: "2s" }} />
+          <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-orange animate-ping" style={{ animationDuration: "2s" }} />
         )}
 
-        {/* Warm glow ring */}
-        <div className="w-[80px] h-[100px] drop-shadow-lg group-hover:drop-shadow-xl transition-all duration-300 group-hover:scale-105">
+        <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-medium group-hover:shadow-elevated transition-all duration-200 group-hover:scale-105 ring-2 ring-white">
           <Image
-            src="/pulse-bear-2.png"
-            alt="Pulse — your financial buddy"
-            width={160}
-            height={200}
-            className="w-full h-full object-contain"
+            src="/profit-pulse-mascot.png"
+            alt="Pulse — your financial assistant"
+            width={128}
+            height={128}
+            className="w-full h-full object-cover scale-[1.3]"
             priority
           />
         </div>
       </button>
 
-      {/* Animations */}
       <style jsx>{`
         @keyframes bubbleIn {
           from {

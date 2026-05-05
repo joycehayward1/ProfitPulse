@@ -14,11 +14,11 @@ const config: Config = {
         "orange-light": "#FF7A00",
         "orange-subtle": "#FFF7F2",
 
-        // Surfaces
-        background: "#F8F8F8",
+        // Surfaces — warm undertone
+        background: "#FAF9F7",
         surface: "#FFFFFF",
         "surface-elevated": "#FFFFFF",
-        "surface-inset": "#F4F4F5",
+        "surface-inset": "#F5F4F2",
 
         // Typography
         "text-primary": "#111111",
@@ -36,10 +36,10 @@ const config: Config = {
         insight: "#6C47FF",
         "insight-subtle": "#F5F3FF",
 
-        // Borders
-        border: "#E4E4E7",
-        "border-light": "#F0F0F2",
-        "border-strong": "#D1D1D6",
+        // Borders — warm
+        border: "#E6E3DF",
+        "border-light": "#EFECEA",
+        "border-strong": "#D4D0CC",
       },
       fontFamily: {
         sans: ["var(--font-inter)", "-apple-system", "BlinkMacSystemFont", "sans-serif"],

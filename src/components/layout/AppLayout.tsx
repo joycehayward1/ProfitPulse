@@ -233,7 +233,7 @@ export function AppLayout({ children, pulseMessage }: AppLayoutProps) {
   return (
     <div className="min-h-screen bg-background">
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex md:flex-col md:fixed md:inset-y-0 md:left-0 md:w-[232px] bg-white border-r border-border z-40">
+      <aside className="hidden md:flex md:flex-col md:fixed md:inset-y-0 md:left-0 md:w-[232px] bg-[#FDFCFB] border-r border-border z-40">
         {/* Logo */}
         <div className="h-16 flex items-center px-5 border-b border-border-light">
           <Link href="/dashboard" className="flex items-center group">
