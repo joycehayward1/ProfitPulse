@@ -55,14 +55,14 @@ const navSections: NavSection[] = [
 ];
 
 const PULSE_MESSAGES: Record<string, string> = {
-  "/reports/pl": "This is your profit breakdown — where your money comes in and where it goes.",
-  "/reports/cashflow": "Here's how cash is moving through your business this period.",
-  "/reports/balance-sheet": "A snapshot of what you own, what you owe, and what's left over.",
-  "/scenarios": "Run some what-ifs here — I'll crunch the numbers for you.",
-  "/data": "This is where your numbers live. Upload a spreadsheet or enter them manually.",
+  "/reports/pl": "Honestly, this is my favorite page. It shows you exactly where your money went and what you kept. Let's take a look.",
+  "/reports/cashflow": "This is all about the flow — money coming in, money going out. Don't worry, I'll help you make sense of it.",
+  "/reports/balance-sheet": "Think of this as your financial selfie — what you own, what you owe, and what's actually yours. Let's see where you stand.",
+  "/scenarios": "This is where it gets fun. Let's play some what-ifs so you can plan your next move without guessing.",
+  "/data": "This is home base for your numbers. The more you give me here, the better I can help you everywhere else.",
 };
 
-const DEFAULT_PULSE_MESSAGE = "Hey there! I'm Pulse — your financial buddy. I'll keep you posted on how things are going.";
+const DEFAULT_PULSE_MESSAGE = "Hey, it's me. I'm keeping an eye on your numbers so you don't have to. Let me know if anything looks off.";
 
 function getPulseMessage(pathname: string): string {
   for (const [path, msg] of Object.entries(PULSE_MESSAGES)) {
@@ -233,7 +233,7 @@ export function AppLayout({ children, pulseMessage }: AppLayoutProps) {
   return (
     <div className="min-h-screen bg-background">
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex md:flex-col md:fixed md:inset-y-0 md:left-0 md:w-[232px] bg-[#FDFCFB] border-r border-border z-40">
+      <aside className="hidden md:flex md:flex-col md:fixed md:inset-y-0 md:left-0 md:w-[232px] bg-[#FCFBFE] border-r border-border z-40">
         {/* Logo */}
         <div className="h-16 flex items-center px-5 border-b border-border-light">
           <Link href="/dashboard" className="flex items-center group">

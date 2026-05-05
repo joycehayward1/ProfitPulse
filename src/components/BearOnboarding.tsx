@@ -6,20 +6,20 @@ import { Icon } from "@iconify/react";
 
 const MESSAGES = [
   {
-    title: "Hey there!",
-    body: "I'm **Pulse** — your financial assistant. I'll be hanging out in your dashboard, keeping an eye on your numbers so you don't have to stress.",
+    title: "Hi, friend.",
+    body: "I'm **Pulse** — think of me as your financially-savvy best friend who actually likes looking at spreadsheets. I'll hang out here and keep an eye on things so you don't have to stress.",
   },
   {
-    title: "I've got your back",
-    body: "I'll watch your cash, your runway, and your margins, and let you know when something needs your attention — whether that's a risk or an opportunity to save.",
+    title: "Honestly, I've got you",
+    body: "I'll watch your cash, your margins, and your runway. If something needs your attention — whether it's a risk or an opportunity to save — I'll let you know. No jargon, just straight talk.",
   },
   {
-    title: "We'll grow together",
-    body: "The more data you give me, the sharper my insights get. Insert your numbers or upload a spreadsheet and I'll start making sense of it all.",
+    title: "Let's grow together",
+    body: "The more data you give me, the sharper I get. Don't worry about getting it perfect — just upload a spreadsheet or type in some numbers and I'll start making sense of it all.",
   },
   {
-    title: "Let's get started",
-    body: "Take a look around. I'll pop in now and then with helpful nudges to keep you on track.",
+    title: "Let's do this",
+    body: "Take a look around. I'll pop in with helpful nudges now and then — nothing pushy, just a friend keeping you on track.",
   },
 ];
 

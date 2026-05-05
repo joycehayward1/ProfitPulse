@@ -405,29 +405,29 @@ export default function DashboardPage() {
     const score = healthScore.totalScore;
 
     const thriving = [
-      "You're in excellent shape. Strong margins, healthy cash reserves — keep doing what you're doing.",
-      "Your numbers look great. This is the kind of position where you can think about investing or growing.",
-      "Everything's clicking. Profit margins are solid, cash is healthy, and receivables are under control.",
+      "Honestly, you're killing it. Margins are strong, cash is healthy — enjoy this. You earned it.",
+      "Your numbers look really good right now. Actually, this would be a great time to think about growing or investing some of that cash.",
+      "Everything's clicking. Don't change a thing — just keep doing what you're doing and let's ride this wave.",
     ];
     const solid = [
-      "Things are looking good overall. There might be one area to watch, but you're in a strong position.",
-      "Solid financial health. You've got room to grow — just keep an eye on the details.",
-      "Your business is in good shape. A few small tweaks could take you from good to great.",
+      "You're in a good spot. There might be one small thing to keep an eye on, but honestly, nothing to stress about.",
+      "Things are solid. Actually, with a couple of small tweaks you could go from good to really great.",
+      "Your business is healthy. Let's keep the momentum — I'll nudge you if anything shifts.",
     ];
     const needsAttention = [
-      "Your business is okay, but a couple of things could become problems if they're not addressed soon.",
-      "Not bad, but your cash runway or receivables might need a closer look. Worth digging in.",
-      "There are some areas that need attention — nothing urgent yet, but don't let them slide.",
+      "Don't worry, you're not in trouble — but there are a couple of things worth looking at before they get bigger.",
+      "Honestly, your numbers are okay, but your cash or receivables could use some love. Let's dig in together.",
+      "A few things need attention. Nothing scary, but let's not let them slide — small fixes now save big headaches later.",
     ];
     const atRisk = [
-      "Multiple areas need attention. Let's make a plan — margins or cash reserves could use some work.",
-      "Your finances are showing some strain. Focus on the biggest gap first and work from there.",
-      "Things are tight. Take a look at where cash is going and what you can tighten up.",
+      "I can understand why you might feel this way — the numbers are a bit tight right now. Let's make a plan and tackle the biggest gap first.",
+      "Things are strained, but honestly, I've seen worse. Let's focus on what we can control — margins or cash reserves are the place to start.",
+      "Don't panic, but let's be real — your finances need some work. Actually, this would be a good time to cut back on anything that's not essential.",
     ];
     const critical = [
-      "Your finances need immediate attention. Cash could run out soon — focus on stabilizing first.",
-      "This is a critical moment. Expenses may be outpacing revenue. Let's focus on the essentials.",
-      "Urgent: your numbers are in a tough spot. Prioritize cash flow and cut what you can.",
+      "I don't want you to lose money, so let's try this — focus on cash flow first. We need to slow the bleeding before anything else.",
+      "Honestly, this is serious, but it's not hopeless. Expenses are outpacing revenue right now. Let's figure out what we can cut today.",
+      "I know this is stressful. I don't want you to lose money, so let's prioritize — cash on hand is the lifeline. Everything else can wait.",
     ];
 
     const pick = (arr: string[]) => arr[Math.floor(score) % arr.length];
