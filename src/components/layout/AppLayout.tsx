@@ -46,7 +46,7 @@ const navSections: NavSection[] = [
     ],
   },
   {
-    title: "SETTINGS",
+    title: "MANAGE",
     items: [
       { label: "Data", href: "/data", icon: "ph:database-bold" },
       { label: "Settings", href: "/settings", icon: "ph:gear-six-bold" },
@@ -77,7 +77,6 @@ export function AppLayout({ children, pulseMessage }: AppLayoutProps) {
   const { user, subscription, loading: authLoading, signOut } = useAuth();
   const accessLevel = getUserAccessLevel(subscription);
 
-  // Track onboarding state so we can hide PulseAssistant during the intro
   const [onboardingDone, setOnboardingDone] = useState(false);
   useEffect(() => {
     if (user?.id) setOnboardingDone(hasCompletedOnboarding(user.id));
@@ -123,17 +122,17 @@ export function AppLayout({ children, pulseMessage }: AppLayoutProps) {
         key={item.href}
         href={item.href}
         className={[
-          "group flex items-center gap-3 px-3 py-2.5 text-[13px] font-medium transition-all duration-200 rounded-xl mx-2",
+          "group flex items-center gap-2.5 px-3 py-2 text-[13px] font-medium transition-all duration-150 rounded-lg mx-2",
           active
-            ? "bg-gradient-to-r from-orange to-orange-light text-white shadow-glow-orange"
-            : "text-text-secondary hover:text-text-primary hover:bg-black/[0.04]",
+            ? "bg-orange text-white shadow-sm"
+            : "text-text-secondary hover:text-text-primary hover:bg-surface-inset",
         ].join(" ")}
       >
         <Icon
           icon={item.icon}
           className={[
-            "w-[18px] h-[18px] flex-shrink-0 transition-transform duration-200",
-            active ? "" : "group-hover:scale-110"
+            "w-[18px] h-[18px] flex-shrink-0 transition-transform duration-150",
+            active ? "text-white" : "text-text-muted group-hover:text-text-secondary"
           ].join(" ")}
         />
         <span>{item.label}</span>
@@ -142,11 +141,11 @@ export function AppLayout({ children, pulseMessage }: AppLayoutProps) {
   };
 
   const renderNavSection = (section: NavSection) => (
-    <div key={section.title} className="mb-6">
-      <h3 className="px-4 mb-2 text-[10px] font-semibold uppercase tracking-widest text-text-muted/70">
+    <div key={section.title} className="mb-5">
+      <h3 className="px-5 mb-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-text-muted">
         {section.title}
       </h3>
-      <nav className="flex flex-col gap-1">
+      <nav className="flex flex-col gap-0.5">
         {section.items.map(renderNavItem)}
       </nav>
     </div>
@@ -156,7 +155,7 @@ export function AppLayout({ children, pulseMessage }: AppLayoutProps) {
     <div className="relative user-menu-container">
       <button
         onClick={() => setUserMenuOpen(!userMenuOpen)}
-        className="w-full flex items-center gap-3 p-3 rounded-xl transition-all duration-200 hover:bg-black/[0.04] group"
+        className="w-full flex items-center gap-2.5 p-2.5 rounded-lg transition-all duration-150 hover:bg-surface-inset group"
         aria-label="User menu"
         aria-expanded={userMenuOpen}
       >
@@ -164,65 +163,65 @@ export function AppLayout({ children, pulseMessage }: AppLayoutProps) {
           <Image
             src={user.profile.avatar_url}
             alt={user.name || "User"}
-            width={40}
-            height={40}
-            className="w-10 h-10 rounded-xl object-cover ring-2 ring-border-light group-hover:ring-orange/30 transition-all"
+            width={36}
+            height={36}
+            className="w-9 h-9 rounded-lg object-cover ring-1 ring-border group-hover:ring-orange/30 transition-all"
           />
         ) : (
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange to-orange-light flex items-center justify-center shadow-soft">
-            <span className="text-sm font-semibold text-white">
+          <div className="w-9 h-9 rounded-lg bg-orange flex items-center justify-center">
+            <span className="text-[13px] font-semibold text-white">
               {userInitials}
             </span>
           </div>
         )}
         <div className="flex-1 text-left min-w-0">
-          <p className="text-[13px] font-medium text-text-primary truncate">
+          <p className="text-[13px] font-medium text-text-primary truncate leading-tight">
             {user?.name || "User"}
           </p>
-          <p className="text-[11px] text-text-muted truncate">{user?.email}</p>
+          <p className="text-[11px] text-text-muted truncate leading-tight">{user?.email}</p>
         </div>
         <Icon
-          icon="ph:caret-up-down-bold"
-          className="w-4 h-4 text-text-muted flex-shrink-0"
+          icon="ph:caret-up-down"
+          className="w-3.5 h-3.5 text-text-muted flex-shrink-0"
         />
       </button>
 
       {userMenuOpen && (
         <div
-          className="absolute bottom-full left-0 right-0 mb-2 bg-white rounded-xl shadow-elevated border border-border-light overflow-hidden"
-          style={{ animation: "dropdownFadeUp 0.2s ease-out" }}
+          className="absolute bottom-full left-0 right-0 mb-1.5 bg-white rounded-lg shadow-elevated border border-border overflow-hidden z-50"
+          style={{ animation: "dropdownFadeUp 0.15s ease-out" }}
         >
-          <div className="py-1.5">
+          <div className="py-1">
             <Link
               href="/settings"
-              className="flex items-center gap-3 px-4 py-2.5 text-[13px] text-text-secondary hover:text-text-primary hover:bg-black/[0.04] transition-colors"
+              className="flex items-center gap-2.5 px-3 py-2 text-[13px] text-text-secondary hover:text-text-primary hover:bg-surface-inset transition-colors"
               onClick={() => {
                 setUserMenuOpen(false);
                 if (onMobile) setMobileMenuOpen(false);
               }}
             >
-              <Icon icon="ph:user-bold" className="w-[18px] h-[18px]" />
+              <Icon icon="ph:user-bold" className="w-4 h-4" />
               Profile
             </Link>
             <Link
               href="/settings#billing"
-              className="flex items-center gap-3 px-4 py-2.5 text-[13px] text-text-secondary hover:text-text-primary hover:bg-black/[0.04] transition-colors"
+              className="flex items-center gap-2.5 px-3 py-2 text-[13px] text-text-secondary hover:text-text-primary hover:bg-surface-inset transition-colors"
               onClick={() => {
                 setUserMenuOpen(false);
                 if (onMobile) setMobileMenuOpen(false);
               }}
             >
-              <Icon icon="ph:credit-card-bold" className="w-[18px] h-[18px]" />
+              <Icon icon="ph:credit-card-bold" className="w-4 h-4" />
               Billing
             </Link>
           </div>
 
-          <div className="border-t border-border-light py-1.5">
+          <div className="border-t border-border-light py-1">
             <button
               onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-4 py-2.5 text-[13px] text-error hover:bg-error/5 transition-colors"
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] text-error hover:bg-error-subtle transition-colors"
             >
-              <Icon icon="ph:sign-out-bold" className="w-[18px] h-[18px]" />
+              <Icon icon="ph:sign-out-bold" className="w-4 h-4" />
               Log out
             </button>
           </div>
@@ -234,41 +233,40 @@ export function AppLayout({ children, pulseMessage }: AppLayoutProps) {
   return (
     <div className="min-h-screen bg-background">
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex md:flex-col md:fixed md:inset-y-0 md:left-0 md:w-[240px] bg-white border-r border-border z-40">
+      <aside className="hidden md:flex md:flex-col md:fixed md:inset-y-0 md:left-0 md:w-[232px] bg-white border-r border-border z-40">
         {/* Logo */}
-        <div className="mt-5 h-20 overflow-hidden flex items-center justify-center">
+        <div className="h-16 flex items-center px-5 border-b border-border-light">
           <Link href="/dashboard" className="flex items-center group">
             <Image
               src="/full-logo.png"
               alt="ProfitPulse"
               width={900}
               height={200}
-              className="w-[200px] scale-[1.05] transition-all duration-300 group-hover:scale-[1.07]"
+              className="w-[160px] transition-opacity duration-150 group-hover:opacity-80"
             />
           </Link>
         </div>
 
         {/* Navigation */}
-        <div className="flex-1 overflow-y-auto py-4">
+        <div className="flex-1 overflow-y-auto pt-5 pb-2">
           {navSections.map(renderNavSection)}
         </div>
 
-        {/* User Profile - Bottom of Sidebar */}
-        <div className="p-3 border-t border-border">
+        {/* User Profile */}
+        <div className="px-2.5 py-3 border-t border-border-light">
           <UserProfile />
         </div>
       </aside>
 
       {/* Main Content Area */}
-      <div className="md:ml-[240px] min-h-screen flex flex-col">
+      <div className="md:ml-[232px] min-h-screen flex flex-col">
         {/* Top Bar - Mobile only */}
-        <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-border md:hidden">
+        <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-xl border-b border-border md:hidden">
           <div className="flex items-center justify-between h-14 px-4">
-            {/* Mobile Logo & Hamburger */}
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="p-2 -ml-2 rounded-xl text-text-secondary hover:text-text-primary hover:bg-black/[0.04] transition-colors"
+                className="p-2 -ml-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-inset transition-colors"
                 aria-label="Toggle menu"
                 aria-expanded={mobileMenuOpen}
               >
@@ -283,12 +281,11 @@ export function AppLayout({ children, pulseMessage }: AppLayoutProps) {
                   alt="ProfitPulse"
                   width={900}
                   height={200}
-                  className="h-10 w-auto"
+                  className="h-8 w-auto"
                 />
               </Link>
             </div>
 
-            {/* Mobile User Avatar */}
             <button
               onClick={() => setMobileMenuOpen(true)}
               className="p-1"
@@ -302,7 +299,7 @@ export function AppLayout({ children, pulseMessage }: AppLayoutProps) {
                   className="w-8 h-8 rounded-lg object-cover"
                 />
               ) : (
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange to-orange-light flex items-center justify-center">
+                <div className="w-8 h-8 rounded-lg bg-orange flex items-center justify-center">
                   <span className="text-xs font-semibold text-white">
                     {userInitials}
                   </span>
@@ -315,45 +312,41 @@ export function AppLayout({ children, pulseMessage }: AppLayoutProps) {
         {/* Mobile Navigation Overlay */}
         {mobileMenuOpen && (
           <>
-            {/* Backdrop */}
             <div
               className="fixed inset-0 bg-black/20 backdrop-blur-sm md:hidden z-40"
-              style={{ animation: "fadeIn 0.2s ease-out" }}
+              style={{ animation: "fadeIn 0.15s ease-out" }}
               onClick={() => setMobileMenuOpen(false)}
             />
 
-            {/* Slide-out Sidebar */}
             <aside
-              className="fixed top-0 left-0 bottom-0 w-[280px] bg-white shadow-elevated md:hidden z-50 overflow-y-auto flex flex-col"
-              style={{ animation: "slideInLeft 0.25s ease-out" }}
+              className="fixed top-0 left-0 bottom-0 w-[272px] bg-white shadow-overlay md:hidden z-50 overflow-y-auto flex flex-col"
+              style={{ animation: "slideInLeft 0.2s ease-out" }}
             >
-              {/* Logo */}
-              <div className="flex items-center justify-between h-14 px-4 border-b border-border">
+              <div className="flex items-center justify-between h-14 px-4 border-b border-border-light">
                 <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)}>
                   <Image
                     src="/full-logo.png"
                     alt="ProfitPulse"
                     width={900}
                     height={200}
-                    className="h-10 w-auto"
+                    className="h-8 w-auto"
                   />
                 </Link>
                 <button
                   onClick={() => setMobileMenuOpen(false)}
-                  className="p-2 -mr-2 rounded-xl text-text-secondary hover:text-text-primary hover:bg-black/[0.04] transition-colors"
+                  className="p-2 -mr-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-inset transition-colors"
                 >
                   <Icon icon="ph:x-bold" className="w-5 h-5" />
                 </button>
               </div>
 
-              {/* Navigation */}
-              <div className="flex-1 py-4">
+              <div className="flex-1 pt-5 pb-2">
                 {navSections.map((section) => (
-                  <div key={section.title} className="mb-6">
-                    <h3 className="px-4 mb-2 text-[10px] font-semibold uppercase tracking-widest text-text-muted/70">
+                  <div key={section.title} className="mb-5">
+                    <h3 className="px-5 mb-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-text-muted">
                       {section.title}
                     </h3>
-                    <nav className="flex flex-col gap-1">
+                    <nav className="flex flex-col gap-0.5">
                       {section.items.map((item) => {
                         const active = isActive(item.href);
                         return (
@@ -362,13 +355,13 @@ export function AppLayout({ children, pulseMessage }: AppLayoutProps) {
                             href={item.href}
                             onClick={() => setMobileMenuOpen(false)}
                             className={[
-                              "group flex items-center gap-3 px-3 py-2.5 text-[13px] font-medium transition-all duration-200 rounded-xl mx-2",
+                              "group flex items-center gap-2.5 px-3 py-2 text-[13px] font-medium transition-all duration-150 rounded-lg mx-2",
                               active
-                                ? "bg-gradient-to-r from-orange to-orange-light text-white shadow-glow-orange"
-                                : "text-text-secondary hover:text-text-primary hover:bg-black/[0.04]",
+                                ? "bg-orange text-white shadow-sm"
+                                : "text-text-secondary hover:text-text-primary hover:bg-surface-inset",
                             ].join(" ")}
                           >
-                            <Icon icon={item.icon} className="w-[18px] h-[18px] flex-shrink-0" />
+                            <Icon icon={item.icon} className={`w-[18px] h-[18px] flex-shrink-0 ${active ? "text-white" : "text-text-muted"}`} />
                             <span>{item.label}</span>
                           </Link>
                         );
@@ -378,31 +371,30 @@ export function AppLayout({ children, pulseMessage }: AppLayoutProps) {
                 ))}
               </div>
 
-              {/* User Profile - Bottom */}
-              <div className="p-3 border-t border-border">
+              <div className="px-2.5 py-3 border-t border-border-light">
                 <UserProfile onMobile={true} />
               </div>
             </aside>
           </>
         )}
 
-        {/* Trial countdown banner — only renders when in active trial */}
+        {/* Banners */}
         <TrialBanner subscription={subscription} />
-
-        {/* Dunning banner — only renders when past_due */}
         <DunningBanner subscription={subscription} />
 
-        {/* Main Content — paywall replaces content when locked */}
-        <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-          {!authLoading && accessLevel === "locked" && user ? (
-            <PaywallScreen />
-          ) : (
-            children
-          )}
+        {/* Main Content */}
+        <main className="flex-1 px-4 sm:px-6 lg:px-10 py-6 lg:py-8">
+          <div className="max-w-content mx-auto">
+            {!authLoading && accessLevel === "locked" && user ? (
+              <PaywallScreen />
+            ) : (
+              children
+            )}
+          </div>
         </main>
       </div>
 
-      {/* Pulse Assistant — hidden until onboarding is complete */}
+      {/* Pulse Assistant */}
       {onboardingDone && (
         <PulseAssistant
           message={pulseMessage || getPulseMessage(pathname || "")}
@@ -410,7 +402,7 @@ export function AppLayout({ children, pulseMessage }: AppLayoutProps) {
         />
       )}
 
-      {/* First-time onboarding overlay */}
+      {/* Onboarding */}
       {user?.id && (
         <BearOnboarding
           userId={user.id}
@@ -423,7 +415,7 @@ export function AppLayout({ children, pulseMessage }: AppLayoutProps) {
         @keyframes dropdownFadeUp {
           from {
             opacity: 0;
-            transform: translateY(8px);
+            transform: translateY(4px);
           }
           to {
             opacity: 1;

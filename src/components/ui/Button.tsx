@@ -13,31 +13,30 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const sizeStyles: Record<ButtonSize, string> = {
-  sm: "px-4 py-2 text-small",
-  md: "px-6 py-3 text-body",
-  lg: "px-8 py-4 text-body",
+  sm: "px-3 py-1.5 text-[13px]",
+  md: "px-4 py-2 text-[14px]",
+  lg: "px-6 py-2.5 text-[15px]",
 };
 
 const variantStyles: Record<ButtonVariant, string> = {
   primary: [
     "bg-orange text-white",
     "hover:bg-[#BF4400] active:bg-[#A33B00]",
-    "shadow-[0_2px_8px_rgba(230,81,0,0.25)]",
-    "hover:shadow-[0_4px_12px_rgba(230,81,0,0.35)]",
+    "shadow-sm hover:shadow-md",
   ].join(" "),
   secondary: [
-    "bg-transparent text-orange border-2 border-orange",
-    "hover:bg-[#FFF0E6] active:bg-[#FFE0CC]",
+    "bg-transparent text-orange border border-orange/30",
+    "hover:bg-orange-subtle active:bg-orange/10",
   ].join(" "),
   cancel: [
-    "bg-[#F5F5F5] text-text-primary border border-[#E0E0E0]",
-    "hover:bg-[#EBEBEB] active:bg-[#E0E0E0]",
+    "bg-surface-inset text-text-primary border border-border",
+    "hover:bg-background active:bg-border-light",
   ].join(" "),
 };
 
 const Spinner = () => (
   <svg
-    className="animate-spin -ml-1 mr-2 h-4 w-4"
+    className="animate-spin -ml-0.5 mr-1.5 h-4 w-4"
     xmlns="http://www.w3.org/2000/svg"
     fill="none"
     viewBox="0 0 24 24"
@@ -81,9 +80,9 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         disabled={isDisabled}
         className={[
           "inline-flex items-center justify-center",
-          "font-body font-medium",
-          "rounded-md",
-          "transition-all duration-200 ease-out",
+          "font-medium",
+          "rounded-lg",
+          "transition-all duration-150 ease-out",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange focus-visible:ring-offset-2",
           sizeStyles[size],
           variantStyles[variant],

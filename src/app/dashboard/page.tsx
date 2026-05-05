@@ -187,21 +187,18 @@ function MetricCard({
     : value;
 
   return (
-    <div
-      className="group bg-surface rounded-xl p-lg border border-background shadow-sm hover:shadow-xl hover:border-orange/20 transition-all duration-300 animate-fadeIn cursor-pointer"
-      style={{ animationDelay: delay }}
-    >
+    <div className="bg-surface rounded-xl p-lg border border-border-light shadow-card hover:shadow-medium transition-shadow">
       {/* Icon and Traffic Light */}
-      <div className="flex items-center justify-between mb-md">
+      <div className="flex items-center justify-between mb-sm">
         <div
-          className={`w-12 h-12 rounded-full flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6`}
+          className="w-9 h-9 rounded-lg flex items-center justify-center"
           style={{
             background: `linear-gradient(135deg, ${iconColor}15, ${iconColor}05)`,
           }}
         >
           <Icon
             icon={icon}
-            className="w-6 h-6 transition-colors duration-300"
+            className="w-5 h-5"
             style={{ color: iconColor }}
           />
         </div>
@@ -209,18 +206,18 @@ function MetricCard({
       </div>
 
       {/* Label */}
-      <h3 className="font-body text-[14px] font-medium text-text-secondary mb-sm flex items-center gap-1.5">
+      <h3 className="text-body-sm font-medium text-text-secondary mb-1 flex items-center gap-1.5">
         {label}
         {tooltip && <InfoTooltip text={tooltip} />}
       </h3>
 
       {/* Value */}
-      <p className="font-display text-h1 md:text-[36px] text-text-primary mb-xs tracking-tight tabular-nums">
+      <p className="text-metric-sm text-text-primary tabular-nums leading-tight">
         {displayValue}
       </p>
 
       {/* Status Text */}
-      <p className="text-small text-text-secondary">{statusText}</p>
+      <p className="text-label text-text-muted mt-1">{statusText}</p>
     </div>
   );
 }
@@ -241,14 +238,10 @@ function ScoreRubricModal({ open, onClose }: { open: boolean; onClose: () => voi
       <div
         className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[9998]"
         onClick={onClose}
-        style={{ animation: "fadeIn 0.2s ease-out" }}
       />
-      <div
-        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999] w-[90vw] max-w-lg bg-white rounded-2xl shadow-2xl border border-border-light overflow-hidden"
-        style={{ animation: "fadeIn 0.25s ease-out" }}
-      >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border-light">
-          <h2 className="font-display text-xl text-text-primary">How Your Score Works</h2>
+      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999] w-[90vw] max-w-lg bg-white rounded-xl shadow-elevated border border-border overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+          <h2 className="text-heading font-semibold text-text-primary">How Your Score Works</h2>
           <button
             onClick={onClose}
             className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-black/5 transition-colors text-text-muted hover:text-text-primary"
@@ -260,7 +253,7 @@ function ScoreRubricModal({ open, onClose }: { open: boolean; onClose: () => voi
         </div>
 
         <div className="px-6 py-4 space-y-1">
-          <p className="text-sm text-text-secondary mb-4">
+          <p className="text-body text-text-secondary mb-4">
             Your health score is a composite of profit margin, cash runway, receivables, and cash flow — the same factors a financial advisor would look at.
           </p>
           {tiers.map((tier) => (
@@ -270,17 +263,17 @@ function ScoreRubricModal({ open, onClose }: { open: boolean; onClose: () => voi
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-baseline gap-2 mb-0.5">
-                  <span className="text-sm font-semibold text-text-primary">{tier.label}</span>
-                  <span className="text-xs text-text-muted">{tier.range}</span>
+                  <span className="text-body font-semibold text-text-primary">{tier.label}</span>
+                  <span className="text-label text-text-muted">{tier.range}</span>
                 </div>
-                <p className="text-xs leading-relaxed text-text-secondary">{tier.description}</p>
+                <p className="text-body-sm leading-relaxed text-text-secondary">{tier.description}</p>
               </div>
             </div>
           ))}
         </div>
 
-        <div className="px-6 py-3 border-t border-border-light bg-background/50">
-          <p className="text-xs text-text-muted text-center">
+        <div className="px-6 py-3 border-t border-border bg-background/50">
+          <p className="text-label text-text-muted text-center">
             Scores update automatically when your financial data changes.
           </p>
         </div>
@@ -449,31 +442,22 @@ export default function DashboardPage() {
   return (
     <AppLayout pulseMessage={pulseText}>
       <div className="space-y-xl">
-        {/* Greeting Section - Editorial style with staggered reveal */}
-        <div
-          className="space-y-xs animate-fadeIn"
-          style={{ animationDelay: "0ms" }}
-        >
-          <h1 className="font-display text-[42px] md:text-[56px] leading-tight text-text-primary tracking-tight">
+        {/* Greeting Section */}
+        <div>
+          <h1 className="text-display-sm text-text-primary tracking-tight">
             Good {timeOfDay},{" "}
-            <span className="inline-block text-orange animate-fadeIn" style={{ animationDelay: "200ms" }}>
+            <span className="text-orange">
               {userName}
             </span>
           </h1>
-          <p
-            className="text-[15px] text-text-secondary font-body tracking-wide uppercase opacity-60 animate-fadeIn"
-            style={{ animationDelay: "300ms" }}
-          >
+          <p className="text-body-sm text-text-muted mt-1">
             {formattedDate}
           </p>
         </div>
 
         {/* Health Score Feature Card */}
         {loading ? (
-          <div
-            className="bg-surface rounded-lg p-2xl border-2 border-background shadow-sm animate-fadeIn"
-            style={{ animationDelay: "400ms" }}
-          >
+          <div className="bg-surface rounded-xl p-lg border border-border-light shadow-card">
             <div className="flex items-center justify-center h-96">
               <div className="animate-pulse space-y-lg text-center">
                 <div className="w-56 h-56 bg-background rounded-full mx-auto" />
@@ -483,16 +467,10 @@ export default function DashboardPage() {
           </div>
         ) : !assessment || !healthScore ? (
           // Empty State - Warm invitation
-          <div
-            className="relative overflow-hidden bg-gradient-to-br from-surface via-surface to-background rounded-xl p-2xl border-2 border-orange shadow-lg animate-fadeIn"
-            style={{ animationDelay: "400ms" }}
-          >
-            {/* Decorative orange glow */}
-            <div className="absolute top-0 right-0 w-96 h-96 bg-orange/5 rounded-full blur-3xl -z-0" />
-
-            <div className="relative z-10 max-w-2xl mx-auto text-center space-y-lg py-xl">
+          <div className="bg-surface rounded-xl p-lg border border-border-light shadow-card">
+            <div className="max-w-2xl mx-auto text-center space-y-lg py-xl">
               {/* Icon */}
-              <div className="inline-flex items-center justify-center w-32 h-32 bg-orange/10 rounded-full animate-fadeIn" style={{ animationDelay: "600ms" }}>
+              <div className="inline-flex items-center justify-center w-32 h-32 bg-orange/10 rounded-full">
                 <Icon
                   icon="ph:clipboard-text-duotone"
                   className="w-16 h-16 text-orange"
@@ -500,48 +478,44 @@ export default function DashboardPage() {
               </div>
 
               {/* Heading */}
-              <div className="space-y-sm animate-fadeIn" style={{ animationDelay: "700ms" }}>
-                <h2 className="font-display text-[36px] md:text-[44px] leading-tight text-text-primary">
+              <div className="space-y-sm">
+                <h2 className="text-heading-lg text-text-primary">
                   Let&apos;s get you some clarity
                 </h2>
-                <p className="text-[17px] leading-relaxed text-text-secondary max-w-xl mx-auto">
+                <p className="text-body leading-relaxed text-text-secondary max-w-xl mx-auto">
                   Answer a few simple questions about your business, and we&apos;ll
                   show you exactly where you stand financially—in plain English.
                 </p>
               </div>
 
               {/* CTA */}
-              <div className="pt-md animate-fadeIn" style={{ animationDelay: "800ms" }}>
+              <div className="pt-md">
                 <Button
                   variant="primary"
                   size="lg"
                   onClick={() => (router.push("/assessment"))}
-                  className="text-[16px] px-2xl py-md shadow-lg hover:shadow-xl transition-all duration-300"
+                  className="text-[16px] px-2xl py-md"
                 >
                   Complete Your Assessment
                 </Button>
               </div>
 
               {/* Subtle encouragement */}
-              <p className="text-small text-text-muted animate-fadeIn" style={{ animationDelay: "900ms" }}>
+              <p className="text-body-sm text-text-muted">
                 Takes about 2 minutes
               </p>
             </div>
           </div>
         ) : (
-          // Health Score Display - Magazine feature style
-          <div
-            className="relative overflow-hidden bg-surface rounded-xl border-2 border-orange shadow-xl animate-fadeIn"
-            style={{ animationDelay: "400ms" }}
-          >
-            {/* Decorative elements */}
-            <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-orange via-orange/60 to-orange" />
-            <div className="absolute bottom-0 right-0 w-[600px] h-[600px] bg-orange/3 rounded-full blur-3xl -z-0" />
+          // Health Score Display
+          <div className="bg-surface rounded-xl border border-border-light shadow-card overflow-hidden">
+            {/* Subtle orange top border accent */}
+            <div className="h-0.5 bg-orange" />
 
-            <div className="relative z-10 p-2xl">
+            <div className="p-lg">
               {/* Section Label */}
-              <div className="mb-lg animate-fadeIn flex items-center gap-2" style={{ animationDelay: "500ms" }}>
-                <span className="text-[14px] font-body tracking-[0.12em] uppercase text-orange font-semibold">
+              <div className="mb-md flex items-center gap-2">
+                <span className="text-label uppercase tracking-wider text-orange font-semibold">
                   Your Business Health
                 </span>
                 <button
@@ -554,34 +528,25 @@ export default function DashboardPage() {
                 </button>
               </div>
 
-              <div className="grid md:grid-cols-2 gap-2xl items-center">
+              <div className="grid md:grid-cols-2 gap-xl items-center">
                 {/* Left: Gauge */}
-                <div className="flex flex-col items-center space-y-lg animate-fadeIn" style={{ animationDelay: "600ms" }}>
-                  <div className="relative">
-                    {/* Subtle glow behind gauge */}
-                    <div
-                      className="absolute inset-0 rounded-full blur-xl opacity-20"
-                      style={{
-                        backgroundColor: healthScore.totalScore >= 80 ? "#43A047" : healthScore.totalScore >= 50 ? "#F9A825" : "#D32F2F"
-                      }}
-                    />
-                    <HealthScoreGauge score={healthScore.totalScore} size="lg" />
-                  </div>
+                <div className="flex flex-col items-center space-y-md">
+                  <HealthScoreGauge score={healthScore.totalScore} size="lg" />
 
                   <div className="text-center space-y-sm">
                     <StatusBadge
                       status={getHealthStatus(healthScore.totalScore)}
                       className="text-[14px] px-lg py-sm"
                     />
-                    <p className="text-small text-text-muted">
+                    <p className="text-body-sm text-text-muted">
                       Last updated {new Date(assessment.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                     </p>
                   </div>
                 </div>
 
                 {/* Right: Context */}
-                <div className="space-y-md animate-fadeIn" style={{ animationDelay: "700ms" }}>
-                  <h3 className="font-display text-[28px] leading-tight text-text-primary">
+                <div className="space-y-md">
+                  <h3 className="text-heading-lg text-text-primary">
                     {healthScore.totalScore >= 80
                       ? "You're in great shape"
                       : healthScore.totalScore >= 50
@@ -589,16 +554,16 @@ export default function DashboardPage() {
                       : "Let's get you back on track"}
                   </h3>
 
-                  <div className="space-y-sm text-[15px] leading-relaxed text-text-secondary">
-                    <p className="flex items-start gap-sm">
+                  <div className="space-y-xs">
+                    <p className="flex items-start gap-sm text-body text-text-secondary">
                       <span className="text-orange mt-1 flex-shrink-0">•</span>
                       <span>{healthScore.cashRunway.description}</span>
                     </p>
-                    <p className="flex items-start gap-sm">
+                    <p className="flex items-start gap-sm text-body text-text-secondary">
                       <span className="text-orange mt-1 flex-shrink-0">•</span>
                       <span>{healthScore.profitMargin.description}</span>
                     </p>
-                    <p className="flex items-start gap-sm">
+                    <p className="flex items-start gap-sm text-body text-text-secondary">
                       <span className="text-orange mt-1 flex-shrink-0">•</span>
                       <span>{healthScore.receivablesHealth.description}</span>
                     </p>
@@ -622,10 +587,7 @@ export default function DashboardPage() {
 
         {/* Metric Cards - Profit, Cash Flow, Runway */}
         {!loading && assessment && healthScore && (
-          <div
-            className="grid gap-md md:grid-cols-3 animate-fadeIn"
-            style={{ animationDelay: "500ms" }}
-          >
+          <div className="grid gap-md md:grid-cols-3">
             {/* Profit Card */}
             <MetricCard
               label="Profit"
@@ -670,35 +632,32 @@ export default function DashboardPage() {
 
         {/* Cash Position Section */}
         {!loading && assessment && (
-          <div
-            className="bg-surface rounded-xl p-xl border border-background shadow-sm animate-fadeIn"
-            style={{ animationDelay: "900ms" }}
-          >
-            <h2 className="font-display text-h3 font-semibold text-text-primary tracking-tight mb-md">
+          <div className="bg-surface rounded-xl p-lg border border-border-light shadow-card">
+            <h2 className="text-heading font-semibold text-text-primary mb-sm">
               Cash Position
             </h2>
 
-            <div className="space-y-lg">
+            <div className="space-y-md">
               {/* Current Cash */}
               <div className="text-center md:text-left">
                 <AnimatedCurrency
                   value={assessment.cash_on_hand}
-                  className="font-display text-[56px] md:text-[72px] leading-none text-text-primary tracking-tight mb-xs block tabular-nums"
+                  className="text-metric-lg text-text-primary tracking-tight block tabular-nums"
                   delay={900}
                 />
-                <p className="text-body text-text-secondary inline-flex items-center gap-1.5">
+                <p className="text-body-sm text-text-muted mt-1 inline-flex items-center gap-1.5">
                   Cash on hand right now
                   <InfoTooltip text="The total liquid cash available in your business accounts right now. This is your financial safety net." />
                 </p>
               </div>
 
               {/* Money In/Out Grid */}
-              <div className="grid md:grid-cols-2 gap-xl pt-md border-t border-background">
+              <div className="grid md:grid-cols-2 gap-md pt-sm border-t border-border-light">
                 {/* Money In */}
-                <div className="flex items-start gap-md">
-                  <div className="flex-shrink-0 w-12 h-12 rounded-full bg-success/10 flex items-center justify-center">
+                <div className="flex items-center gap-sm">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center">
                     <svg
-                      className="w-6 h-6 text-success"
+                      className="w-4 h-4 text-success"
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
@@ -714,21 +673,21 @@ export default function DashboardPage() {
                   <div>
                     <AnimatedCurrency
                       value={assessment.monthly_revenue}
-                      className="font-display text-h1 text-success mb-xs block tabular-nums"
+                      className="text-metric-sm text-success block tabular-nums leading-tight"
                       delay={1000}
                     />
-                    <p className="text-small text-text-secondary inline-flex items-center gap-1.5">
-                      Money In (last month)
+                    <p className="text-body-sm text-text-muted inline-flex items-center gap-1">
+                      Money In
                       <InfoTooltip text="Total revenue collected last month, including sales, services, and any other income sources." />
                     </p>
                   </div>
                 </div>
 
                 {/* Money Out */}
-                <div className="flex items-start gap-md">
-                  <div className="flex-shrink-0 w-12 h-12 rounded-full bg-error/10 flex items-center justify-center">
+                <div className="flex items-center gap-sm">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-error/10 flex items-center justify-center">
                     <svg
-                      className="w-6 h-6 text-error"
+                      className="w-4 h-4 text-error"
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
@@ -744,11 +703,11 @@ export default function DashboardPage() {
                   <div>
                     <AnimatedCurrency
                       value={assessment.monthly_expenses}
-                      className="font-display text-h1 text-error mb-xs block tabular-nums"
+                      className="text-metric-sm text-error block tabular-nums leading-tight"
                       delay={1100}
                     />
-                    <p className="text-small text-text-secondary inline-flex items-center gap-1.5">
-                      Money Out (last month)
+                    <p className="text-body-sm text-text-muted inline-flex items-center gap-1">
+                      Money Out
                       <InfoTooltip text="Total expenses paid last month, including payroll, rent, software, and all other business costs." />
                     </p>
                   </div>
@@ -760,17 +719,14 @@ export default function DashboardPage() {
 
         {/* AI Insight Card + Quick Action */}
         {!loading && assessment && (
-          <div
-            className="grid md:grid-cols-[1fr,auto] gap-md items-start animate-fadeIn"
-            style={{ animationDelay: "1000ms" }}
-          >
+          <div className="grid md:grid-cols-[1fr,auto] gap-md items-start">
             {/* AI Insight */}
-            <div className="bg-gradient-to-br from-orange/5 via-surface to-surface rounded-xl p-xl border border-orange/20 shadow-sm">
-              <div className="flex items-start gap-md">
+            <div className="bg-surface rounded-xl p-lg border border-border-light shadow-card">
+              <div className="flex items-start gap-sm">
                 {/* Lightbulb Icon */}
-                <div className="flex-shrink-0 w-14 h-14 rounded-full bg-orange/10 flex items-center justify-center">
+                <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-insight/10 flex items-center justify-center">
                   <svg
-                    className="w-7 h-7 text-orange"
+                    className="w-5 h-5 text-insight"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -785,11 +741,11 @@ export default function DashboardPage() {
                 </div>
 
                 {/* Insight Text */}
-                <div className="flex-1 pt-xs">
-                  <h3 className="font-body text-body font-semibold text-orange mb-sm tracking-wide">
+                <div className="flex-1">
+                  <h3 className="text-body-sm font-semibold text-insight mb-1">
                     AI Insight
                   </h3>
-                  <p className="text-[15px] leading-relaxed text-text-primary">
+                  <p className="text-body text-text-primary">
                     Your profit margin improved 8% this month. Slow week keeping expenses steady while revenue grew.
                     Consider setting aside extra cash to build your runway.
                   </p>
@@ -803,7 +759,7 @@ export default function DashboardPage() {
                 variant="primary"
                 size="lg"
                 onClick={() => (router.push("/scenarios"))}
-                className="w-full md:w-auto whitespace-nowrap text-[15px] px-xl py-lg shadow-lg hover:shadow-xl transition-all duration-300"
+                className="w-full md:w-auto whitespace-nowrap text-[14px] px-lg py-md"
               >
                 Run a Scenario
               </Button>
@@ -814,11 +770,8 @@ export default function DashboardPage() {
         {/* P&L Snapshot */}
         {!loading && (
           latestSnapshot ? (
-            <div
-              className="bg-surface rounded-xl p-xl border border-background shadow-sm animate-fadeIn"
-              style={{ animationDelay: "1100ms" }}
-            >
-              <h2 className="font-display text-h3 font-semibold text-text-primary tracking-tight mb-md">
+            <div className="bg-surface rounded-xl p-lg border border-border-light shadow-card">
+              <h2 className="text-heading font-semibold text-text-primary mb-sm">
                 P&L Snapshot{" "}
                 <span className="ml-1 normal-case tracking-normal text-text-secondary">
                   — {new Date(latestSnapshot.period_date + "T00:00:00").toLocaleDateString("en-US", { month: "long", year: "numeric" })}
@@ -828,14 +781,14 @@ export default function DashboardPage() {
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-background">
-                      <th className="text-left py-2 pr-lg text-small font-semibold uppercase tracking-wider text-text-muted">
+                    <tr className="border-b border-border-light">
+                      <th className="text-left py-2 pr-lg text-label uppercase tracking-wider text-text-muted">
                         Metric
                       </th>
-                      <th className="text-right py-2 px-lg text-small font-semibold uppercase tracking-wider text-text-muted">
+                      <th className="text-right py-2 px-lg text-label uppercase tracking-wider text-text-muted">
                         Current Period
                       </th>
-                      <th className="text-right py-2 pl-lg text-small font-semibold uppercase tracking-wider text-text-muted">
+                      <th className="text-right py-2 pl-lg text-label uppercase tracking-wider text-text-muted">
                         vs Prior Month
                       </th>
                     </tr>
@@ -848,7 +801,7 @@ export default function DashboardPage() {
                       const changeNeg = row.change !== null && row.change < 0;
 
                       return (
-                        <tr key={row.label} className="border-b border-background last:border-b-0">
+                        <tr key={row.label} className="border-b border-border-light last:border-b-0">
                           <td className={`py-3 pr-lg text-body ${row.isNetProfit || row.label === "Total Income" ? "font-semibold text-text-primary" : "text-text-secondary"}`}>
                             <span className="inline-flex items-center gap-1.5">
                               {row.label}
@@ -858,7 +811,7 @@ export default function DashboardPage() {
                           <td className={`text-right py-3 px-lg text-body tabular-nums font-semibold ${isNeg ? "text-error" : isPos ? "text-success" : "text-text-primary"}`}>
                             {formatCurrency(row.value)}
                           </td>
-                          <td className="text-right py-3 pl-lg text-small tabular-nums">
+                          <td className="text-right py-3 pl-lg text-body-sm tabular-nums">
                             {row.change !== null ? (
                               <span className={`font-medium ${changePos ? "text-success" : changeNeg ? "text-error" : "text-text-muted"}`}>
                                 {changePos ? "▲" : changeNeg ? "▼" : ""} {Math.abs(row.change).toFixed(1)}%
@@ -880,11 +833,8 @@ export default function DashboardPage() {
         {/* Income Trend */}
         {!loading && (
           incomeChartData.length >= 2 ? (
-            <div
-              className="bg-surface rounded-xl p-xl border border-background shadow-sm animate-fadeIn"
-              style={{ animationDelay: "1200ms" }}
-            >
-              <h2 className="font-display text-h3 font-semibold text-text-primary tracking-tight mb-md">
+            <div className="bg-surface rounded-xl p-lg border border-border-light shadow-card">
+              <h2 className="text-heading font-semibold text-text-primary mb-sm">
                 Income Trend
               </h2>
 
@@ -921,11 +871,8 @@ export default function DashboardPage() {
               </ResponsiveContainer>
             </div>
           ) : (
-            <div
-              className="bg-surface rounded-xl px-2xl py-lg border border-background shadow-sm animate-fadeIn"
-              style={{ animationDelay: "1200ms" }}
-            >
-              <h2 className="font-display text-h3 font-semibold text-text-primary tracking-tight mb-sm">
+            <div className="bg-surface rounded-xl p-lg border border-border-light shadow-card">
+              <h2 className="text-heading font-semibold text-text-primary mb-sm">
                 Income Trend
               </h2>
               <p className="text-body text-text-secondary">
@@ -937,24 +884,6 @@ export default function DashboardPage() {
       </div>
 
       <ScoreRubricModal open={rubricOpen} onClose={() => setRubricOpen(false)} />
-
-      <style jsx>{`
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(8px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        .animate-fadeIn {
-          animation: fadeIn 0.6s ease-out forwards;
-          opacity: 0;
-        }
-      `}</style>
     </AppLayout>
   );
 }

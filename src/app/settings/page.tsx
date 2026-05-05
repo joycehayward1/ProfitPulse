@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Icon } from "@iconify/react";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { Button } from "@/components/ui/Button";
+import { Button as _Button } from "@/components/ui/Button";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/Toast";
@@ -426,31 +426,31 @@ function SettingsContent() {
 
   return (
     <AppLayout>
-      <div className="max-w-5xl mx-auto space-y-xl">
+      <div className="max-w-4xl mx-auto space-y-8 px-4 py-8">
         {/* Header */}
-        <div className="animate-fadeIn">
-          <h1 className="font-display text-[42px] md:text-[48px] text-text-primary mb-xs tracking-tight">
+        <div>
+          <h1 className="text-[28px] font-bold text-[#111111] tracking-tight">
             Settings
           </h1>
-          <p className="text-body text-text-secondary">
+          <p className="text-[14px] text-[#8B8B8B] mt-1">
             Manage your profile, business, and account preferences
           </p>
         </div>
 
         {/* Tabs Navigation */}
-        <div className="border-b border-background overflow-x-auto animate-fadeIn" style={{ animationDelay: "100ms" }}>
-          <nav className="flex gap-1 min-w-max">
+        <div className="border-b border-[#E4E4E7] overflow-x-auto">
+          <nav className="flex gap-0 min-w-max">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-lg py-md font-body text-body font-medium transition-all duration-200 border-b-2 ${
+                className={`flex items-center gap-2 px-4 py-2.5 text-[14px] font-medium border-b-2 transition-colors ${
                   activeTab === tab.id
-                    ? "text-orange border-orange"
-                    : "text-text-secondary border-transparent hover:text-text-primary hover:border-text-muted"
+                    ? "border-[#E65100] text-[#111111]"
+                    : "border-transparent text-[#8B8B8B] hover:text-[#4B4B4B]"
                 }`}
               >
-                <Icon icon={tab.icon} className="w-5 h-5" />
+                <Icon icon={tab.icon} className="w-4 h-4" />
                 <span>{tab.label}</span>
               </button>
             ))}
@@ -458,28 +458,29 @@ function SettingsContent() {
         </div>
 
         {/* Tab Content */}
-        <div className="animate-fadeIn" style={{ animationDelay: "200ms" }}>
+        <div>
           {/* Profile Tab */}
           {activeTab === "profile" && (
-            <div className="space-y-xl">
-              <div className="bg-surface rounded-xl p-xl border border-background shadow-sm">
-                <div className="flex items-start gap-xl mb-xl">
+            <div className="space-y-6">
+              <div className="bg-white rounded-xl border border-[#F0F0F2] shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)] p-6">
+                {/* Avatar Section */}
+                <div className="flex items-start gap-6 mb-6">
                   <div className="flex-shrink-0">
                     {profileData.avatar_url ? (
                       <img
                         src={profileData.avatar_url}
                         alt={profileData.name}
-                        className="w-24 h-24 rounded-full object-cover shadow-md"
+                        className="w-20 h-20 rounded-xl object-cover"
                       />
                     ) : (
-                      <div className="w-24 h-24 rounded-full bg-orange/10 flex items-center justify-center shadow-md">
-                        <Icon icon="ph:user-bold" className="w-12 h-12 text-orange" />
+                      <div className="w-20 h-20 rounded-xl border-2 border-dashed border-[#E4E4E7] bg-[#F4F4F5] flex items-center justify-center hover:border-[#E65100] hover:bg-[#FFF7F2] transition-colors">
+                        <Icon icon="ph:user-bold" className="w-8 h-8 text-[#8B8B8B]" />
                       </div>
                     )}
                   </div>
                   <div className="flex-1">
-                    <h3 className="font-display text-h3 text-text-primary mb-xs">Profile Photo</h3>
-                    <p className="text-small text-text-secondary mb-md">
+                    <h3 className="text-[16px] font-semibold text-[#111111] mb-1">Profile Photo</h3>
+                    <p className="text-[13px] text-[#8B8B8B] mb-3">
                       Upload a profile picture to personalize your account
                     </p>
                     <input
@@ -492,55 +493,57 @@ function SettingsContent() {
                       }}
                       className="hidden"
                     />
-                    <Button
-                      variant="secondary"
-                      size="sm"
+                    <button
                       onClick={() => fileInputRef.current?.click()}
                       disabled={uploadingPhoto}
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-[#E4E4E7] text-[13px] font-medium text-[#4B4B4B] hover:border-[#E65100] hover:text-[#E65100] transition-colors disabled:opacity-50"
                     >
-                      <Icon icon="ph:upload-simple-bold" className="w-4 h-4 mr-2" />
+                      <Icon icon="ph:upload-simple-bold" className="w-4 h-4" />
                       {uploadingPhoto ? "Uploading..." : "Upload Photo"}
-                    </Button>
+                    </button>
                   </div>
                 </div>
 
-                <div className="space-y-md">
-                  <div>
-                    <label className="block text-small font-body font-medium text-text-primary mb-xs">
-                      Full Name
-                    </label>
-                    <input
-                      type="text"
-                      value={profileData.name}
-                      onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
-                      className="w-full px-md py-sm border border-background rounded-lg focus:outline-none focus:ring-2 focus:ring-orange/20 focus:border-orange transition-colors font-body text-body"
-                      placeholder="Your name"
-                    />
+                {/* Divider */}
+                <div className="border-t border-[#F0F0F2] pt-6 mt-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-[13px] font-medium text-[#111111] mb-1.5 block">
+                        Full Name
+                      </label>
+                      <input
+                        type="text"
+                        value={profileData.name}
+                        onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
+                        className="w-full h-10 px-3 rounded-lg border border-[#E4E4E7] bg-white text-[14px] text-[#111111] focus:border-[#E65100] focus:ring-2 focus:ring-[#E65100]/15 focus:outline-none transition-colors"
+                        placeholder="Your name"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[13px] font-medium text-[#111111] mb-1.5 block">
+                        Email Address
+                      </label>
+                      <input
+                        type="email"
+                        value={profileData.email}
+                        disabled
+                        className="w-full h-10 px-3 rounded-lg border border-[#E4E4E7] bg-[#F4F4F5] text-[14px] text-[#8B8B8B] cursor-not-allowed"
+                      />
+                      <p className="text-[12px] text-[#8B8B8B] mt-1.5">
+                        Email cannot be changed for security reasons
+                      </p>
+                    </div>
                   </div>
 
-                  <div>
-                    <label className="block text-small font-body font-medium text-text-primary mb-xs">
-                      Email Address
-                    </label>
-                    <input
-                      type="email"
-                      value={profileData.email}
-                      disabled
-                      className="w-full px-md py-sm border border-background rounded-lg bg-background/50 font-body text-body text-text-muted cursor-not-allowed"
-                    />
-                    <p className="text-small text-text-muted mt-xs">
-                      Email cannot be changed for security reasons
-                    </p>
-                  </div>
-
-                  <div className="pt-md">
-                    <Button
-                      variant="primary"
+                  <div className="mt-6">
+                    <button
                       onClick={handleSaveProfile}
                       disabled={isSaving}
+                      className="bg-[#E65100] text-white rounded-lg px-6 py-2.5 text-[14px] font-medium hover:bg-[#D84900] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {isSaving ? "Saving..." : "Save Changes"}
-                    </Button>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -549,32 +552,35 @@ function SettingsContent() {
 
           {/* Business Tab */}
           {activeTab === "business" && (
-            <div className="space-y-xl">
-              <div className="bg-surface rounded-xl p-xl border border-background shadow-sm">
-                <h3 className="font-display text-h3 text-text-primary mb-lg">Business Information</h3>
+            <div className="space-y-6">
+              <div className="bg-white rounded-xl border border-[#F0F0F2] shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)] p-6">
+                <h3 className="text-[16px] font-semibold text-[#111111] mb-1">Business Information</h3>
+                <p className="text-[13px] text-[#8B8B8B] mb-4">
+                  Update your business details to personalize your dashboard
+                </p>
 
-                <div className="space-y-md">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-small font-body font-medium text-text-primary mb-xs">
+                    <label className="text-[13px] font-medium text-[#111111] mb-1.5 block">
                       Business Name
                     </label>
                     <input
                       type="text"
                       value={businessData.business_name}
                       onChange={(e) => setBusinessData({ ...businessData, business_name: e.target.value })}
-                      className="w-full px-md py-sm border border-background rounded-lg focus:outline-none focus:ring-2 focus:ring-orange/20 focus:border-orange transition-colors font-body text-body"
+                      className="w-full h-10 px-3 rounded-lg border border-[#E4E4E7] bg-white text-[14px] text-[#111111] focus:border-[#E65100] focus:ring-2 focus:ring-[#E65100]/15 focus:outline-none transition-colors"
                       placeholder="Acme Corporation"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-small font-body font-medium text-text-primary mb-xs">
+                    <label className="text-[13px] font-medium text-[#111111] mb-1.5 block">
                       Industry
                     </label>
                     <select
                       value={businessData.industry}
                       onChange={(e) => setBusinessData({ ...businessData, industry: e.target.value })}
-                      className="w-full px-md py-sm border border-background rounded-lg focus:outline-none focus:ring-2 focus:ring-orange/20 focus:border-orange transition-colors font-body text-body"
+                      className="w-full h-10 px-3 rounded-lg border border-[#E4E4E7] bg-white text-[14px] text-[#111111] focus:border-[#E65100] focus:ring-2 focus:ring-[#E65100]/15 focus:outline-none transition-colors"
                     >
                       <option value="">Select industry</option>
                       <option value="consulting">Consulting</option>
@@ -588,16 +594,16 @@ function SettingsContent() {
                       <option value="other">Other</option>
                     </select>
                   </div>
+                </div>
 
-                  <div className="pt-md">
-                    <Button
-                      variant="primary"
-                      onClick={handleSaveBusiness}
-                      disabled={isSaving}
-                    >
-                      {isSaving ? "Saving..." : "Save Changes"}
-                    </Button>
-                  </div>
+                <div className="mt-6">
+                  <button
+                    onClick={handleSaveBusiness}
+                    disabled={isSaving}
+                    className="bg-[#E65100] text-white rounded-lg px-6 py-2.5 text-[14px] font-medium hover:bg-[#D84900] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isSaving ? "Saving..." : "Save Changes"}
+                  </button>
                 </div>
               </div>
             </div>
@@ -605,53 +611,59 @@ function SettingsContent() {
 
           {/* Integrations Tab */}
           {activeTab === "integrations" && (
-            <div className="space-y-md">
+            <div className="space-y-6">
               {/* QuickBooks Integration - Coming Soon */}
-              <div className="bg-surface rounded-xl p-xl border border-background shadow-sm opacity-70">
+              <div className="bg-white rounded-xl border border-[#F0F0F2] shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)] p-6 opacity-70">
                 <div className="flex items-start justify-between">
-                  <div className="flex items-start gap-md flex-1">
-                    <div className="w-14 h-14 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                  <div className="flex items-start gap-4 flex-1">
+                    <div className="w-12 h-12 rounded-lg bg-[#F4F4F5] flex items-center justify-center flex-shrink-0">
                       <img
                         src="/quickbooks.png"
                         alt="QuickBooks"
-                        className="w-8 h-8 object-contain grayscale"
+                        className="w-7 h-7 object-contain grayscale"
                       />
                     </div>
                     <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-xs">
-                        <h3 className="font-display text-h3 text-text-primary">QuickBooks</h3>
-                        <span className="inline-flex items-center gap-1.5 px-3 py-0.5 bg-orange/10 rounded-full text-xs font-semibold text-orange">
+                      <div className="flex items-center gap-3 mb-1">
+                        <h3 className="text-[16px] font-semibold text-[#111111]">QuickBooks</h3>
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-[#E65100]/10 rounded-full text-[12px] font-semibold text-[#E65100]">
                           Coming Soon
                         </span>
                       </div>
+                      <p className="text-[13px] text-[#8B8B8B]">
+                        Connect your QuickBooks account to automatically sync financial data
+                      </p>
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* Integration Requests */}
-              <div className="bg-surface/50 rounded-xl p-xl border border-dashed border-background">
-                <div className="flex items-center gap-md mb-md">
-                  <Icon icon="ph:chat-circle-dots-duotone" className="w-6 h-6 text-orange" />
-                  <h3 className="font-display text-h3 text-text-primary">Want to see more integrations?</h3>
+              <div className="bg-[#F8F8F8] rounded-xl border border-dashed border-[#E4E4E7] p-6">
+                <div className="flex items-center gap-3 mb-2">
+                  <Icon icon="ph:chat-circle-dots-duotone" className="w-5 h-5 text-[#E65100]" />
+                  <h3 className="text-[16px] font-semibold text-[#111111]">Want to see more integrations?</h3>
                 </div>
-                <p className="text-small text-text-secondary mb-lg">
+                <p className="text-[13px] text-[#8B8B8B] mb-4">
                   Tell us which platforms and business tools you&apos;d like to connect with ProfitPulse.
                 </p>
-                <Button variant="secondary" size="sm">
-                  <Icon icon="ph:paper-plane-tilt-bold" className="w-4 h-4 mr-2" />
+                <button className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-[#E4E4E7] text-[13px] font-medium text-[#4B4B4B] hover:border-[#E65100] hover:text-[#E65100] transition-colors">
+                  <Icon icon="ph:paper-plane-tilt-bold" className="w-4 h-4" />
                   Request an Integration
-                </Button>
+                </button>
               </div>
             </div>
           )}
 
           {/* Notifications Tab */}
           {activeTab === "notifications" && (
-            <div className="bg-surface rounded-xl p-xl border border-background shadow-sm">
-              <h3 className="font-display text-h3 text-text-primary mb-lg">Email Notifications</h3>
+            <div className="bg-white rounded-xl border border-[#F0F0F2] shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)] p-6">
+              <h3 className="text-[16px] font-semibold text-[#111111] mb-1">Email Notifications</h3>
+              <p className="text-[13px] text-[#8B8B8B] mb-4">
+                Choose which emails you want to receive
+              </p>
 
-              <div className="space-y-lg">
+              <div className="space-y-0">
                 {[
                   {
                     id: "weekly_summary",
@@ -663,16 +675,18 @@ function SettingsContent() {
                     title: "Product Updates",
                     description: "Stay informed about new features and improvements",
                   },
-                ].map((notification) => (
+                ].map((notification, idx) => (
                   <div
                     key={notification.id}
-                    className="flex items-start justify-between gap-md py-md border-b border-background last:border-0"
+                    className={`flex items-start justify-between gap-4 py-4 ${
+                      idx > 0 ? "border-t border-[#F0F0F2]" : ""
+                    }`}
                   >
                     <div className="flex-1">
-                      <h4 className="font-body text-body font-medium text-text-primary mb-xs">
+                      <h4 className="text-[14px] font-medium text-[#111111] mb-0.5">
                         {notification.title}
                       </h4>
-                      <p className="text-small text-text-secondary">{notification.description}</p>
+                      <p className="text-[13px] text-[#8B8B8B]">{notification.description}</p>
                     </div>
                     <button
                       onClick={() =>
@@ -681,10 +695,10 @@ function SettingsContent() {
                           [notification.id]: !emailNotifications[notification.id as keyof typeof emailNotifications],
                         })
                       }
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 ${
                         emailNotifications[notification.id as keyof typeof emailNotifications]
-                          ? "bg-orange"
-                          : "bg-text-muted/30"
+                          ? "bg-[#E65100]"
+                          : "bg-[#E4E4E7]"
                       }`}
                     >
                       <span
@@ -698,9 +712,8 @@ function SettingsContent() {
                   </div>
                 ))}
 
-                <div className="pt-md">
-                  <Button
-                    variant="primary"
+                <div className="border-t border-[#F0F0F2] pt-6 mt-2">
+                  <button
                     disabled={savingNotifications}
                     onClick={async () => {
                       setSavingNotifications(true);
@@ -723,9 +736,10 @@ function SettingsContent() {
                         setSavingNotifications(false);
                       }
                     }}
+                    className="bg-[#E65100] text-white rounded-lg px-6 py-2.5 text-[14px] font-medium hover:bg-[#D84900] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {savingNotifications ? "Saving..." : "Save Preferences"}
-                  </Button>
+                  </button>
                 </div>
               </div>
             </div>
@@ -733,9 +747,9 @@ function SettingsContent() {
 
           {/* Billing Tab */}
           {activeTab === "billing" && (
-            <div id="billing" className="space-y-md">
+            <div id="billing" className="space-y-6">
               {/* Current Plan */}
-              <div className="bg-gradient-to-br from-orange/5 via-surface to-surface rounded-xl p-xl border border-orange/20 shadow-sm">
+              <div className="bg-white rounded-xl border border-[#F0F0F2] shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)] p-6">
                 {(() => {
                   const status = subscription?.subscription_status ?? "none";
                   const interval = subscription?.billing_interval;
@@ -753,12 +767,12 @@ function SettingsContent() {
 
                   return (
                     <>
-                      <div className="flex items-start justify-between mb-lg">
+                      <div className="flex items-start justify-between mb-4">
                         <div>
-                          <h3 className="font-display text-h3 text-text-primary mb-xs">
+                          <h3 className="text-[16px] font-semibold text-[#111111] mb-1">
                             Current Plan
                           </h3>
-                          <p className="text-small text-text-secondary">
+                          <p className="text-[13px] text-[#8B8B8B]">
                             {status === "trial" && "Free Trial"}
                             {status === "active" && `ProfitPulse Pro — ${interval ?? ""}`}
                             {status === "canceled" && `Canceled — access until ${periodEnd}`}
@@ -770,48 +784,44 @@ function SettingsContent() {
                         </div>
                         {status === "active" && (
                           <div className="text-right">
-                            <div className="font-display text-[32px] text-text-primary">
+                            <div className="text-[28px] font-bold text-[#111111]">
                               {priceLabel}
                             </div>
-                            <div className="text-small text-text-secondary">{priceSub}</div>
+                            <div className="text-[13px] text-[#8B8B8B]">{priceSub}</div>
                           </div>
                         )}
                       </div>
 
                       {status === "active" && periodEnd && (
-                        <p className="text-small text-text-secondary mb-md">
-                          Next billing date: <strong>{periodEnd}</strong>
+                        <p className="text-[13px] text-[#8B8B8B] mb-4">
+                          Next billing date: <strong className="text-[#111111]">{periodEnd}</strong>
                         </p>
                       )}
 
-                      <div className="flex flex-wrap gap-md">
+                      <div className="flex flex-wrap gap-3">
                         {status === "active" && (
-                          <>
-                            <Button
-                              variant="secondary"
-                              size="sm"
-                              onClick={() => setShowCancelModal(true)}
-                            >
-                              <Icon icon="ph:x-circle-bold" className="w-4 h-4 mr-2" />
-                              Cancel Subscription
-                            </Button>
-                          </>
+                          <button
+                            onClick={() => setShowCancelModal(true)}
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-[#E4E4E7] text-[13px] font-medium text-[#4B4B4B] hover:border-[#DC2626] hover:text-[#DC2626] transition-colors"
+                          >
+                            <Icon icon="ph:x-circle-bold" className="w-4 h-4" />
+                            Cancel Subscription
+                          </button>
                         )}
                         {(status === "trial" ||
                           status === "canceled" ||
                           status === "terminated" ||
                           status === "expired" ||
                           status === "none") && (
-                          <Button
-                            variant="primary"
-                            size="sm"
+                          <button
                             onClick={() => router.push("/pricing")}
+                            className="bg-[#E65100] text-white rounded-lg px-6 py-2.5 text-[14px] font-medium hover:bg-[#D84900] transition-colors inline-flex items-center gap-2"
                           >
-                            <Icon icon="ph:arrow-up-right-bold" className="w-4 h-4 mr-2" />
+                            <Icon icon="ph:arrow-up-right-bold" className="w-4 h-4" />
                             {status === "canceled" || status === "terminated" || status === "expired"
                               ? "Resubscribe"
                               : "Upgrade to Pro"}
-                          </Button>
+                          </button>
                         )}
                       </div>
                     </>
@@ -820,11 +830,12 @@ function SettingsContent() {
               </div>
 
               {/* Billing History */}
-              <div className="bg-surface rounded-xl p-xl border border-background shadow-sm">
-                <h3 className="font-display text-h3 text-text-primary mb-lg">Billing History</h3>
-                <div className="text-center py-xl">
-                  <Icon icon="ph:receipt-duotone" className="w-16 h-16 text-text-muted mx-auto mb-md" />
-                  <p className="text-small text-text-secondary">
+              <div className="bg-white rounded-xl border border-[#F0F0F2] shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)] p-6">
+                <h3 className="text-[16px] font-semibold text-[#111111] mb-1">Billing History</h3>
+                <p className="text-[13px] text-[#8B8B8B] mb-4">Your past invoices and payments</p>
+                <div className="text-center py-10">
+                  <Icon icon="ph:receipt-duotone" className="w-12 h-12 text-[#E4E4E7] mx-auto mb-3" />
+                  <p className="text-[13px] text-[#8B8B8B]">
                     No billing history yet. Your first invoice will appear here.
                   </p>
                 </div>
@@ -834,17 +845,17 @@ function SettingsContent() {
 
           {/* Cancel confirmation modal */}
           {showCancelModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-md">
-              <div className="max-w-md w-full bg-surface rounded-xl shadow-elevated border border-[#E5E0DA] p-xl">
-                <div className="flex items-center gap-sm mb-md">
-                  <div className="w-10 h-10 rounded-full bg-error/10 flex items-center justify-center">
-                    <Icon icon="lucide:alert-triangle" className="text-error" width={20} height={20} />
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+              <div className="max-w-md w-full bg-white rounded-xl shadow-[0_20px_60px_-10px_rgba(0,0,0,0.2)] border border-[#F0F0F2] p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-full bg-[#DC2626]/10 flex items-center justify-center">
+                    <Icon icon="lucide:alert-triangle" className="text-[#DC2626]" width={20} height={20} />
                   </div>
-                  <h3 className="font-display text-h3 text-text-primary">Cancel subscription?</h3>
+                  <h3 className="text-[16px] font-semibold text-[#111111]">Cancel subscription?</h3>
                 </div>
-                <p className="text-body text-text-secondary mb-lg">
+                <p className="text-[14px] text-[#4B4B4B] mb-6">
                   You&apos;ll keep Pro access until{" "}
-                  <strong className="text-text-primary">
+                  <strong className="text-[#111111]">
                     {subscription?.current_period_end
                       ? new Date(subscription.current_period_end).toLocaleDateString("en-US", {
                           year: "numeric",
@@ -855,15 +866,14 @@ function SettingsContent() {
                   </strong>
                   , then your plan will end. You can resubscribe at any time.
                 </p>
-                <div className="flex gap-sm justify-end">
-                  <Button
-                    variant="secondary"
-                    size="md"
+                <div className="flex gap-3 justify-end">
+                  <button
                     onClick={() => setShowCancelModal(false)}
                     disabled={cancelling}
+                    className="px-4 py-2.5 rounded-lg border border-[#E4E4E7] text-[14px] font-medium text-[#4B4B4B] hover:bg-[#F4F4F5] transition-colors disabled:opacity-50"
                   >
                     Keep subscription
-                  </Button>
+                  </button>
                   <button
                     type="button"
                     disabled={cancelling}
@@ -891,7 +901,7 @@ function SettingsContent() {
                         setCancelling(false);
                       }
                     }}
-                    className="px-6 py-3 rounded-md bg-error text-white text-body font-medium hover:bg-[#B91C1C] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                    className="px-4 py-2.5 rounded-lg bg-[#DC2626] text-white text-[14px] font-medium hover:bg-[#B91C1C] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {cancelling ? "Canceling..." : "Yes, cancel"}
                   </button>
@@ -902,46 +912,52 @@ function SettingsContent() {
 
           {/* Account Tab */}
           {activeTab === "account" && (
-            <div className="space-y-md">
+            <div className="space-y-6">
               {/* Security */}
-              <div className="bg-surface rounded-xl p-xl border border-background shadow-sm">
-                <h3 className="font-display text-h3 text-text-primary mb-lg">Security</h3>
-                <div className="space-y-md">
-                  <div className="flex items-center justify-between py-md border-b border-background">
+              <div className="bg-white rounded-xl border border-[#F0F0F2] shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)] p-6">
+                <h3 className="text-[16px] font-semibold text-[#111111] mb-1">Security</h3>
+                <p className="text-[13px] text-[#8B8B8B] mb-4">Manage your account security settings</p>
+
+                <div className="space-y-0">
+                  <div className="flex items-center justify-between py-4 border-b border-[#F0F0F2]">
                     <div>
-                      <h4 className="font-body text-body font-medium text-text-primary mb-xs">Password</h4>
-                      <p className="text-small text-text-secondary">Last changed 30 days ago</p>
+                      <h4 className="text-[14px] font-medium text-[#111111] mb-0.5">Password</h4>
+                      <p className="text-[13px] text-[#8B8B8B]">Last changed 30 days ago</p>
                     </div>
-                    <Button variant="secondary" size="sm">Change Password</Button>
+                    <button className="px-4 py-2 rounded-lg border border-[#E4E4E7] text-[13px] font-medium text-[#4B4B4B] hover:border-[#E65100] hover:text-[#E65100] transition-colors">
+                      Change Password
+                    </button>
                   </div>
-                  <div className="flex items-center justify-between py-md">
+                  <div className="flex items-center justify-between py-4">
                     <div>
-                      <h4 className="font-body text-body font-medium text-text-primary mb-xs">
+                      <h4 className="text-[14px] font-medium text-[#111111] mb-0.5">
                         Two-Factor Authentication
                       </h4>
-                      <p className="text-small text-text-secondary">Add an extra layer of security</p>
+                      <p className="text-[13px] text-[#8B8B8B]">Add an extra layer of security</p>
                     </div>
-                    <Button variant="secondary" size="sm">Enable</Button>
+                    <button className="px-4 py-2 rounded-lg border border-[#E4E4E7] text-[13px] font-medium text-[#4B4B4B] hover:border-[#E65100] hover:text-[#E65100] transition-colors">
+                      Enable
+                    </button>
                   </div>
                 </div>
               </div>
 
               {/* Danger Zone */}
-              <div className="bg-error/5 rounded-xl p-xl border border-error/20 shadow-sm">
-                <h3 className="font-display text-h3 text-error mb-lg">Danger Zone</h3>
-                <div className="space-y-lg">
-                  <div>
-                    <h4 className="font-body text-body font-medium text-text-primary mb-xs">
-                      Delete Account
-                    </h4>
-                    <p className="text-small text-text-secondary mb-md">
-                      Permanently delete your account and all associated data. This action cannot be undone.
-                    </p>
-                    <Button variant="secondary" size="sm" className="text-error border-error hover:bg-error/10">
-                      <Icon icon="ph:warning-bold" className="w-4 h-4 mr-2" />
-                      Delete Account
-                    </Button>
-                  </div>
+              <div className="bg-[#FEF2F2] rounded-xl border border-[#DC2626]/20 p-6">
+                <h3 className="text-[16px] font-semibold text-[#DC2626] mb-1">Danger Zone</h3>
+                <p className="text-[13px] text-[#8B8B8B] mb-4">Irreversible and destructive actions</p>
+
+                <div>
+                  <h4 className="text-[14px] font-medium text-[#111111] mb-0.5">
+                    Delete Account
+                  </h4>
+                  <p className="text-[13px] text-[#8B8B8B] mb-4">
+                    Permanently delete your account and all associated data. This action cannot be undone.
+                  </p>
+                  <button className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-[#DC2626] text-[14px] font-medium text-[#DC2626] hover:bg-[#DC2626] hover:text-white transition-colors">
+                    <Icon icon="ph:warning-bold" className="w-4 h-4" />
+                    Delete Account
+                  </button>
                 </div>
               </div>
             </div>

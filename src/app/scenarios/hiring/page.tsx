@@ -184,58 +184,49 @@ export default function HiringPage() {
 
   return (
     <AppLayout>
-      <div className="min-h-screen bg-background pb-16">
+      <div className="min-h-screen bg-[#F8F8F8] pb-16">
         {/* Header */}
-        <div className="bg-gradient-to-br from-[#FFF8F5] to-[#FFE8DC] border-b border-orange/10">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-            <button
-              onClick={() => router.push('/scenarios')}
-              className="group flex items-center gap-2 text-text-secondary hover:text-orange transition-colors mb-6"
-            >
-              <ArrowLeft className="w-5 h-5 transition-transform group-hover:-translate-x-1" />
-              <span className="font-body text-sm">Back to Scenarios</span>
-            </button>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+          <button
+            onClick={() => router.push('/scenarios')}
+            className="flex items-center gap-2 text-[#8B8B8B] hover:text-[#111111] transition-colors mb-6"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span className="text-[13px]">Back to Scenarios</span>
+          </button>
 
-            <div className="flex items-start gap-4">
-              <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-orange/10 flex items-center justify-center">
-                <UserPlus className="w-6 h-6 text-orange" />
-              </div>
-              <div>
-                <h1 className="text-3xl sm:text-4xl font-display text-text-primary mb-2">
-                  Can I Hire?
-                </h1>
-                <p className="text-text-secondary font-body">
-                  See if you can afford to bring on new help.
-                </p>
-              </div>
-            </div>
-          </div>
+          <h1 className="text-[28px] font-bold text-[#111111] mb-1">
+            Can I Hire?
+          </h1>
+          <p className="text-[14px] text-[#4B4B4B]">
+            See if you can afford to bring on new help.
+          </p>
         </div>
 
         {/* Main Content */}
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 sm:mt-12">
-          <div className="grid lg:grid-cols-2 gap-8">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 space-y-8">
+          <div className="grid lg:grid-cols-2 gap-6">
             {/* Input Form */}
-            <div className="bg-white rounded-2xl border border-gray-100 p-6 sm:p-8 shadow-sm">
-              <h2 className="text-xl font-display text-text-primary mb-6">
+            <div className="bg-white rounded-xl border border-[#F0F0F2] shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-6">
+              <h2 className="text-[16px] font-semibold text-[#111111] mb-4">
                 New Employee Details
               </h2>
 
-              <div className="space-y-6">
+              <div className="space-y-5">
                 {/* Annual Salary */}
                 <div>
-                  <label className="block text-sm font-body font-medium text-text-primary mb-2">
+                  <label className="block text-[13px] font-medium text-[#111111] mb-1.5">
                     Annual salary
                   </label>
                   <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted font-display text-lg">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8B8B8B] text-sm">
                       $
                     </span>
                     <input
                       type="number"
                       value={annualSalary}
                       onChange={(e) => setAnnualSalary(e.target.value)}
-                      className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg font-body text-text-primary focus:outline-none focus:ring-2 focus:ring-orange focus:border-transparent transition-all"
+                      className="w-full h-10 pl-8 pr-3 rounded-lg border border-[#E4E4E7] text-[14px] text-[#111111] focus:outline-none focus:border-[#E65100] focus:ring-2 focus:ring-[#E65100]/15 transition-all"
                       placeholder="45,000"
                     />
                   </div>
@@ -243,46 +234,43 @@ export default function HiringPage() {
 
                 {/* Benefits & Overhead (Auto-calculated) */}
                 <div>
-                  <label className="block text-sm font-body font-medium text-text-primary mb-2">
+                  <label className="block text-[13px] font-medium text-[#111111] mb-1.5">
                     Benefits & overhead (25%)
                   </label>
                   <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted font-display text-lg">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8B8B8B] text-sm">
                       $
                     </span>
                     <input
                       type="text"
                       value={benefits.toLocaleString()}
                       disabled
-                      className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg font-body text-text-muted bg-gray-50 cursor-not-allowed"
+                      className="w-full h-10 pl-8 pr-3 rounded-lg border border-[#E4E4E7] text-[14px] text-[#8B8B8B] bg-[#F4F4F5] cursor-not-allowed"
                       placeholder="11,250"
                     />
                   </div>
-                  <p className="text-xs text-text-muted font-body mt-1">
+                  <p className="text-[12px] text-[#8B8B8B] mt-1">
                     Automatically calculated at 25% of base salary
                   </p>
                 </div>
 
                 {/* Hiring Timeline Slider */}
                 <div>
-                  <label className="block text-sm font-body font-medium text-text-primary mb-2">
+                  <label className="block text-[13px] font-medium text-[#111111] mb-1.5">
                     When do you want to hire?
                   </label>
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     <input
                       type="range"
                       min="0"
                       max="12"
                       value={monthsToHire}
                       onChange={(e) => setMonthsToHire(parseInt(e.target.value))}
-                      className="w-full h-2 bg-gray-200 rounded-full appearance-none cursor-pointer slider"
-                      style={{
-                        background: `linear-gradient(to right, #E65100 0%, #E65100 ${(monthsToHire / 12) * 100}%, #e5e7eb ${(monthsToHire / 12) * 100}%, #e5e7eb 100%)`
-                      }}
+                      className="w-full h-2 bg-[#E4E4E7] rounded-full appearance-none cursor-pointer accent-[#E65100]"
                     />
-                    <div className="flex items-center justify-between text-xs font-body text-text-muted">
+                    <div className="flex items-center justify-between text-[12px] text-[#8B8B8B]">
                       <span>Now</span>
-                      <span className="text-orange font-medium text-base">
+                      <span className="text-[#E65100] font-medium text-[14px]">
                         {monthsToHire === 0 ? 'Now' : monthsToHire === 1 ? '1 month' : `${monthsToHire} months`}
                       </span>
                       <span>12 months</span>
@@ -292,20 +280,20 @@ export default function HiringPage() {
 
                 {/* Total Compensation Preview */}
                 {totalCompensation > 0 && (
-                  <div className="bg-background rounded-lg p-4 border border-orange/20">
+                  <div className="bg-[#F4F4F5] rounded-lg p-4">
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm font-body text-text-secondary">
+                      <span className="text-[13px] text-[#4B4B4B]">
                         Total annual cost
                       </span>
-                      <span className="text-lg font-display text-text-primary">
+                      <span className="text-[16px] font-semibold text-[#111111] tabular-nums">
                         {formatCurrency(totalCompensation)}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-body text-text-secondary">
+                      <span className="text-[13px] text-[#4B4B4B]">
                         Monthly cost
                       </span>
-                      <span className="text-base font-display text-orange">
+                      <span className="text-[14px] font-semibold text-[#E65100] tabular-nums">
                         {formatCurrency(totalCompensation / 12)}
                       </span>
                     </div>
@@ -328,9 +316,9 @@ export default function HiringPage() {
               {result ? (
                 <div className="space-y-6">
                   {/* Result Card */}
-                  <div className="bg-white rounded-2xl border border-gray-100 p-6 sm:p-8 shadow-sm">
+                  <div className="bg-white rounded-xl border border-[#F0F0F2] shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-6">
                     <div className="flex items-start justify-between mb-6">
-                      <h2 className="text-xl font-display text-text-primary">
+                      <h2 className="text-[16px] font-semibold text-[#111111]">
                         The Verdict
                       </h2>
                       <StatusBadge
@@ -339,26 +327,24 @@ export default function HiringPage() {
                     </div>
 
                     {/* Main Result */}
-                    <div className={`rounded-xl p-6 mb-6 ${
-                      result.canAfford
-                        ? 'bg-gradient-to-br from-success/5 to-success/10'
-                        : 'bg-gradient-to-br from-error/5 to-error/10'
+                    <div className={`rounded-xl p-5 mb-6 ${
+                      result.canAfford ? 'bg-[#F0FDF4]' : 'bg-[#FEF2F2]'
                     }`}>
-                      <div className="flex items-start gap-3 mb-3">
+                      <div className="flex items-start gap-3">
                         {result.canAfford ? (
-                          <CheckCircle className="w-8 h-8 text-success flex-shrink-0" />
+                          <CheckCircle className="w-6 h-6 text-[#16A34A] flex-shrink-0 mt-0.5" />
                         ) : (
-                          <XCircle className="w-8 h-8 text-error flex-shrink-0" />
+                          <XCircle className="w-6 h-6 text-[#DC2626] flex-shrink-0 mt-0.5" />
                         )}
                         <div>
-                          <h3 className={`text-2xl font-display mb-1 ${
-                            result.canAfford ? 'text-success' : 'text-error'
+                          <h3 className={`text-[16px] font-semibold mb-1 ${
+                            result.canAfford ? 'text-[#16A34A]' : 'text-[#DC2626]'
                           }`}>
                             {result.canAfford
                               ? 'Yes, you can afford to hire!'
                               : 'Not yet—here\'s what needs to change'}
                           </h3>
-                          <p className="text-sm font-body text-text-secondary">
+                          <p className="text-[13px] text-[#4B4B4B]">
                             {result.canAfford
                               ? `You'll still have ${formatCurrency(result.afterHiringProfit)}/month in profit`
                               : `You need ${formatCurrency(Math.abs(result.afterHiringProfit))}/month more in profit`}
@@ -369,73 +355,61 @@ export default function HiringPage() {
 
                     {/* Profit Comparison Chart */}
                     <div className="mb-6">
-                      <h3 className="text-sm font-body font-medium text-text-primary mb-4">
+                      <h3 className="text-[13px] font-medium text-[#111111] mb-3">
                         Profit Comparison
                       </h3>
                       <div className="space-y-4">
                         {/* Current Monthly Profit */}
                         <div>
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-body text-text-secondary">
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-[13px] text-[#4B4B4B]">
                               Current Monthly Profit
                             </span>
-                            <span className="text-base font-display text-text-primary">
+                            <span className="text-[14px] font-semibold text-[#111111] tabular-nums">
                               {formatCurrency(result.currentProfit)}
                             </span>
                           </div>
-                          <div className="h-10 bg-gray-100 rounded-lg overflow-hidden relative">
+                          <div className="h-3 bg-[#F4F4F5] rounded-full overflow-hidden">
                             <div
-                              className="h-full bg-gradient-to-r from-accent to-accent/80 flex items-center justify-end pr-3 transition-all duration-700"
+                              className="h-full bg-[#16A34A] rounded-full"
                               style={{
                                 width: `${Math.min((result.currentProfit / Math.max(result.currentProfit, 1)) * 100, 100)}%`
                               }}
-                            >
-                              <span className="text-xs font-body text-white font-medium">
-                                {formatCurrency(result.currentProfit)}
-                              </span>
-                            </div>
+                            />
                           </div>
                         </div>
 
                         {/* After Hiring */}
                         <div>
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-body text-text-secondary">
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-[13px] text-[#4B4B4B]">
                               After Hiring
                             </span>
-                            <span className={`text-base font-display ${
-                              result.afterHiringProfit > 0 ? 'text-success' : 'text-error'
+                            <span className={`text-[14px] font-semibold tabular-nums ${
+                              result.afterHiringProfit > 0 ? 'text-[#16A34A]' : 'text-[#DC2626]'
                             }`}>
                               {formatCurrency(result.afterHiringProfit)}
                             </span>
                           </div>
-                          <div className="h-10 bg-gray-100 rounded-lg overflow-hidden relative">
+                          <div className="h-3 bg-[#F4F4F5] rounded-full overflow-hidden">
                             <div
-                              className={`h-full flex items-center justify-end pr-3 transition-all duration-700 ${
-                                result.afterHiringProfit > 0
-                                  ? 'bg-gradient-to-r from-success to-success/80'
-                                  : 'bg-gradient-to-r from-error to-error/80'
+                              className={`h-full rounded-full ${
+                                result.afterHiringProfit > 0 ? 'bg-[#16A34A]' : 'bg-[#DC2626]'
                               }`}
                               style={{
                                 width: result.afterHiringProfit > 0
                                   ? `${Math.min((result.afterHiringProfit / Math.max(result.currentProfit, 1)) * 100, 100)}%`
                                   : '0%'
                               }}
-                            >
-                              {result.afterHiringProfit > 0 && (
-                                <span className="text-xs font-body text-white font-medium">
-                                  {formatCurrency(result.afterHiringProfit)}
-                                </span>
-                              )}
-                            </div>
+                            />
                           </div>
                         </div>
 
                         {/* Difference indicator */}
-                        <div className="pt-2 border-t border-gray-200">
-                          <div className="flex items-center justify-between text-sm font-body">
-                            <span className="text-text-secondary">Monthly cost of hire</span>
-                            <span className="font-display text-orange">
+                        <div className="pt-3 border-t border-[#F0F0F2]">
+                          <div className="flex items-center justify-between text-[13px]">
+                            <span className="text-[#4B4B4B]">Monthly cost of hire</span>
+                            <span className="font-semibold text-[#E65100] tabular-nums">
                               -{formatCurrency(result.monthlyCost)}
                             </span>
                           </div>
@@ -444,21 +418,21 @@ export default function HiringPage() {
                     </div>
 
                     {/* AI Explanation */}
-                    <div className="border-t border-gray-100 pt-6">
-                      <h3 className="text-sm font-body font-medium text-text-primary mb-3">
+                    <div className="border-t border-[#F0F0F2] pt-5">
+                      <h3 className="text-[13px] font-medium text-[#111111] mb-2">
                         What this means
                       </h3>
                       {aiLoading ? (
                         <div className="space-y-2 animate-pulse">
-                          <div className="h-4 bg-gray-200 rounded w-full" />
-                          <div className="h-4 bg-gray-200 rounded w-5/6" />
+                          <div className="h-3.5 bg-[#F4F4F5] rounded w-full" />
+                          <div className="h-3.5 bg-[#F4F4F5] rounded w-5/6" />
                         </div>
                       ) : result.explanation ? (
-                        <p className="text-sm font-body text-text-secondary leading-relaxed">
+                        <p className="text-[13px] text-[#4B4B4B] leading-relaxed">
                           {result.explanation}
                         </p>
                       ) : (
-                        <p className="text-sm font-body text-text-muted italic">
+                        <p className="text-[13px] text-[#8B8B8B] italic">
                           AI insights temporarily unavailable
                         </p>
                       )}
@@ -485,14 +459,14 @@ export default function HiringPage() {
                   </div>
                 </div>
               ) : (
-                <div className="bg-white rounded-2xl border-2 border-dashed border-gray-200 p-12 text-center">
-                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-background mb-4">
-                    <UserPlus className="w-8 h-8 text-text-muted" />
+                <div className="bg-white rounded-xl border border-[#F0F0F2] shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-10 text-center">
+                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-lg bg-[#F4F4F5] mb-4">
+                    <UserPlus className="w-6 h-6 text-[#8B8B8B]" />
                   </div>
-                  <h3 className="text-lg font-display text-text-primary mb-2">
+                  <h3 className="text-[16px] font-semibold text-[#111111] mb-1">
                     Ready to calculate
                   </h3>
-                  <p className="text-sm text-text-secondary font-body">
+                  <p className="text-[13px] text-[#4B4B4B]">
                     Enter the salary details on the left to see if you can afford to hire
                   </p>
                 </div>
@@ -501,37 +475,6 @@ export default function HiringPage() {
           </div>
         </div>
       </div>
-
-      <style jsx>{`
-        .slider::-webkit-slider-thumb {
-          appearance: none;
-          width: 20px;
-          height: 20px;
-          border-radius: 50%;
-          background: #E65100;
-          cursor: pointer;
-          box-shadow: 0 2px 4px rgba(230, 81, 0, 0.3);
-          transition: transform 0.2s;
-        }
-
-        .slider::-webkit-slider-thumb:hover {
-          transform: scale(1.1);
-        }
-
-        .slider::-moz-range-thumb {
-          width: 20px;
-          height: 20px;
-          border-radius: 50%;
-          background: #E65100;
-          cursor: pointer;
-          border: none;
-          box-shadow: 0 2px 4px rgba(230, 81, 0, 0.3);
-        }
-
-        .slider::-moz-range-thumb:hover {
-          transform: scale(1.1);
-        }
-      `}</style>
     </AppLayout>
   );
 }

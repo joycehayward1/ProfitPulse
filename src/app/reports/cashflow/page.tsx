@@ -62,7 +62,7 @@ interface VarianceProps {
 
 function Variance({ current, prior }: VarianceProps) {
   if (prior === 0 && current === 0) {
-    return <span className="text-text-muted text-small">--</span>;
+    return <span className="text-text-muted text-[12px]">--</span>;
   }
   const diff = current - prior;
   const pct = prior !== 0 ? (diff / Math.abs(prior)) * 100 : current !== 0 ? 100 : 0;
@@ -70,7 +70,7 @@ function Variance({ current, prior }: VarianceProps) {
 
   return (
     <span
-      className={`inline-flex items-center gap-0.5 text-small font-medium ${
+      className={`inline-flex items-center gap-0.5 text-[12px] font-medium ${
         isPositive ? "text-success" : "text-error"
       }`}
     >
@@ -102,10 +102,10 @@ function CustomTooltip({
   if (!active || !payload || !payload.length) return null;
   const data = payload[0];
   return (
-    <div className="bg-surface border border-border rounded-lg shadow-elevated px-4 py-3">
-      <p className="text-small text-text-muted mb-1">{data.payload.month}</p>
+    <div className="bg-white border border-border rounded-lg shadow-elevated px-3 py-2">
+      <p className="text-[12px] text-text-muted mb-1">{data.payload.month}</p>
       <p
-        className={`font-display text-h3 font-semibold ${
+        className={`text-[14px] font-semibold ${
           data.value >= 0 ? "text-orange" : "text-error"
         }`}
       >
@@ -124,35 +124,31 @@ interface KpiCardProps {
   value: number;
   priorValue: number;
   negative?: boolean;
-  delay: string;
   tooltip?: string;
 }
 
-function KpiCard({ label, icon, iconColor, value, priorValue, negative, delay, tooltip }: KpiCardProps) {
+function KpiCard({ label, icon, iconColor, value, priorValue, negative, tooltip }: KpiCardProps) {
   const isNegative = negative && value < 0;
 
   return (
-    <div
-      className="group bg-surface rounded-xl p-lg border border-border-light shadow-soft hover:shadow-medium hover:border-orange/20 transition-all duration-300 animate-fadeIn"
-      style={{ animationDelay: delay }}
-    >
-      <div className="flex items-center justify-between mb-md">
+    <div className="bg-surface rounded-xl p-lg border border-border-light shadow-card hover:shadow-medium transition-shadow">
+      <div className="flex items-center justify-between mb-1">
         <div
-          className="w-10 h-10 rounded-full flex items-center justify-center transition-transform duration-300 group-hover:scale-110"
-          style={{ background: `linear-gradient(135deg, ${iconColor}15, ${iconColor}05)` }}
+          className="w-9 h-9 rounded-lg flex items-center justify-center"
+          style={{ background: `${iconColor}12` }}
         >
           <Icon icon={icon} className="w-5 h-5" style={{ color: iconColor }} />
         </div>
         <Variance current={value} prior={priorValue} />
       </div>
 
-      <h3 className="font-body text-[14px] font-medium text-text-secondary mb-xs flex items-center gap-1.5">
+      <h3 className="text-[13px] font-medium text-text-secondary mb-1 flex items-center gap-1.5">
         {label}
         {tooltip && <InfoTooltip text={tooltip} />}
       </h3>
 
       <p
-        className={`font-display text-h1 md:text-[36px] tracking-tight tabular-nums ${
+        className={`text-[24px] font-semibold tracking-tight tabular-nums ${
           isNegative ? "text-error" : "text-text-primary"
         }`}
       >
@@ -284,20 +280,17 @@ export default function CashFlowPage() {
 
   return (
     <AppLayout>
-      <div className="space-y-2xl">
+      <div className="space-y-xl">
         {/* Page Header */}
-        <div
-          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-md animate-fadeIn"
-          style={{ animationDelay: "0ms" }}
-        >
+        <div className="flex flex-wrap items-center justify-between gap-sm">
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="font-display text-[28px] md:text-[36px] text-text-primary tracking-tight">
+              <h1 className="text-[28px] font-bold text-text-primary tracking-tight">
                 Cash Flow
               </h1>
               {currentSnapshot && (
                 <span
-                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-medium leading-4 ${
+                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${
                     currentSnapshot.data_source === "quickbooks"
                       ? "bg-emerald-50 text-emerald-700"
                       : "bg-gray-100 text-gray-500"
@@ -310,7 +303,7 @@ export default function CashFlowPage() {
                 </span>
               )}
             </div>
-            <p className="text-body text-text-secondary mt-1">
+            <p className="text-[14px] text-text-muted mt-1">
               Where your money comes from and where it goes
             </p>
           </div>
@@ -319,7 +312,7 @@ export default function CashFlowPage() {
             <select
               value={selectedPeriod}
               onChange={(e) => setSelectedPeriod(e.target.value)}
-              className="h-10 px-4 pr-10 rounded-lg border border-border bg-surface text-body text-text-primary font-body appearance-none cursor-pointer hover:border-orange/40 focus:border-orange focus:ring-2 focus:ring-orange/20 focus:outline-none transition-all duration-200"
+              className="h-9 px-3 pr-10 rounded-lg border border-border bg-surface text-[13px] text-text-primary appearance-none cursor-pointer hover:border-orange/40 focus:border-orange focus:ring-2 focus:ring-orange/20 focus:outline-none transition-colors"
               style={{
                 backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23a3a3a3' viewBox='0 0 256 256'%3E%3Cpath d='M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z'%3E%3C/path%3E%3C/svg%3E")`,
                 backgroundRepeat: "no-repeat",
@@ -338,45 +331,37 @@ export default function CashFlowPage() {
 
         {/* Loading state */}
         {isLoading && (
-          <div className="space-y-md animate-fadeIn" style={{ animationDelay: "100ms" }}>
+          <div className="space-y-xl">
             <div className="grid gap-md md:grid-cols-3">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="bg-surface rounded-xl p-lg border border-border-light animate-pulse">
-                  <div className="w-10 h-10 bg-background rounded-full mb-md" />
-                  <div className="w-20 h-4 bg-background rounded mb-sm" />
-                  <div className="w-32 h-8 bg-background rounded" />
-                </div>
+                <div key={i} className="bg-surface-inset rounded-lg h-32 animate-pulse" />
               ))}
             </div>
-            <div className="bg-surface rounded-xl p-lg border border-border-light h-[300px] animate-pulse">
-              <div className="w-full h-full bg-background rounded" />
-            </div>
+            <div className="bg-surface-inset rounded-lg h-[300px] animate-pulse" />
           </div>
         )}
 
         {/* Empty state */}
         {!isLoading && snapshots.length === 0 && (
-          <div className="relative overflow-hidden bg-gradient-to-br from-surface via-surface to-background rounded-xl p-2xl border-2 border-orange shadow-lg">
-            <div className="absolute top-0 right-0 w-96 h-96 bg-orange/5 rounded-full blur-3xl -z-0" />
-
-            <div className="relative z-10 max-w-lg mx-auto text-center space-y-lg py-xl">
-              <div className="inline-flex items-center justify-center w-24 h-24 bg-orange/10 rounded-full">
-                <Icon icon="ph:currency-circle-dollar-bold" className="w-12 h-12 text-orange" />
+          <div className="bg-surface rounded-xl border border-border-light shadow-card p-2xl text-center">
+            <div className="max-w-md mx-auto space-y-lg">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-orange/[0.08] text-orange mx-auto">
+                <Icon icon="ph:currency-circle-dollar-bold" className="w-8 h-8" />
               </div>
 
               <div className="space-y-sm">
-                <h2 className="font-display text-[28px] leading-tight text-text-primary">
+                <h2 className="text-[20px] font-semibold text-text-primary">
                   No cash flow data yet
                 </h2>
-                <p className="text-[15px] leading-relaxed text-text-secondary max-w-md mx-auto">
+                <p className="text-[14px] text-text-secondary max-w-md mx-auto">
                   Upload a spreadsheet or enter data manually to see your cash flow analysis.
                 </p>
               </div>
 
-              <div className="pt-md">
+              <div className="pt-sm">
                 <a
                   href="/data"
-                  className="inline-flex items-center gap-2 px-xl py-md bg-gradient-to-r from-orange to-orange-light text-white text-body font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+                  className="inline-flex items-center gap-2 px-xl py-md bg-orange text-white text-[14px] font-semibold rounded-xl hover:bg-orange/90 transition-colors"
                 >
                   <Icon icon="ph:database-bold" className="w-5 h-5" />
                   Connect Your Data
@@ -397,7 +382,6 @@ export default function CashFlowPage() {
                 iconColor="#E65100"
                 value={safeNum(currentSnapshot.operating_activities)}
                 priorValue={safeNum(priorMonthSnapshot?.operating_activities)}
-                delay="200ms"
                 tooltip="Cash generated from your core business operations — sales, services, and day-to-day activities."
               />
               <KpiCard
@@ -406,59 +390,46 @@ export default function CashFlowPage() {
                 iconColor="#7B1FA2"
                 value={safeNum(currentSnapshot.investing_activities)}
                 priorValue={safeNum(priorMonthSnapshot?.investing_activities)}
-                delay="300ms"
                 tooltip="Cash spent on or received from long-term investments like equipment, property, or other assets."
               />
               <KpiCard
                 label="Net Cash Flow"
                 icon="ph:arrows-left-right-bold"
-                iconColor={safeNum(currentSnapshot.net_cash_flow) >= 0 ? "#10b981" : "#ef4444"}
+                iconColor={safeNum(currentSnapshot.net_cash_flow) >= 0 ? "#16A34A" : "#DC2626"}
                 value={safeNum(currentSnapshot.net_cash_flow)}
                 priorValue={safeNum(priorMonthSnapshot?.net_cash_flow)}
                 negative
-                delay="400ms"
                 tooltip="The total change in cash for the period. Positive means more cash came in than went out."
               />
             </div>
 
             {/* Trend Chart */}
-            <div
-              className="bg-surface rounded-xl p-lg border border-border-light shadow-soft animate-fadeIn"
-              style={{ animationDelay: "500ms" }}
-            >
-              <div className="flex items-center justify-between mb-lg">
-                <div>
-                  <h2 className="font-display text-h3 text-text-primary">Net Cash Flow Trend</h2>
-                  <p className="text-small text-text-muted mt-0.5">Monthly net cash flow over time</p>
-                </div>
+            <div className="bg-surface rounded-xl p-lg border border-border-light shadow-card">
+              <div className="mb-md">
+                <h2 className="text-[20px] font-semibold text-text-primary">Net Cash Flow Trend</h2>
+                <p className="text-[13px] text-text-muted mt-0.5">Monthly net cash flow over time</p>
               </div>
 
               {chartData.length > 1 ? (
-                <div className="h-[300px] sm:h-[360px]">
+                <div className="h-[300px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" vertical={false} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#F0F0F2" vertical={false} />
                       <XAxis
                         dataKey="month"
-                        tick={{ fontSize: 12, fill: "#a3a3a3" }}
-                        axisLine={{ stroke: "#e5e5e5" }}
+                        tick={{ fontSize: 12, fill: "#8B8B8B" }}
+                        axisLine={false}
                         tickLine={false}
                       />
                       <YAxis
-                        tick={{ fontSize: 12, fill: "#a3a3a3" }}
+                        tick={{ fontSize: 12, fill: "#8B8B8B" }}
                         axisLine={false}
                         tickLine={false}
                         tickFormatter={(v: number) => formatCompactCurrency(v)}
                         width={60}
                       />
                       <Tooltip content={<CustomTooltip />} />
-                      <ReferenceLine y={0} stroke="#a3a3a3" strokeDasharray="4 4" />
-                      <defs>
-                        <linearGradient id="cashFlowGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#E65100" stopOpacity={1} />
-                          <stop offset="100%" stopColor="#ef4444" stopOpacity={1} />
-                        </linearGradient>
-                      </defs>
+                      <ReferenceLine y={0} stroke="#8B8B8B" strokeDasharray="4 4" />
                       <Line
                         type="monotone"
                         dataKey="net_cash_flow"
@@ -472,7 +443,7 @@ export default function CashFlowPage() {
                 </div>
               ) : (
                 <div className="h-[300px] flex items-center justify-center">
-                  <p className="text-body text-text-muted">
+                  <p className="text-[14px] text-text-muted">
                     Need at least two periods to display a trend
                   </p>
                 </div>
@@ -480,13 +451,10 @@ export default function CashFlowPage() {
             </div>
 
             {/* Summary Table */}
-            <div
-              className="bg-surface rounded-xl border border-border-light shadow-soft overflow-hidden animate-fadeIn"
-              style={{ animationDelay: "600ms" }}
-            >
-              <div className="px-lg py-md border-b border-border-light">
-                <h2 className="font-display text-h3 text-text-primary">Cash Flow Summary</h2>
-                <p className="text-small text-text-muted mt-0.5">
+            <div className="bg-surface rounded-xl border border-border-light shadow-card overflow-hidden">
+              <div className="px-lg py-md border-b border-border">
+                <h2 className="text-[20px] font-semibold text-text-primary">Cash Flow Summary</h2>
+                <p className="text-[13px] text-text-muted mt-0.5">
                   {currentSnapshot ? formatPeriodLabel(currentSnapshot.period_date) : ""}
                 </p>
               </div>
@@ -495,22 +463,22 @@ export default function CashFlowPage() {
                 <table className="w-full min-w-[640px]">
                   <thead>
                     <tr className="border-b border-border-light">
-                      <th className="text-left px-lg py-3 text-small font-semibold tracking-wider uppercase text-text-muted">
+                      <th className="text-left px-lg py-2.5 text-[12px] font-semibold tracking-wider uppercase text-text-muted">
                         Category
                       </th>
-                      <th className="text-right px-lg py-3 text-small font-semibold tracking-wider uppercase text-text-muted">
+                      <th className="text-right px-lg py-2.5 text-[12px] font-semibold tracking-wider uppercase text-text-muted">
                         Current
                       </th>
-                      <th className="text-right px-lg py-3 text-small font-semibold tracking-wider uppercase text-text-muted">
+                      <th className="text-right px-lg py-2.5 text-[12px] font-semibold tracking-wider uppercase text-text-muted">
                         Prior Year
                       </th>
-                      <th className="text-right px-lg py-3 text-small font-semibold tracking-wider uppercase text-text-muted">
+                      <th className="text-right px-lg py-2.5 text-[12px] font-semibold tracking-wider uppercase text-text-muted">
                         Var
                       </th>
-                      <th className="text-right px-lg py-3 text-small font-semibold tracking-wider uppercase text-text-muted">
+                      <th className="text-right px-lg py-2.5 text-[12px] font-semibold tracking-wider uppercase text-text-muted">
                         Prior Month
                       </th>
-                      <th className="text-right px-lg py-3 text-small font-semibold tracking-wider uppercase text-text-muted">
+                      <th className="text-right px-lg py-2.5 text-[12px] font-semibold tracking-wider uppercase text-text-muted">
                         Var
                       </th>
                     </tr>
@@ -519,12 +487,12 @@ export default function CashFlowPage() {
                     {summaryRows.map((row) => (
                       <tr
                         key={row.label}
-                        className={`border-b border-border-light last:border-b-0 hover:bg-background/50 transition-colors ${
-                          row.bold ? "bg-background/30" : ""
+                        className={`border-b border-border-light last:border-b-0 hover:bg-surface-inset/50 transition-colors ${
+                          row.bold ? "bg-surface-inset/30" : ""
                         }`}
                       >
                         <td
-                          className={`px-lg py-3.5 text-body ${
+                          className={`px-lg py-3 text-[14px] ${
                             row.bold
                               ? "font-semibold text-text-primary"
                               : "text-text-secondary"
@@ -536,32 +504,32 @@ export default function CashFlowPage() {
                           </span>
                         </td>
                         <td
-                          className={`text-right px-lg py-3.5 tabular-nums ${
+                          className={`text-right px-lg py-3 tabular-nums text-[14px] ${
                             row.bold
-                              ? "font-display font-semibold text-text-primary"
-                              : "font-body text-body text-text-primary"
+                              ? "font-semibold text-text-primary"
+                              : "text-text-primary"
                           } ${row.bold && row.current < 0 ? "text-error" : ""}`}
                         >
                           {formatCurrency(row.current)}
                         </td>
-                        <td className="text-right px-lg py-3.5 font-body text-body text-text-secondary tabular-nums">
+                        <td className="text-right px-lg py-3 text-[14px] text-text-secondary tabular-nums">
                           {priorYearSnapshot ? formatCurrency(row.priorYear) : "--"}
                         </td>
-                        <td className="text-right px-lg py-3.5">
+                        <td className="text-right px-lg py-3">
                           {priorYearSnapshot ? (
                             <Variance current={row.current} prior={row.priorYear} />
                           ) : (
-                            <span className="text-text-muted text-small">--</span>
+                            <span className="text-text-muted text-[12px]">--</span>
                           )}
                         </td>
-                        <td className="text-right px-lg py-3.5 font-body text-body text-text-secondary tabular-nums">
+                        <td className="text-right px-lg py-3 text-[14px] text-text-secondary tabular-nums">
                           {priorMonthSnapshot ? formatCurrency(row.priorMonth) : "--"}
                         </td>
-                        <td className="text-right px-lg py-3.5">
+                        <td className="text-right px-lg py-3">
                           {priorMonthSnapshot ? (
                             <Variance current={row.current} prior={row.priorMonth} />
                           ) : (
-                            <span className="text-text-muted text-small">--</span>
+                            <span className="text-text-muted text-[12px]">--</span>
                           )}
                         </td>
                       </tr>
@@ -573,23 +541,6 @@ export default function CashFlowPage() {
           </>
         )}
       </div>
-
-      <style jsx>{`
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(8px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        .animate-fadeIn {
-          animation: fadeIn 0.6s ease-out forwards;
-          opacity: 0;
-        }
-      `}</style>
     </AppLayout>
   );
 }

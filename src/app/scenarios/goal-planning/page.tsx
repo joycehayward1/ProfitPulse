@@ -244,157 +244,148 @@ export default function GoalPlanningPage() {
 
   return (
     <AppLayout>
-      <div className="min-h-screen bg-background pb-16">
+      <div className="min-h-screen bg-[#F8F8F8] pb-16">
         {/* Header */}
-        <div className="bg-gradient-to-br from-[#FFF8F5] to-[#FFE8DC] border-b border-orange/10">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-            <button
-              onClick={() => router.push('/scenarios')}
-              className="group flex items-center gap-2 text-text-secondary hover:text-orange transition-colors mb-6"
-            >
-              <ArrowLeft className="w-5 h-5 transition-transform group-hover:-translate-x-1" />
-              <span className="font-body text-sm">Back to Scenarios</span>
-            </button>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+          <button
+            onClick={() => router.push('/scenarios')}
+            className="flex items-center gap-2 text-[#8B8B8B] hover:text-[#111111] transition-colors mb-6"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span className="text-[13px]">Back to Scenarios</span>
+          </button>
 
-            <div className="flex items-start gap-4">
-              <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-orange/10 flex items-center justify-center">
-                <Flag className="w-6 h-6 text-orange" />
-              </div>
-              <div>
-                <h1 className="text-3xl sm:text-4xl font-display text-text-primary mb-2">
-                  Goal Planning
-                </h1>
-                <p className="text-text-secondary font-body">
-                  Plan your revenue targets and monthly goals to hit your annual number.
-                </p>
-              </div>
-            </div>
-          </div>
+          <h1 className="text-[28px] font-bold text-[#111111] mb-1">
+            Goal Planning
+          </h1>
+          <p className="text-[14px] text-[#4B4B4B]">
+            Plan your revenue targets and monthly goals to hit your annual number.
+          </p>
         </div>
 
         {/* Main Content */}
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 sm:mt-12">
-          <div className="grid lg:grid-cols-2 gap-8">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 space-y-8">
+          <div className="grid lg:grid-cols-2 gap-6">
             {/* Input Form */}
-            <div className="bg-white rounded-2xl border border-gray-100 p-6 sm:p-8 shadow-sm">
-              <h2 className="text-xl font-display text-text-primary mb-6">
+            <div className="bg-white rounded-xl border border-[#F0F0F2] shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-6">
+              <h2 className="text-[16px] font-semibold text-[#111111] mb-4">
                 Your Goal
               </h2>
 
-              <div className="space-y-6">
+              <div className="space-y-5">
                 {/* Annual Revenue Goal */}
                 <div>
-                  <label className="block text-sm font-body font-medium text-text-primary mb-2">
+                  <label className="block text-[13px] font-medium text-[#111111] mb-1.5">
                     Annual revenue goal
                   </label>
                   <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted font-display text-lg">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8B8B8B] text-sm">
                       $
                     </span>
                     <input
                       type="number"
                       value={annualGoal}
                       onChange={(e) => setAnnualGoal(e.target.value)}
-                      className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg font-body text-text-primary focus:outline-none focus:ring-2 focus:ring-orange focus:border-transparent transition-all"
+                      className="w-full h-10 pl-8 pr-3 rounded-lg border border-[#E4E4E7] text-[14px] text-[#111111] focus:outline-none focus:border-[#E65100] focus:ring-2 focus:ring-[#E65100]/15 transition-all"
                       placeholder="500,000"
                     />
                   </div>
-                  <p className="text-xs text-text-muted font-body mt-1">
+                  <p className="text-[12px] text-[#8B8B8B] mt-1">
                     Where you want to be by fiscal year-end
                   </p>
                 </div>
 
                 {/* Current Monthly Revenue */}
                 <div>
-                  <label className="block text-sm font-body font-medium text-text-primary mb-2">
+                  <label className="block text-[13px] font-medium text-[#111111] mb-1.5">
                     Current monthly revenue
                   </label>
                   <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted font-display text-lg">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8B8B8B] text-sm">
                       $
                     </span>
                     <input
                       type="number"
                       value={currentMonthly}
                       onChange={(e) => setCurrentMonthly(e.target.value)}
-                      className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg font-body text-text-primary focus:outline-none focus:ring-2 focus:ring-orange focus:border-transparent transition-all"
+                      className="w-full h-10 pl-8 pr-3 rounded-lg border border-[#E4E4E7] text-[14px] text-[#111111] focus:outline-none focus:border-[#E65100] focus:ring-2 focus:ring-[#E65100]/15 transition-all"
                       placeholder="35,000"
                     />
                   </div>
-                  <p className="text-xs text-text-muted font-body mt-1">
+                  <p className="text-[12px] text-[#8B8B8B] mt-1">
                     What you&apos;re bringing in each month now
                   </p>
                 </div>
 
                 {/* Current Monthly Expenses */}
                 <div>
-                  <label className="block text-sm font-body font-medium text-text-primary mb-2">
+                  <label className="block text-[13px] font-medium text-[#111111] mb-1.5">
                     Current monthly expenses
                   </label>
                   <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted font-display text-lg">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8B8B8B] text-sm">
                       $
                     </span>
                     <input
                       type="number"
                       value={currentMonthlyExpenses}
                       onChange={(e) => setCurrentMonthlyExpenses(e.target.value)}
-                      className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg font-body text-text-primary focus:outline-none focus:ring-2 focus:ring-orange focus:border-transparent transition-all"
+                      className="w-full h-10 pl-8 pr-3 rounded-lg border border-[#E4E4E7] text-[14px] text-[#111111] focus:outline-none focus:border-[#E65100] focus:ring-2 focus:ring-[#E65100]/15 transition-all"
                       placeholder="20,000"
                     />
                   </div>
-                  <p className="text-xs text-text-muted font-body mt-1">
+                  <p className="text-[12px] text-[#8B8B8B] mt-1">
                     Your total monthly operating costs
                   </p>
                 </div>
 
                 {/* YTD Revenue */}
                 <div>
-                  <label className="block text-sm font-body font-medium text-text-primary mb-2">
+                  <label className="block text-[13px] font-medium text-[#111111] mb-1.5">
                     Year-to-date revenue
                   </label>
                   <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted font-display text-lg">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8B8B8B] text-sm">
                       $
                     </span>
                     <input
                       type="number"
                       value={ytdRevenue}
                       onChange={(e) => setYtdRevenue(e.target.value)}
-                      className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg font-body text-text-primary focus:outline-none focus:ring-2 focus:ring-orange focus:border-transparent transition-all"
+                      className="w-full h-10 pl-8 pr-3 rounded-lg border border-[#E4E4E7] text-[14px] text-[#111111] focus:outline-none focus:border-[#E65100] focus:ring-2 focus:ring-[#E65100]/15 transition-all"
                       placeholder="70,000"
                     />
                   </div>
-                  <p className="text-xs text-text-muted font-body mt-1">
+                  <p className="text-[12px] text-[#8B8B8B] mt-1">
                     Total revenue earned so far this fiscal year
                   </p>
                 </div>
 
                 {/* YTD Expenses */}
                 <div>
-                  <label className="block text-sm font-body font-medium text-text-primary mb-2">
+                  <label className="block text-[13px] font-medium text-[#111111] mb-1.5">
                     Year-to-date expenses
                   </label>
                   <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted font-display text-lg">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8B8B8B] text-sm">
                       $
                     </span>
                     <input
                       type="number"
                       value={ytdExpenses}
                       onChange={(e) => setYtdExpenses(e.target.value)}
-                      className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg font-body text-text-primary focus:outline-none focus:ring-2 focus:ring-orange focus:border-transparent transition-all"
+                      className="w-full h-10 pl-8 pr-3 rounded-lg border border-[#E4E4E7] text-[14px] text-[#111111] focus:outline-none focus:border-[#E65100] focus:ring-2 focus:ring-[#E65100]/15 transition-all"
                       placeholder="40,000"
                     />
                   </div>
-                  <p className="text-xs text-text-muted font-body mt-1">
+                  <p className="text-[12px] text-[#8B8B8B] mt-1">
                     Total expenses incurred so far this fiscal year
                   </p>
                 </div>
 
                 {/* Months Remaining in Fiscal Year */}
                 <div>
-                  <label className="block text-sm font-body font-medium text-text-primary mb-2">
+                  <label className="block text-[13px] font-medium text-[#111111] mb-1.5">
                     Months remaining in fiscal year
                   </label>
                   <input
@@ -403,10 +394,10 @@ export default function GoalPlanningPage() {
                     max="12"
                     value={monthsRemaining}
                     onChange={(e) => setMonthsRemaining(parseInt(e.target.value) || 0)}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg font-body text-text-primary focus:outline-none focus:ring-2 focus:ring-orange focus:border-transparent transition-all"
+                    className="w-full h-10 px-3 rounded-lg border border-[#E4E4E7] text-[14px] text-[#111111] focus:outline-none focus:border-[#E65100] focus:ring-2 focus:ring-[#E65100]/15 transition-all"
                     placeholder="6"
                   />
-                  <p className="text-xs text-text-muted font-body mt-1">
+                  <p className="text-[12px] text-[#8B8B8B] mt-1">
                     Auto-calculated to calendar year-end (adjust for your fiscal year)
                   </p>
                 </div>
@@ -427,113 +418,103 @@ export default function GoalPlanningPage() {
               {result ? (
                 <div className="space-y-6">
                   {/* Result Card */}
-                  <div className="bg-white rounded-2xl border border-gray-100 p-6 sm:p-8 shadow-sm">
+                  <div className="bg-white rounded-xl border border-[#F0F0F2] shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-6">
                     <div className="flex items-start justify-between mb-6">
-                      <h2 className="text-xl font-display text-text-primary">
+                      <h2 className="text-[16px] font-semibold text-[#111111]">
                         Your Path Forward
                       </h2>
                       <StatusBadge status={result.status} />
                     </div>
 
                     {/* Main Result */}
-                    <div className="bg-gradient-to-br from-orange/5 to-orange/10 rounded-xl p-6 mb-6">
-                      <p className="text-sm font-body text-text-secondary mb-3">
-                        To hit <span className="font-semibold text-text-primary">{formatCurrency(result.annualGoal)}</span> by year-end:
+                    <div className="bg-[#FFF7F2] rounded-xl p-6 mb-6">
+                      <p className="text-[13px] text-[#4B4B4B] mb-2">
+                        To hit <span className="font-semibold text-[#111111]">{formatCurrency(result.annualGoal)}</span> by year-end:
                       </p>
-                      <div className="flex items-baseline gap-2 mb-2">
-                        <span className="text-4xl font-display text-orange">
+                      <div className="flex items-baseline gap-2 mb-1">
+                        <span className="text-[24px] font-semibold text-[#E65100] tabular-nums">
                           {formatCurrency(result.requiredMonthly)}
                         </span>
-                        <span className="text-lg font-body text-text-secondary">
+                        <span className="text-[14px] text-[#4B4B4B]">
                           /month
                         </span>
                       </div>
-                      <p className="text-sm font-body text-text-secondary">
+                      <p className="text-[13px] text-[#4B4B4B]">
                         for the next <span className="font-semibold">{result.monthsRemaining} months</span>
                       </p>
                     </div>
 
                     {/* Progress Visualization */}
                     <div className="mb-6">
-                      <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-sm font-body font-medium text-text-primary">
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="text-[13px] font-medium text-[#111111]">
                           Year-to-date progress
                         </h3>
-                        <span className="text-sm font-display text-text-primary">
+                        <span className="text-[13px] font-semibold text-[#111111] tabular-nums">
                           {Math.round(result.progressPercent)}%
                         </span>
                       </div>
 
                       {/* Progress Bar */}
-                      <div className="relative h-8 bg-gray-100 rounded-full overflow-hidden mb-4">
+                      <div className="h-3 bg-[#F4F4F5] rounded-full overflow-hidden mb-4">
                         <div
-                          className="absolute inset-y-0 left-0 bg-gradient-to-r from-orange to-orange/80 transition-all duration-700 flex items-center justify-end pr-3"
+                          className="h-full bg-[#E65100] rounded-full"
                           style={{ width: `${Math.min(result.progressPercent, 100)}%` }}
-                        >
-                          {result.progressPercent > 10 && (
-                            <span className="text-xs font-body text-white font-medium">
-                              {Math.round(result.progressPercent)}%
-                            </span>
-                          )}
-                        </div>
+                        />
                       </div>
 
                       {/* Financial Snapshot */}
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-background rounded-lg p-3">
-                          <p className="text-xs font-body text-text-muted mb-1">Monthly revenue</p>
-                          <p className="text-lg font-display text-text-primary">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-[#F4F4F5] rounded-lg p-3">
+                          <p className="text-[12px] text-[#8B8B8B] mb-0.5">Monthly revenue</p>
+                          <p className="text-[16px] font-semibold text-[#111111] tabular-nums">
                             {formatCurrency(result.currentMonthlyRevenue)}
-                            <span className="text-xs font-body text-text-secondary">/mo</span>
                           </p>
                         </div>
-                        <div className="bg-background rounded-lg p-3">
-                          <p className="text-xs font-body text-text-muted mb-1">Monthly expenses</p>
-                          <p className="text-lg font-display text-text-primary">
+                        <div className="bg-[#F4F4F5] rounded-lg p-3">
+                          <p className="text-[12px] text-[#8B8B8B] mb-0.5">Monthly expenses</p>
+                          <p className="text-[16px] font-semibold text-[#111111] tabular-nums">
                             {formatCurrency(result.currentMonthlyExpenses)}
-                            <span className="text-xs font-body text-text-secondary">/mo</span>
                           </p>
                         </div>
-                        <div className="bg-background rounded-lg p-3">
-                          <p className="text-xs font-body text-text-muted mb-1">YTD revenue</p>
-                          <p className="text-lg font-display text-text-primary">
+                        <div className="bg-[#F4F4F5] rounded-lg p-3">
+                          <p className="text-[12px] text-[#8B8B8B] mb-0.5">YTD revenue</p>
+                          <p className="text-[16px] font-semibold text-[#111111] tabular-nums">
                             {formatCurrency(result.ytdRevenue)}
                           </p>
                         </div>
-                        <div className="bg-background rounded-lg p-3">
-                          <p className="text-xs font-body text-text-muted mb-1">YTD expenses</p>
-                          <p className="text-lg font-display text-text-primary">
+                        <div className="bg-[#F4F4F5] rounded-lg p-3">
+                          <p className="text-[12px] text-[#8B8B8B] mb-0.5">YTD expenses</p>
+                          <p className="text-[16px] font-semibold text-[#111111] tabular-nums">
                             {formatCurrency(result.ytdExpenses)}
                           </p>
                         </div>
-                        <div className="bg-background rounded-lg p-3">
-                          <p className="text-xs font-body text-text-muted mb-1">Monthly profit</p>
-                          <p className={`text-lg font-display ${result.currentMonthlyProfit >= 0 ? 'text-success' : 'text-critical'}`}>
+                        <div className="bg-[#F4F4F5] rounded-lg p-3">
+                          <p className="text-[12px] text-[#8B8B8B] mb-0.5">Monthly profit</p>
+                          <p className={`text-[16px] font-semibold tabular-nums ${result.currentMonthlyProfit >= 0 ? 'text-[#16A34A]' : 'text-[#DC2626]'}`}>
                             {formatCurrency(result.currentMonthlyProfit)}
-                            <span className="text-xs font-body text-text-secondary">/mo</span>
                           </p>
                         </div>
-                        <div className="bg-background rounded-lg p-3">
-                          <p className="text-xs font-body text-text-muted mb-1">Need to hit</p>
-                          <p className="text-lg font-display text-orange">
+                        <div className="bg-[#F4F4F5] rounded-lg p-3">
+                          <p className="text-[12px] text-[#8B8B8B] mb-0.5">Need to hit</p>
+                          <p className="text-[16px] font-semibold text-[#E65100] tabular-nums">
                             {formatCurrency(result.requiredMonthly)}
-                            <span className="text-xs font-body text-text-secondary">/mo</span>
                           </p>
                         </div>
                       </div>
 
                       {/* Growth indicator */}
                       {result.requiredMonthly > result.currentMonthlyRevenue && (
-                        <div className="mt-4 p-4 bg-gradient-to-r from-orange/10 to-transparent rounded-lg border-l-4 border-orange">
+                        <div className="mt-4 p-3 bg-[#FFF7F2] rounded-lg border-l-3 border-[#E65100]">
                           <div className="flex items-center gap-2 mb-1">
-                            <TrendingUp className="w-4 h-4 text-orange" />
-                            <p className="text-sm font-body font-medium text-text-primary">
+                            <TrendingUp className="w-4 h-4 text-[#E65100]" />
+                            <p className="text-[13px] font-medium text-[#111111]">
                               Growth needed
                             </p>
                           </div>
-                          <p className="text-sm font-body text-text-secondary">
+                          <p className="text-[13px] text-[#4B4B4B]">
                             You need to grow by{' '}
-                            <span className="font-semibold text-orange">
+                            <span className="font-semibold text-[#E65100]">
                               {formatCurrency(result.requiredMonthly - result.currentMonthlyRevenue)}/month
                             </span>
                             {' '}({Math.round(((result.requiredMonthly - result.currentMonthlyRevenue) / result.currentMonthlyRevenue) * 100)}% increase)
@@ -542,30 +523,30 @@ export default function GoalPlanningPage() {
                       )}
 
                       {result.requiredMonthly <= result.currentMonthlyRevenue && (
-                        <div className="mt-4 p-4 bg-gradient-to-r from-success/10 to-transparent rounded-lg border-l-4 border-success">
-                          <p className="text-sm font-body font-medium text-success">
-                            🎉 Great news! You&apos;re on track to exceed your goal at your current pace.
+                        <div className="mt-4 p-3 bg-[#F0FDF4] rounded-lg border-l-3 border-[#16A34A]">
+                          <p className="text-[13px] font-medium text-[#16A34A]">
+                            Great news! You&apos;re on track to exceed your goal at your current pace.
                           </p>
                         </div>
                       )}
                     </div>
 
                     {/* AI Explanation */}
-                    <div className="border-t border-gray-100 pt-6">
-                      <h3 className="text-sm font-body font-medium text-text-primary mb-3">
+                    <div className="border-t border-[#F0F0F2] pt-5">
+                      <h3 className="text-[13px] font-medium text-[#111111] mb-2">
                         Is this achievable?
                       </h3>
                       {aiLoading ? (
                         <div className="space-y-2 animate-pulse">
-                          <div className="h-4 bg-gray-200 rounded w-full" />
-                          <div className="h-4 bg-gray-200 rounded w-5/6" />
+                          <div className="h-3.5 bg-[#F4F4F5] rounded w-full" />
+                          <div className="h-3.5 bg-[#F4F4F5] rounded w-5/6" />
                         </div>
                       ) : result.explanation ? (
-                        <p className="text-sm font-body text-text-secondary leading-relaxed">
+                        <p className="text-[13px] text-[#4B4B4B] leading-relaxed">
                           {result.explanation}
                         </p>
                       ) : (
-                        <p className="text-sm font-body text-text-muted italic">
+                        <p className="text-[13px] text-[#8B8B8B] italic">
                           AI insights temporarily unavailable
                         </p>
                       )}
@@ -592,14 +573,14 @@ export default function GoalPlanningPage() {
                   </div>
                 </div>
               ) : (
-                <div className="bg-white rounded-2xl border-2 border-dashed border-gray-200 p-12 text-center">
-                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-background mb-4">
-                    <Flag className="w-8 h-8 text-text-muted" />
+                <div className="bg-white rounded-xl border border-[#F0F0F2] shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-10 text-center">
+                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-lg bg-[#F4F4F5] mb-4">
+                    <Flag className="w-6 h-6 text-[#8B8B8B]" />
                   </div>
-                  <h3 className="text-lg font-display text-text-primary mb-2">
+                  <h3 className="text-[16px] font-semibold text-[#111111] mb-1">
                     Ready to plan
                   </h3>
-                  <p className="text-sm text-text-secondary font-body">
+                  <p className="text-[13px] text-[#4B4B4B]">
                     Enter your annual goal on the left to see your monthly targets
                   </p>
                 </div>

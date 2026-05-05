@@ -252,89 +252,80 @@ export default function RunwayPage() {
 
   return (
     <AppLayout>
-      <div className="min-h-screen bg-background pb-16">
+      <div className="min-h-screen bg-[#F8F8F8] pb-16">
         {/* Header */}
-        <div className="bg-gradient-to-br from-[#FFF8F5] to-[#FFE8DC] border-b border-orange/10">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-            <button
-              onClick={() => router.push('/scenarios')}
-              className="group flex items-center gap-2 text-text-secondary hover:text-orange transition-colors mb-6"
-            >
-              <ArrowLeft className="w-5 h-5 transition-transform group-hover:-translate-x-1" />
-              <span className="font-body text-sm">Back to Scenarios</span>
-            </button>
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+          <button
+            onClick={() => router.push('/scenarios')}
+            className="flex items-center gap-2 text-[#8B8B8B] hover:text-[#111111] transition-colors mb-6"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span className="text-[13px]">Back to Scenarios</span>
+          </button>
 
-            <div className="flex items-start gap-4">
-              <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-orange/10 flex items-center justify-center">
-                <Hourglass className="w-6 h-6 text-orange" />
-              </div>
-              <div>
-                <h1 className="text-3xl sm:text-4xl font-display text-text-primary mb-2">
-                  Cash Runway & Recovery
-                </h1>
-                <p className="text-text-secondary font-body">
-                  Check how long your cash will last and plan recovery from missed targets.
-                </p>
-              </div>
-            </div>
-          </div>
+          <h1 className="text-[28px] font-bold text-[#111111] mb-1">
+            Cash Runway & Recovery
+          </h1>
+          <p className="text-[14px] text-[#4B4B4B]">
+            Check how long your cash will last and plan recovery from missed targets.
+          </p>
         </div>
 
         {/* Main Content */}
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 sm:mt-12 space-y-12">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 space-y-8">
           {/* SECTION 1: Cash Runway */}
           <section>
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0">
-                <Hourglass className="w-5 h-5 text-accent" />
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-lg bg-[#E65100]/10 flex items-center justify-center flex-shrink-0">
+                <Hourglass className="w-5 h-5 text-[#E65100]" />
               </div>
               <div>
-                <h2 className="text-2xl font-display text-text-primary">Cash Runway</h2>
-                <p className="text-sm text-text-secondary font-body">
+                <h2 className="text-[20px] font-semibold text-[#111111]">Cash Runway</h2>
+                <p className="text-[13px] text-[#4B4B4B]">
                   How long can you operate at current spending?
                 </p>
               </div>
             </div>
 
-            <div className="grid lg:grid-cols-2 gap-8">
+            <div className="grid lg:grid-cols-2 gap-6">
               {/* Runway Input */}
-              <div className="bg-white rounded-2xl border border-gray-100 p-6 sm:p-8 shadow-sm">
-                <div className="space-y-6">
+              <div className="bg-white rounded-xl border border-[#F0F0F2] shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-6">
+                <div className="space-y-5">
                   <div>
-                    <label className="block text-sm font-body font-medium text-text-primary mb-2">
+                    <label className="block text-[13px] font-medium text-[#111111] mb-1.5">
                       Current cash on hand
                     </label>
                     <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted font-display text-lg">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8B8B8B] text-sm">
                         $
                       </span>
                       <input
                         type="number"
                         value={currentCash}
                         onChange={(e) => setCurrentCash(e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg font-body text-text-primary focus:outline-none focus:ring-2 focus:ring-orange focus:border-transparent transition-all"
+                        className="w-full h-10 pl-8 pr-3 rounded-lg border border-[#E4E4E7] text-[14px] text-[#111111] focus:outline-none focus:border-[#E65100] focus:ring-2 focus:ring-[#E65100]/15 transition-all"
                         placeholder="50,000"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-body font-medium text-text-primary mb-2">
+                    <label className="block text-[13px] font-medium text-[#111111] mb-1.5">
                       Monthly burn rate
                     </label>
                     <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted font-display text-lg">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8B8B8B] text-sm">
                         $
                       </span>
                       <input
                         type="number"
                         value={monthlyBurn}
                         onChange={(e) => setMonthlyBurn(e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg font-body text-text-primary focus:outline-none focus:ring-2 focus:ring-orange focus:border-transparent transition-all"
+                        className="w-full h-10 pl-8 pr-3 rounded-lg border border-[#E4E4E7] text-[14px] text-[#111111] focus:outline-none focus:border-[#E65100] focus:ring-2 focus:ring-[#E65100]/15 transition-all"
                         placeholder="8,000"
                       />
                     </div>
-                    <p className="text-xs text-text-muted font-body mt-1">
+                    <p className="text-[12px] text-[#8B8B8B] mt-1">
                       Your total monthly expenses
                     </p>
                   </div>
@@ -348,79 +339,65 @@ export default function RunwayPage() {
               {/* Runway Result */}
               <div>
                 {runwayResult ? (
-                  <div className="bg-white rounded-2xl border border-gray-100 p-6 sm:p-8 shadow-sm">
-                    <div className="flex items-start justify-between mb-6">
-                      <h3 className="text-lg font-display text-text-primary">Your Runway</h3>
+                  <div className="bg-white rounded-xl border border-[#F0F0F2] shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-6">
+                    <div className="flex items-start justify-between mb-5">
+                      <h3 className="text-[16px] font-semibold text-[#111111]">Your Runway</h3>
                       <StatusBadge status={runwayResult.status} />
                     </div>
 
                     {/* Main Result */}
-                    <div className="bg-gradient-to-br from-accent/5 to-accent/10 rounded-xl p-6 mb-6">
-                      <p className="text-sm font-body text-text-secondary mb-2">
+                    <div className="bg-[#FFF7F2] rounded-xl p-5 mb-5">
+                      <p className="text-[13px] text-[#4B4B4B] mb-1">
                         You can operate for
                       </p>
                       <div className="flex items-baseline gap-2">
-                        <span className="text-5xl font-display text-accent">
+                        <span className="text-[24px] font-semibold text-[#E65100] tabular-nums">
                           {runwayResult.runwayMonths.toFixed(1)}
                         </span>
-                        <span className="text-lg font-body text-text-secondary">
+                        <span className="text-[14px] text-[#4B4B4B]">
                           months
                         </span>
                       </div>
-                      <p className="text-sm font-body text-text-secondary mt-2">
+                      <p className="text-[13px] text-[#4B4B4B] mt-1">
                         at current spending levels
                       </p>
                     </div>
 
                     {/* Timeline Visualization */}
-                    <div className="mb-6">
-                      <h4 className="text-sm font-body font-medium text-text-primary mb-4">
+                    <div className="mb-5">
+                      <h4 className="text-[13px] font-medium text-[#111111] mb-3">
                         Timeline
                       </h4>
-                      <div className="relative h-12 bg-gray-100 rounded-lg overflow-hidden">
+                      <div className="relative h-3 bg-[#F4F4F5] rounded-full overflow-hidden">
                         <div
-                          className="absolute inset-y-0 left-0 bg-gradient-to-r from-accent to-accent/80 transition-all duration-700"
+                          className="absolute inset-y-0 left-0 bg-[#E65100] rounded-full"
                           style={{
                             width: `${Math.min((runwayResult.runwayMonths / 12) * 100, 100)}%`
                           }}
                         />
-                        {/* Milestone markers */}
-                        <div className="absolute inset-0 flex items-center">
-                          {[3, 6, 9, 12].map((month) => (
-                            <div
-                              key={month}
-                              className="absolute h-full border-l-2 border-white/30"
-                              style={{ left: `${(month / 12) * 100}%` }}
-                            >
-                              <span className="absolute top-1/2 -translate-y-1/2 left-2 text-xs font-body text-white/80">
-                                {month}mo
-                              </span>
-                            </div>
-                          ))}
-                        </div>
                       </div>
-                      <div className="flex items-center justify-between mt-2 text-xs font-body text-text-muted">
+                      <div className="flex items-center justify-between mt-1.5 text-[12px] text-[#8B8B8B]">
                         <span>Today</span>
                         <span>12 months</span>
                       </div>
                     </div>
 
                     {/* AI Explanation */}
-                    <div className="border-t border-gray-100 pt-6 mb-6">
-                      <h4 className="text-sm font-body font-medium text-text-primary mb-3">
+                    <div className="border-t border-[#F0F0F2] pt-5 mb-5">
+                      <h4 className="text-[13px] font-medium text-[#111111] mb-2">
                         What this means
                       </h4>
                       {runwayAiLoading ? (
                         <div className="space-y-2 animate-pulse">
-                          <div className="h-4 bg-gray-200 rounded w-full" />
-                          <div className="h-4 bg-gray-200 rounded w-5/6" />
+                          <div className="h-3.5 bg-[#F4F4F5] rounded w-full" />
+                          <div className="h-3.5 bg-[#F4F4F5] rounded w-5/6" />
                         </div>
                       ) : runwayResult.explanation ? (
-                        <p className="text-sm font-body text-text-secondary leading-relaxed">
+                        <p className="text-[13px] text-[#4B4B4B] leading-relaxed">
                           {runwayResult.explanation}
                         </p>
                       ) : (
-                        <p className="text-sm font-body text-text-muted italic">
+                        <p className="text-[13px] text-[#8B8B8B] italic">
                           AI insights temporarily unavailable
                         </p>
                       )}
@@ -436,9 +413,11 @@ export default function RunwayPage() {
                     </Button>
                   </div>
                 ) : (
-                  <div className="bg-white rounded-2xl border-2 border-dashed border-gray-200 p-12 text-center">
-                    <Hourglass className="w-12 h-12 text-text-muted mx-auto mb-4" />
-                    <p className="text-sm text-text-secondary font-body">
+                  <div className="bg-white rounded-xl border border-[#F0F0F2] shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-10 text-center">
+                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-lg bg-[#F4F4F5] mb-4">
+                      <Hourglass className="w-6 h-6 text-[#8B8B8B]" />
+                    </div>
+                    <p className="text-[13px] text-[#4B4B4B]">
                       Enter your numbers to calculate runway
                     </p>
                   </div>
@@ -450,10 +429,10 @@ export default function RunwayPage() {
           {/* Divider */}
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200" />
+              <div className="w-full border-t border-[#E4E4E7]" />
             </div>
             <div className="relative flex justify-center">
-              <span className="bg-background px-4 text-sm font-body text-text-muted">
+              <span className="bg-[#F8F8F8] px-4 text-[13px] text-[#8B8B8B]">
                 Recovery Planning
               </span>
             </div>
@@ -461,45 +440,45 @@ export default function RunwayPage() {
 
           {/* SECTION 2: Shortfall Recovery */}
           <section>
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-lg bg-orange/10 flex items-center justify-center flex-shrink-0">
-                <TrendingUp className="w-5 h-5 text-orange" />
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-lg bg-[#E65100]/10 flex items-center justify-center flex-shrink-0">
+                <TrendingUp className="w-5 h-5 text-[#E65100]" />
               </div>
               <div>
-                <h2 className="text-2xl font-display text-text-primary">Shortfall Recovery</h2>
-                <p className="text-sm text-text-secondary font-body">
+                <h2 className="text-[20px] font-semibold text-[#111111]">Shortfall Recovery</h2>
+                <p className="text-[13px] text-[#4B4B4B]">
                   Plan how to make up for missed revenue targets
                 </p>
               </div>
             </div>
 
-            <div className="grid lg:grid-cols-2 gap-8">
+            <div className="grid lg:grid-cols-2 gap-6">
               {/* Shortfall Input */}
-              <div className="bg-white rounded-2xl border border-gray-100 p-6 sm:p-8 shadow-sm">
-                <div className="space-y-6">
+              <div className="bg-white rounded-xl border border-[#F0F0F2] shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-6">
+                <div className="space-y-5">
                   <div>
-                    <label className="block text-sm font-body font-medium text-text-primary mb-2">
+                    <label className="block text-[13px] font-medium text-[#111111] mb-1.5">
                       Missed target amount
                     </label>
                     <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted font-display text-lg">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8B8B8B] text-sm">
                         $
                       </span>
                       <input
                         type="number"
                         value={missedAmount}
                         onChange={(e) => setMissedAmount(e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg font-body text-text-primary focus:outline-none focus:ring-2 focus:ring-orange focus:border-transparent transition-all"
+                        className="w-full h-10 pl-8 pr-3 rounded-lg border border-[#E4E4E7] text-[14px] text-[#111111] focus:outline-none focus:border-[#E65100] focus:ring-2 focus:ring-[#E65100]/15 transition-all"
                         placeholder="15,000"
                       />
                     </div>
-                    <p className="text-xs text-text-muted font-body mt-1">
+                    <p className="text-[12px] text-[#8B8B8B] mt-1">
                       How much you fell short of your goal
                     </p>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-body font-medium text-text-primary mb-2">
+                    <label className="block text-[13px] font-medium text-[#111111] mb-1.5">
                       Months to recover
                     </label>
                     <input
@@ -508,10 +487,10 @@ export default function RunwayPage() {
                       max="12"
                       value={recoveryMonths}
                       onChange={(e) => setRecoveryMonths(e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-lg font-body text-text-primary focus:outline-none focus:ring-2 focus:ring-orange focus:border-transparent transition-all"
+                      className="w-full h-10 px-3 rounded-lg border border-[#E4E4E7] text-[14px] text-[#111111] focus:outline-none focus:border-[#E65100] focus:ring-2 focus:ring-[#E65100]/15 transition-all"
                       placeholder="3"
                     />
-                    <p className="text-xs text-text-muted font-body mt-1">
+                    <p className="text-[12px] text-[#8B8B8B] mt-1">
                       Time frame to catch up
                     </p>
                   </div>
@@ -525,68 +504,68 @@ export default function RunwayPage() {
               {/* Shortfall Result */}
               <div>
                 {shortfallResult ? (
-                  <div className="bg-white rounded-2xl border border-gray-100 p-6 sm:p-8 shadow-sm">
-                    <div className="flex items-start gap-3 mb-6">
-                      <AlertCircle className="w-5 h-5 text-orange flex-shrink-0 mt-0.5" />
-                      <h3 className="text-lg font-display text-text-primary">Recovery Plan</h3>
+                  <div className="bg-white rounded-xl border border-[#F0F0F2] shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-6">
+                    <div className="flex items-start gap-3 mb-5">
+                      <AlertCircle className="w-5 h-5 text-[#E65100] flex-shrink-0 mt-0.5" />
+                      <h3 className="text-[16px] font-semibold text-[#111111]">Recovery Plan</h3>
                     </div>
 
                     {/* Main Result */}
-                    <div className="bg-gradient-to-br from-orange/5 to-orange/10 rounded-xl p-6 mb-6">
-                      <p className="text-sm font-body text-text-secondary mb-2">
+                    <div className="bg-[#FFF7F2] rounded-xl p-5 mb-5">
+                      <p className="text-[13px] text-[#4B4B4B] mb-1">
                         To make up the shortfall, you need
                       </p>
                       <div className="flex items-baseline gap-2 mb-1">
-                        <span className="text-4xl font-display text-orange">
+                        <span className="text-[24px] font-semibold text-[#E65100] tabular-nums">
                           {formatCurrency(shortfallResult.extraMonthly)}
                         </span>
-                        <span className="text-lg font-body text-text-secondary">
+                        <span className="text-[14px] text-[#4B4B4B]">
                           /month
                         </span>
                       </div>
-                      <p className="text-sm font-body text-text-secondary">
+                      <p className="text-[13px] text-[#4B4B4B]">
                         extra for the next {shortfallResult.recoveryMonths} months
                       </p>
                     </div>
 
                     {/* Recovery Breakdown */}
-                    <div className="space-y-3 mb-6">
-                      <div className="flex items-center justify-between p-4 bg-background rounded-lg">
-                        <span className="text-sm font-body text-text-secondary">Total shortfall</span>
-                        <span className="text-base font-display text-text-primary">
+                    <div className="space-y-2 mb-5">
+                      <div className="flex items-center justify-between p-3 bg-[#F4F4F5] rounded-lg">
+                        <span className="text-[13px] text-[#4B4B4B]">Total shortfall</span>
+                        <span className="text-[14px] font-semibold text-[#111111] tabular-nums">
                           {formatCurrency(shortfallResult.missedAmount)}
                         </span>
                       </div>
-                      <div className="flex items-center justify-between p-4 bg-background rounded-lg">
-                        <span className="text-sm font-body text-text-secondary">Recovery period</span>
-                        <span className="text-base font-display text-text-primary">
+                      <div className="flex items-center justify-between p-3 bg-[#F4F4F5] rounded-lg">
+                        <span className="text-[13px] text-[#4B4B4B]">Recovery period</span>
+                        <span className="text-[14px] font-semibold text-[#111111] tabular-nums">
                           {shortfallResult.recoveryMonths} months
                         </span>
                       </div>
-                      <div className="flex items-center justify-between p-4 bg-gradient-to-r from-orange/10 to-transparent rounded-lg border-l-4 border-orange">
-                        <span className="text-sm font-body font-medium text-text-primary">Extra needed/month</span>
-                        <span className="text-lg font-display text-orange">
+                      <div className="flex items-center justify-between p-3 bg-[#FFF7F2] rounded-lg border-l-3 border-[#E65100]">
+                        <span className="text-[13px] font-medium text-[#111111]">Extra needed/month</span>
+                        <span className="text-[16px] font-semibold text-[#E65100] tabular-nums">
                           {formatCurrency(shortfallResult.extraMonthly)}
                         </span>
                       </div>
                     </div>
 
                     {/* AI Explanation */}
-                    <div className="border-t border-gray-100 pt-6 mb-6">
-                      <h4 className="text-sm font-body font-medium text-text-primary mb-3">
+                    <div className="border-t border-[#F0F0F2] pt-5 mb-5">
+                      <h4 className="text-[13px] font-medium text-[#111111] mb-2">
                         Recovery strategy
                       </h4>
                       {shortfallAiLoading ? (
                         <div className="space-y-2 animate-pulse">
-                          <div className="h-4 bg-gray-200 rounded w-full" />
-                          <div className="h-4 bg-gray-200 rounded w-5/6" />
+                          <div className="h-3.5 bg-[#F4F4F5] rounded w-full" />
+                          <div className="h-3.5 bg-[#F4F4F5] rounded w-5/6" />
                         </div>
                       ) : shortfallResult.explanation ? (
-                        <p className="text-sm font-body text-text-secondary leading-relaxed">
+                        <p className="text-[13px] text-[#4B4B4B] leading-relaxed">
                           {shortfallResult.explanation}
                         </p>
                       ) : (
-                        <p className="text-sm font-body text-text-muted italic">
+                        <p className="text-[13px] text-[#8B8B8B] italic">
                           AI insights temporarily unavailable
                         </p>
                       )}
@@ -602,9 +581,11 @@ export default function RunwayPage() {
                     </Button>
                   </div>
                 ) : (
-                  <div className="bg-white rounded-2xl border-2 border-dashed border-gray-200 p-12 text-center">
-                    <TrendingUp className="w-12 h-12 text-text-muted mx-auto mb-4" />
-                    <p className="text-sm text-text-secondary font-body">
+                  <div className="bg-white rounded-xl border border-[#F0F0F2] shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-10 text-center">
+                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-lg bg-[#F4F4F5] mb-4">
+                      <TrendingUp className="w-6 h-6 text-[#8B8B8B]" />
+                    </div>
+                    <p className="text-[13px] text-[#4B4B4B]">
                       Enter your shortfall details to create a recovery plan
                     </p>
                   </div>

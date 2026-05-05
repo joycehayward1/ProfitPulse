@@ -57,56 +57,53 @@ interface KPICardProps {
   changeLabel: string;
   isHealthy: boolean;
   icon: string;
-  delay: string;
   tooltip?: string;
 }
 
-function KPICard({ label, value, change, changeLabel, isHealthy, icon, delay, tooltip }: KPICardProps) {
+function KPICard({ label, value, change, changeLabel, isHealthy, icon, tooltip }: KPICardProps) {
   const hasChange = change !== null && !isNaN(change);
   const isPositive = hasChange && change >= 0;
 
   return (
-    <div
-      className="group bg-surface rounded-xl p-lg border border-background shadow-sm hover:shadow-xl hover:border-orange/20 transition-all duration-300 animate-fadeIn"
-      style={{ animationDelay: delay }}
-    >
-      <div className="flex items-center justify-between mb-md">
+    <div className="bg-surface rounded-xl p-lg border border-border-light shadow-card hover:shadow-medium transition-shadow">
+      <div className="flex items-center justify-between mb-1">
         <div
-          className="w-12 h-12 rounded-full flex items-center justify-center transition-transform duration-300 group-hover:scale-110"
-          style={{ background: `linear-gradient(135deg, ${isHealthy ? "#10b981" : "#f59e0b"}15, ${isHealthy ? "#10b981" : "#f59e0b"}05)` }}
+          className="w-9 h-9 rounded-lg flex items-center justify-center"
+          style={{ background: isHealthy ? "#16A34A12" : "#E6510012" }}
         >
           <Icon
             icon={icon}
-            className="w-6 h-6"
-            style={{ color: isHealthy ? "#10b981" : "#f59e0b" }}
+            className="w-5 h-5"
+            style={{ color: isHealthy ? "#16A34A" : "#E65100" }}
           />
         </div>
-        <div
-          className={`w-3 h-3 rounded-full ${isHealthy ? "bg-success" : "bg-warning"}`}
-        />
+        {hasChange ? (
+          <span
+            className={`text-[12px] font-medium inline-flex items-center gap-0.5 ${
+              isPositive ? "text-success" : "text-error"
+            }`}
+          >
+            {isPositive ? "▲" : "▼"} {Math.abs(change).toFixed(1)}%
+          </span>
+        ) : (
+          <span className="text-text-muted text-[12px]">—</span>
+        )}
       </div>
 
-      <h3 className="font-body text-[14px] font-medium text-text-secondary mb-sm flex items-center gap-1.5">
+      <h3 className="text-[13px] font-medium text-text-secondary mb-1 flex items-center gap-1.5">
         {label}
         {tooltip && <InfoTooltip text={tooltip} />}
       </h3>
 
-      <p className="font-display text-h1 md:text-[36px] text-text-primary mb-xs tracking-tight tabular-nums">
+      <p className="text-[24px] font-semibold text-text-primary tracking-tight tabular-nums">
         {value}
       </p>
 
-      <div className="flex items-center gap-xs text-small">
-        {hasChange ? (
-          <>
-            <span className={isPositive ? "text-success" : "text-error"}>
-              {isPositive ? "▲" : "▼"} {Math.abs(change).toFixed(1)}%
-            </span>
-            <span className="text-text-muted">{changeLabel}</span>
-          </>
-        ) : (
-          <span className="text-text-muted">—</span>
-        )}
-      </div>
+      {hasChange && (
+        <p className="text-[12px] text-text-muted mt-1">
+          {changeLabel}
+        </p>
+      )}
     </div>
   );
 }
@@ -119,37 +116,34 @@ interface TableRowData {
   tooltip?: string;
 }
 
-function SummaryTable({ rows, delay }: { rows: TableRowData[]; delay: string }) {
+function SummaryTable({ rows }: { rows: TableRowData[] }) {
   return (
-    <div
-      className="bg-surface rounded-xl border border-background shadow-sm overflow-hidden animate-fadeIn"
-      style={{ animationDelay: delay }}
-    >
-      <div className="px-lg py-md border-b border-background">
-        <h3 className="font-display text-h3 font-semibold text-text-primary tracking-tight">
+    <div className="bg-surface rounded-xl border border-border-light shadow-card overflow-hidden">
+      <div className="px-lg py-md border-b border-border">
+        <h3 className="text-[20px] font-semibold text-text-primary">
           Balance Sheet Summary
         </h3>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-background">
-              <th className="text-left px-lg py-sm text-small font-semibold text-text-secondary">
+            <tr className="border-b border-border-light">
+              <th className="text-left px-lg py-2.5 text-[12px] font-semibold uppercase tracking-wider text-text-muted">
                 Account
               </th>
-              <th className="text-right px-lg py-sm text-small font-semibold text-text-secondary">
+              <th className="text-right px-lg py-2.5 text-[12px] font-semibold uppercase tracking-wider text-text-muted">
                 Current Period
               </th>
-              <th className="text-right px-lg py-sm text-small font-semibold text-text-secondary">
+              <th className="text-right px-lg py-2.5 text-[12px] font-semibold uppercase tracking-wider text-text-muted">
                 Prior Year
               </th>
-              <th className="text-right px-lg py-sm text-small font-semibold text-text-secondary">
+              <th className="text-right px-lg py-2.5 text-[12px] font-semibold uppercase tracking-wider text-text-muted">
                 Variance
               </th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((row, _idx) => {
+            {rows.map((row) => {
               const variance =
                 row.current !== null && row.priorYear !== null
                   ? ((row.current - row.priorYear) / Math.abs(row.priorYear || 1)) * 100
@@ -159,12 +153,12 @@ function SummaryTable({ rows, delay }: { rows: TableRowData[]; delay: string }) 
               return (
                 <tr
                   key={row.label}
-                  className={`border-b border-background last:border-b-0 ${
-                    row.isBold ? "bg-background/50" : ""
+                  className={`border-b border-border-light last:border-b-0 hover:bg-surface-inset/50 transition-colors ${
+                    row.isBold ? "bg-surface-inset/30" : ""
                   }`}
                 >
                   <td
-                    className={`px-lg py-sm text-body ${
+                    className={`px-lg py-3 text-[14px] ${
                       row.isBold ? "font-semibold text-text-primary" : "text-text-secondary"
                     }`}
                   >
@@ -174,18 +168,18 @@ function SummaryTable({ rows, delay }: { rows: TableRowData[]; delay: string }) 
                     </span>
                   </td>
                   <td
-                    className={`text-right px-lg py-sm text-body tabular-nums ${
+                    className={`text-right px-lg py-3 text-[14px] tabular-nums ${
                       row.isBold ? "font-semibold text-text-primary" : "text-text-secondary"
                     }`}
                   >
                     {formatCurrency(row.current)}
                   </td>
-                  <td className="text-right px-lg py-sm text-body text-text-muted tabular-nums">
+                  <td className="text-right px-lg py-3 text-[14px] text-text-muted tabular-nums">
                     {formatCurrency(row.priorYear)}
                   </td>
-                  <td className="text-right px-lg py-sm text-body tabular-nums">
+                  <td className="text-right px-lg py-3 text-[14px] tabular-nums">
                     {variance !== null ? (
-                      <span className={isPositive ? "text-success" : "text-error"}>
+                      <span className={`font-medium ${isPositive ? "text-success" : "text-error"}`}>
                         {isPositive ? "▲" : "▼"} {Math.abs(variance).toFixed(1)}%
                       </span>
                     ) : (
@@ -344,16 +338,14 @@ export default function BalanceSheetPage() {
   if (authLoading || loading) {
     return (
       <AppLayout>
-        <div className="space-y-2xl">
-          <div className="animate-pulse space-y-lg">
-            <div className="h-10 bg-background rounded-lg w-48" />
-            <div className="grid gap-md md:grid-cols-4">
-              {[...Array(4)].map((_, i) => (
-                <div key={i} className="h-40 bg-background rounded-xl" />
-              ))}
-            </div>
-            <div className="h-64 bg-background rounded-xl" />
+        <div className="space-y-xl">
+          <div className="h-9 w-48 bg-surface-inset rounded-lg animate-pulse" />
+          <div className="grid gap-md md:grid-cols-2 lg:grid-cols-4">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="h-32 bg-surface-inset rounded-lg animate-pulse" />
+            ))}
           </div>
+          <div className="h-64 bg-surface-inset rounded-lg animate-pulse" />
         </div>
       </AppLayout>
     );
@@ -363,32 +355,30 @@ export default function BalanceSheetPage() {
   if (snapshots.length === 0) {
     return (
       <AppLayout>
-        <div className="space-y-lg">
-          <h1 className="font-display text-[36px] md:text-[42px] leading-tight text-text-primary tracking-tight">
+        <div className="space-y-xl">
+          <h1 className="text-[28px] font-bold text-text-primary tracking-tight">
             Balance Sheet
           </h1>
 
-          <div className="relative overflow-hidden bg-gradient-to-br from-surface via-surface to-background rounded-xl p-2xl border-2 border-orange shadow-lg">
-            <div className="absolute top-0 right-0 w-96 h-96 bg-orange/5 rounded-full blur-3xl -z-0" />
-
-            <div className="relative z-10 max-w-lg mx-auto text-center space-y-lg py-xl">
-              <div className="inline-flex items-center justify-center w-24 h-24 bg-orange/10 rounded-full">
-                <Icon icon="ph:scales-bold" className="w-12 h-12 text-orange" />
+          <div className="bg-surface rounded-xl border border-border-light shadow-card p-2xl text-center">
+            <div className="max-w-md mx-auto space-y-lg">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-orange/[0.08] text-orange mx-auto">
+                <Icon icon="ph:scales-bold" className="w-8 h-8" />
               </div>
 
               <div className="space-y-sm">
-                <h2 className="font-display text-[28px] leading-tight text-text-primary">
+                <h2 className="text-[20px] font-semibold text-text-primary">
                   No balance sheet data yet
                 </h2>
-                <p className="text-[15px] leading-relaxed text-text-secondary max-w-md mx-auto">
+                <p className="text-[14px] text-text-secondary max-w-md mx-auto">
                   Upload a spreadsheet or enter data manually to see your balance sheet analysis.
                 </p>
               </div>
 
-              <div className="pt-md">
+              <div className="pt-sm">
                 <a
                   href="/data"
-                  className="inline-flex items-center gap-2 px-xl py-md bg-gradient-to-r from-orange to-orange-light text-white text-body font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+                  className="inline-flex items-center gap-2 px-xl py-md bg-orange text-white text-[14px] font-semibold rounded-xl hover:bg-orange/90 transition-colors"
                 >
                   <Icon icon="ph:database-bold" className="w-5 h-5" />
                   Connect Your Data
@@ -397,42 +387,22 @@ export default function BalanceSheetPage() {
             </div>
           </div>
         </div>
-
-        <style jsx>{`
-          @keyframes fadeIn {
-            from {
-              opacity: 0;
-              transform: translateY(8px);
-            }
-            to {
-              opacity: 1;
-              transform: translateY(0);
-            }
-          }
-          .animate-fadeIn {
-            animation: fadeIn 0.6s ease-out forwards;
-            opacity: 0;
-          }
-        `}</style>
       </AppLayout>
     );
   }
 
   return (
     <AppLayout>
-      <div className="space-y-2xl">
+      <div className="space-y-xl">
         {/* Page Header */}
-        <div
-          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-md animate-fadeIn"
-          style={{ animationDelay: "0ms" }}
-        >
+        <div className="flex flex-wrap items-center justify-between gap-sm">
           <div className="flex items-center gap-3">
-            <h1 className="font-display text-[42px] md:text-[56px] leading-tight text-text-primary tracking-tight">
+            <h1 className="text-[28px] font-bold text-text-primary tracking-tight">
               Balance Sheet
             </h1>
             {currentSnapshot && (
               <span
-                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-medium leading-4 ${
+                className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${
                   currentSnapshot.data_source === "quickbooks"
                     ? "bg-emerald-50 text-emerald-700"
                     : "bg-gray-100 text-gray-500"
@@ -451,7 +421,13 @@ export default function BalanceSheetPage() {
             <select
               value={selectedPeriodIndex}
               onChange={(e) => setSelectedPeriodIndex(Number(e.target.value))}
-              className="appearance-none bg-surface border border-border rounded-xl px-lg py-sm pr-xl text-body text-text-primary cursor-pointer hover:border-orange/50 focus:outline-none focus:border-orange transition-colors"
+              className="h-9 px-3 pr-10 rounded-lg border border-border bg-surface text-[13px] text-text-primary appearance-none cursor-pointer hover:border-orange/40 focus:border-orange focus:ring-2 focus:ring-orange/20 focus:outline-none transition-colors"
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23a3a3a3' viewBox='0 0 256 256'%3E%3Cpath d='M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z'%3E%3C/path%3E%3C/svg%3E")`,
+                backgroundRepeat: "no-repeat",
+                backgroundPosition: "right 12px center",
+                backgroundSize: "16px",
+              }}
             >
               {snapshots.map((snapshot, idx) => (
                 <option key={snapshot.id} value={idx}>
@@ -459,10 +435,6 @@ export default function BalanceSheetPage() {
                 </option>
               ))}
             </select>
-            <Icon
-              icon="ph:caret-down-bold"
-              className="absolute right-md top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none"
-            />
           </div>
         </div>
 
@@ -475,7 +447,6 @@ export default function BalanceSheetPage() {
             changeLabel="vs prior period"
             isHealthy={(currentSnapshot?.current_ratio ?? 0) >= 2}
             icon="ph:scales-bold"
-            delay="100ms"
             tooltip="Current assets divided by current liabilities. Above 2.0 means you can comfortably cover short-term debts."
           />
           <KPICard
@@ -485,7 +456,6 @@ export default function BalanceSheetPage() {
             changeLabel="vs prior period"
             isHealthy={(currentSnapshot?.working_capital ?? 0) > 0}
             icon="ph:wallet-bold"
-            delay="200ms"
             tooltip="Current assets minus current liabilities. Positive means you have enough to fund day-to-day operations."
           />
           <KPICard
@@ -495,7 +465,6 @@ export default function BalanceSheetPage() {
             changeLabel="vs prior period"
             isHealthy={(currentSnapshot?.roa ?? 0) > 5}
             icon="ph:chart-pie-bold"
-            delay="300ms"
             tooltip="Return on Assets — how efficiently your business uses its assets to generate profit. Higher is better."
           />
           <KPICard
@@ -505,66 +474,66 @@ export default function BalanceSheetPage() {
             changeLabel="vs prior period"
             isHealthy={(currentSnapshot?.roe ?? 0) > 10}
             icon="ph:trend-up-bold"
-            delay="400ms"
             tooltip="Return on Equity — how much profit you generate for each dollar of owner's equity. Higher means better returns."
           />
         </div>
 
         {/* Summary Table */}
-        <SummaryTable rows={tableRows} delay="500ms" />
+        <SummaryTable rows={tableRows} />
 
         {/* Charts Grid */}
         <div className="grid gap-md lg:grid-cols-2">
           {/* Current Ratio Trend Line Chart */}
-          <div
-            className="bg-surface rounded-xl border border-background shadow-sm p-lg animate-fadeIn"
-            style={{ animationDelay: "600ms" }}
-          >
-            <h3 className="font-display text-h3 font-semibold text-text-primary tracking-tight mb-md">
-              Current Ratio Trend
-            </h3>
-            <div className="h-64">
+          <div className="bg-surface rounded-xl border border-border-light shadow-card p-lg">
+            <div className="mb-md">
+              <h3 className="text-[20px] font-semibold text-text-primary">
+                Current Ratio Trend
+              </h3>
+              <p className="text-[13px] text-text-muted mt-0.5">Last 12 periods</p>
+            </div>
+            <div className="h-[280px]">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData} margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#F0F0F2" vertical={false} />
                   <XAxis
                     dataKey="month"
-                    tick={{ fontSize: 12, fill: "#a3a3a3" }}
-                    axisLine={{ stroke: "#e5e5e5" }}
+                    tick={{ fontSize: 12, fill: "#8B8B8B" }}
+                    axisLine={false}
                     tickLine={false}
                   />
                   <YAxis
-                    tick={{ fontSize: 12, fill: "#a3a3a3" }}
-                    axisLine={{ stroke: "#e5e5e5" }}
+                    tick={{ fontSize: 12, fill: "#8B8B8B" }}
+                    axisLine={false}
                     tickLine={false}
                     domain={[0, "auto"]}
                   />
                   <Tooltip
                     contentStyle={{
                       backgroundColor: "#fff",
-                      border: "1px solid #e5e5e5",
-                      borderRadius: "10px",
+                      border: "1px solid #E4E4E7",
+                      borderRadius: "12px",
                       boxShadow: "0 4px 16px -4px rgba(0, 0, 0, 0.1)",
+                      padding: "8px 12px",
                     }}
-                    labelStyle={{ color: "#1a1a1a", fontWeight: 600 }}
+                    labelStyle={{ color: "#111111", fontWeight: 600, fontSize: "13px" }}
                     formatter={(value) => [Number(value).toFixed(2), "Current Ratio"]}
                   />
                   <ReferenceLine
                     y={2}
-                    stroke="#10b981"
+                    stroke="#16A34A"
                     strokeDasharray="5 5"
                     label={{
-                      value: "Healthy threshold (2.0)",
+                      value: "Healthy (2.0)",
                       position: "insideTopRight",
                       fontSize: 11,
-                      fill: "#10b981",
+                      fill: "#16A34A",
                     }}
                   />
                   <Line
                     type="monotone"
                     dataKey="currentRatio"
                     stroke="#E65100"
-                    strokeWidth={3}
+                    strokeWidth={2.5}
                     dot={{ fill: "#E65100", strokeWidth: 0, r: 4 }}
                     activeDot={{ r: 6, fill: "#E65100" }}
                   />
@@ -574,26 +543,26 @@ export default function BalanceSheetPage() {
           </div>
 
           {/* Working Capital Trend Bar Chart */}
-          <div
-            className="bg-surface rounded-xl border border-background shadow-sm p-lg animate-fadeIn"
-            style={{ animationDelay: "700ms" }}
-          >
-            <h3 className="font-display text-h3 font-semibold text-text-primary tracking-tight mb-md">
-              Working Capital Trend
-            </h3>
-            <div className="h-64">
+          <div className="bg-surface rounded-xl border border-border-light shadow-card p-lg">
+            <div className="mb-md">
+              <h3 className="text-[20px] font-semibold text-text-primary">
+                Working Capital Trend
+              </h3>
+              <p className="text-[13px] text-text-muted mt-0.5">Last 12 periods</p>
+            </div>
+            <div className="h-[280px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData} margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#F0F0F2" vertical={false} />
                   <XAxis
                     dataKey="month"
-                    tick={{ fontSize: 12, fill: "#a3a3a3" }}
-                    axisLine={{ stroke: "#e5e5e5" }}
+                    tick={{ fontSize: 12, fill: "#8B8B8B" }}
+                    axisLine={false}
                     tickLine={false}
                   />
                   <YAxis
-                    tick={{ fontSize: 12, fill: "#a3a3a3" }}
-                    axisLine={{ stroke: "#e5e5e5" }}
+                    tick={{ fontSize: 12, fill: "#8B8B8B" }}
+                    axisLine={false}
                     tickLine={false}
                     tickFormatter={(value) =>
                       new Intl.NumberFormat("en-US", {
@@ -605,18 +574,19 @@ export default function BalanceSheetPage() {
                   <Tooltip
                     contentStyle={{
                       backgroundColor: "#fff",
-                      border: "1px solid #e5e5e5",
-                      borderRadius: "10px",
+                      border: "1px solid #E4E4E7",
+                      borderRadius: "12px",
                       boxShadow: "0 4px 16px -4px rgba(0, 0, 0, 0.1)",
+                      padding: "8px 12px",
                     }}
-                    labelStyle={{ color: "#1a1a1a", fontWeight: 600 }}
+                    labelStyle={{ color: "#111111", fontWeight: 600, fontSize: "13px" }}
                     formatter={(value) => [formatCurrency(Number(value)), "Working Capital"]}
                   />
                   <Bar dataKey="workingCapital" radius={[4, 4, 0, 0]}>
                     {chartData.map((entry, index) => (
                       <Cell
                         key={`cell-${index}`}
-                        fill={entry.workingCapital >= 0 ? "#E65100" : "#ef4444"}
+                        fill={entry.workingCapital >= 0 ? "#E65100" : "#DC2626"}
                       />
                     ))}
                   </Bar>
@@ -626,23 +596,6 @@ export default function BalanceSheetPage() {
           </div>
         </div>
       </div>
-
-      <style jsx>{`
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(8px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        .animate-fadeIn {
-          animation: fadeIn 0.6s ease-out forwards;
-          opacity: 0;
-        }
-      `}</style>
     </AppLayout>
   );
 }

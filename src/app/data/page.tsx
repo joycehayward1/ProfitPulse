@@ -5,7 +5,7 @@ import Papa, { ParseResult } from "papaparse";
 import { Icon } from "@iconify/react";
 import { useSearchParams } from "next/navigation";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { Button, Card, CurrencyInput } from "@/components/ui";
+import { Button, CurrencyInput } from "@/components/ui";
 import { useToast } from "@/components/ui/Toast";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { getInsForgeClient } from "@/lib/insforge";
@@ -1373,81 +1373,64 @@ ${fileContent}`,
 
   return (
     <AppLayout>
-      <div className="min-h-screen bg-background">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+      <div className="min-h-screen bg-[#F8F8F8]">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-8">
           {/* Header */}
-          <div
-            className="mb-8 sm:mb-12 animate-fade-in"
-            style={{ animationDelay: "0.1s" }}
-          >
-            <h1 className="text-4xl sm:text-5xl font-display text-text-primary mb-3">
+          <div>
+            <h1 className="text-[28px] font-bold text-[#111111] tracking-tight">
               Your Numbers
             </h1>
-            <p className="text-base sm:text-lg text-text-secondary font-body">
+            <p className="text-[14px] text-[#8B8B8B] mt-1">
               Keep your financial picture up to date. The more you track, the clearer
               things become.
             </p>
           </div>
 
           {/* Tabs */}
-          <div
-            className="mb-8 animate-fade-in"
-            style={{ animationDelay: "0.2s" }}
-          >
-            <div className="border-b border-text-muted/20 relative">
-              <div className="flex space-x-8">
-                <button
-                  onClick={() => selectTab("manual")}
-                  disabled={quickBooksModeLocked}
-                  className={`pb-4 px-1 font-body text-sm sm:text-base font-medium transition-colors relative ${
-                    activeTab === "manual"
-                      ? "text-orange"
-                      : quickBooksModeLocked
-                      ? "text-text-muted cursor-not-allowed"
-                      : "text-text-secondary hover:text-text-primary"
-                  }`}
-                >
-                  Enter Manually
-                  {activeTab === "manual" && (
-                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange animate-slide-in" />
-                  )}
-                </button>
-                <button
-                  onClick={() => selectTab("upload")}
-                  disabled={quickBooksModeLocked}
-                  className={`pb-4 px-1 font-body text-sm sm:text-base font-medium transition-colors relative ${
-                    activeTab === "upload"
-                      ? "text-orange"
-                      : quickBooksModeLocked
-                      ? "text-text-muted cursor-not-allowed"
-                      : "text-text-secondary hover:text-text-primary"
-                  }`}
-                >
-                  Upload Spreadsheet
-                  {activeTab === "upload" && (
-                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange animate-slide-in" />
-                  )}
-                </button>
-                <button
-                  onClick={() => selectTab("quickbooks")}
-                  className={`pb-4 px-1 font-body text-sm sm:text-base font-medium transition-colors relative ${
-                    activeTab === "quickbooks"
-                      ? "text-orange"
-                      : "text-text-secondary hover:text-text-primary"
-                  }`}
-                >
-                  <span className="flex items-center gap-2">
-                    QuickBooks Sync
-                    <span className="text-[10px] font-semibold text-orange bg-orange/10 px-1.5 py-0.5 rounded-full leading-none">Soon</span>
-                  </span>
-                  {activeTab === "quickbooks" && (
-                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange animate-slide-in" />
-                  )}
-                </button>
-              </div>
+          <div>
+            <div className="border-b border-[#E4E4E7] flex gap-0">
+              <button
+                onClick={() => selectTab("manual")}
+                disabled={quickBooksModeLocked}
+                className={`px-4 py-2.5 text-[14px] font-medium border-b-2 transition-colors ${
+                  activeTab === "manual"
+                    ? "border-[#E65100] text-[#111111]"
+                    : quickBooksModeLocked
+                    ? "border-transparent text-[#8B8B8B] cursor-not-allowed"
+                    : "border-transparent text-[#8B8B8B] hover:text-[#4B4B4B] hover:border-[#E4E4E7]"
+                }`}
+              >
+                Enter Manually
+              </button>
+              <button
+                onClick={() => selectTab("upload")}
+                disabled={quickBooksModeLocked}
+                className={`px-4 py-2.5 text-[14px] font-medium border-b-2 transition-colors ${
+                  activeTab === "upload"
+                    ? "border-[#E65100] text-[#111111]"
+                    : quickBooksModeLocked
+                    ? "border-transparent text-[#8B8B8B] cursor-not-allowed"
+                    : "border-transparent text-[#8B8B8B] hover:text-[#4B4B4B] hover:border-[#E4E4E7]"
+                }`}
+              >
+                Upload Spreadsheet
+              </button>
+              <button
+                onClick={() => selectTab("quickbooks")}
+                className={`px-4 py-2.5 text-[14px] font-medium border-b-2 transition-colors ${
+                  activeTab === "quickbooks"
+                    ? "border-[#E65100] text-[#111111]"
+                    : "border-transparent text-[#8B8B8B] hover:text-[#4B4B4B] hover:border-[#E4E4E7]"
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  QuickBooks Sync
+                  <span className="text-[10px] font-semibold text-[#E65100] bg-[#FFF7F2] px-1.5 py-0.5 rounded-full leading-none">Soon</span>
+                </span>
+              </button>
             </div>
             {quickBooksModeLocked && (
-              <p className="mt-3 text-sm font-body text-text-secondary">
+              <p className="mt-3 text-[13px] text-[#8B8B8B]">
                 QuickBooks is connected, so manual entry and spreadsheet upload are disabled.
               </p>
             )}
@@ -1455,18 +1438,15 @@ ${fileContent}`,
 
           {/* Manual Entry Form */}
           {activeTab === "manual" && (
-            <div
-              className="animate-fade-in"
-              style={{ animationDelay: "0.3s" }}
-            >
+            <div>
               {quickBooksModeLocked ? (
-                <Card className="mb-8 border border-[#2CA01C]/30 bg-[#2CA01C]/[0.04]">
+                <div className="bg-white rounded-xl border border-[#F0F0F2] shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)] p-6 border-l-4 border-l-green-500">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
-                      <h3 className="text-lg font-display text-text-primary">
+                      <h3 className="text-[16px] font-semibold text-[#111111]">
                         Manual entry is locked while QuickBooks is connected
                       </h3>
-                      <p className="text-sm font-body text-text-secondary mt-2">
+                      <p className="text-[14px] text-[#4B4B4B] mt-2">
                         Use QuickBooks Sync to refresh data that powers your dashboard and
                         scenarios.
                       </p>
@@ -1479,15 +1459,15 @@ ${fileContent}`,
                       Open QuickBooks Sync
                     </Button>
                   </div>
-                </Card>
+                </div>
               ) : (
-                <Card className="mb-8">
+                <div className="bg-white rounded-xl border border-[#F0F0F2] shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)] p-6">
                 <form onSubmit={handleSubmit} className="space-y-6">
                   {/* Period Selector */}
                   <div>
                     <label
                       htmlFor="period"
-                      className="block text-sm font-body font-medium text-text-secondary mb-2"
+                      className="text-[13px] font-medium text-[#111111] mb-1.5 block"
                     >
                       Which month are these numbers for?
                     </label>
@@ -1498,12 +1478,12 @@ ${fileContent}`,
                       onChange={(e) =>
                         setFormData({ ...formData, period: e.target.value })
                       }
-                      className="w-full sm:w-auto px-4 py-3 rounded-md border border-text-muted/30 bg-surface text-text-primary font-body focus:outline-none focus:ring-2 focus:ring-orange focus:border-transparent transition-all"
+                      className="w-full sm:w-auto h-10 px-3 rounded-lg border border-[#E4E4E7] bg-white text-[14px] text-[#111111] placeholder:text-[#8B8B8B] focus:border-[#E65100] focus:ring-2 focus:ring-[#E65100]/15 focus:outline-none transition-colors"
                     />
                   </div>
 
                   {/* Financial Inputs */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <CurrencyInput
                       label="Cash in the bank right now"
                       value={formData.cash}
@@ -1578,17 +1558,17 @@ ${fileContent}`,
                   </div>
 
                   {/* Expense Breakdown Toggle */}
-                  <div className="pt-4 border-t border-text-muted/20">
+                  <div className="pt-4 border-t border-[#F0F0F2]">
                     <button
                       type="button"
                       onClick={() => setShowExpenseBreakdown(!showExpenseBreakdown)}
                       className="flex items-center justify-between w-full text-left group"
                     >
-                      <span className="text-sm font-body font-medium text-text-secondary group-hover:text-orange transition-colors">
+                      <span className="text-[13px] font-medium text-[#4B4B4B] group-hover:text-[#E65100] transition-colors">
                         Add expense breakdown by category (optional)
                       </span>
                       <svg
-                        className={`w-5 h-5 text-text-muted transition-transform ${
+                        className={`w-5 h-5 text-[#8B8B8B] transition-transform ${
                           showExpenseBreakdown ? "rotate-180" : ""
                         }`}
                         fill="none"
@@ -1612,7 +1592,7 @@ ${fileContent}`,
                           : "max-h-0 opacity-0"
                       }`}
                     >
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-background/50 p-4 sm:p-6 rounded-lg border border-text-muted/10">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-[#F4F4F5] p-4 sm:p-6 rounded-lg border border-[#F0F0F2]">
                         <CurrencyInput
                           label="Rent"
                           value={expenseBreakdown.rent}
@@ -1666,43 +1646,39 @@ ${fileContent}`,
 
                   {/* Submit Button */}
                   <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pt-4">
-                    <Button
+                    <button
                       type="submit"
-                      variant="primary"
                       disabled={!isFormValid || isSubmitting}
-                      className="order-2 sm:order-1"
+                      className="bg-[#E65100] text-white rounded-lg px-6 py-2.5 text-[14px] font-medium hover:bg-[#D84A00] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       {isSubmitting ? "Saving..." : "Save This Month's Data"}
-                    </Button>
+                    </button>
 
                     <button
                       type="button"
                       onClick={handleConnectQuickBooks}
-                      className="text-sm font-body text-text-secondary hover:text-orange transition-colors text-center sm:text-right order-1 sm:order-2"
+                      className="text-[13px] text-[#8B8B8B] hover:text-[#E65100] transition-colors text-center sm:text-right"
                     >
                       Or connect QuickBooks to use sync-only mode →
                     </button>
                   </div>
                 </form>
-              </Card>
+              </div>
               )}
             </div>
           )}
 
           {/* Upload Tab */}
           {activeTab === "upload" && (
-            <div
-              className="animate-fade-in"
-              style={{ animationDelay: "0.3s" }}
-            >
+            <div>
               {quickBooksModeLocked ? (
-                <Card className="mb-8 border border-[#2CA01C]/30 bg-[#2CA01C]/[0.04]">
+                <div className="bg-white rounded-xl border border-[#F0F0F2] shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)] p-6 border-l-4 border-l-green-500">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
-                      <h3 className="text-lg font-display text-text-primary">
+                      <h3 className="text-[16px] font-semibold text-[#111111]">
                         Spreadsheet upload is disabled while QuickBooks is connected
                       </h3>
-                      <p className="text-sm font-body text-text-secondary mt-2">
+                      <p className="text-[14px] text-[#4B4B4B] mt-2">
                         QuickBooks is your source of truth for this account. Use Sync Now
                         in the QuickBooks tab.
                       </p>
@@ -1715,20 +1691,20 @@ ${fileContent}`,
                       Open QuickBooks Sync
                     </Button>
                   </div>
-                </Card>
+                </div>
               ) : (
                 <>
                   {/* File Upload Zone */}
                   {uploadStep === "idle" && (
-                    <Card className="mb-8">
+                    <div className="bg-white rounded-xl border border-[#F0F0F2] shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)] p-6">
                       {uploadError && (
-                        <div className="mb-6 p-4 rounded-lg bg-error/10 border border-error/20">
-                          <p className="text-sm font-body text-error">{uploadError}</p>
+                        <div className="mb-6 p-4 rounded-lg bg-red-50 border border-red-200">
+                          <p className="text-[14px] text-red-700">{uploadError}</p>
                         </div>
                       )}
-                      <div className="border-2 border-dashed rounded-lg py-16 px-6 text-center transition-all border-text-muted/30 hover:border-orange/50 hover:bg-orange/5">
+                      <div className="border-2 border-dashed border-[#E4E4E7] rounded-xl p-8 text-center hover:border-[#E65100] hover:bg-[#FFF7F2] transition-colors">
                         <svg
-                          className="w-16 h-16 mx-auto mb-6 text-text-muted opacity-40"
+                          className="w-10 h-10 mx-auto mb-4 text-[#8B8B8B]"
                           fill="none"
                           viewBox="0 0 24 24"
                           stroke="currentColor"
@@ -1740,10 +1716,10 @@ ${fileContent}`,
                             d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
                           />
                         </svg>
-                        <h3 className="text-xl font-display text-text-primary mb-3">
+                        <h3 className="text-[16px] font-semibold text-[#111111] mb-2">
                           Upload your financial spreadsheet
                         </h3>
-                        <p className="text-sm font-body text-text-secondary mb-6">
+                        <p className="text-[14px] text-[#4B4B4B] mb-6">
                           Our AI will read your file and extract the numbers automatically
                         </p>
                         <input
@@ -1756,61 +1732,61 @@ ${fileContent}`,
                           }}
                           className="hidden"
                         />
-                        <Button
-                          variant="primary"
+                        <button
+                          type="button"
                           onClick={() => aiFileInputRef.current?.click()}
+                          className="bg-[#E65100] text-white rounded-lg px-6 py-2.5 text-[14px] font-medium hover:bg-[#D84A00] transition-colors"
                         >
                           Choose File
-                        </Button>
-                        <p className="text-xs font-body text-text-muted mt-6">
+                        </button>
+                        <p className="text-[12px] text-[#8B8B8B] mt-6">
                           Accepts .csv files up to 2 MB
                         </p>
                       </div>
-                    </Card>
+                    </div>
                   )}
 
-                  {/* Sheet Selector */}
                   {/* Loading State */}
                   {(uploadStep === "reading" || uploadStep === "processing") && (
-                    <Card className="mb-8">
-                      <div className="py-16 text-center">
-                        <div className="w-12 h-12 mx-auto mb-4 border-4 border-orange/20 border-t-orange rounded-full animate-spin" />
-                        <p className="text-lg font-display text-text-primary mb-2">
+                    <div className="bg-white rounded-xl border border-[#F0F0F2] shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)] p-6">
+                      <div className="py-12 text-center">
+                        <div className="w-10 h-10 mx-auto mb-4 border-3 border-[#E65100]/20 border-t-[#E65100] rounded-full animate-spin" />
+                        <p className="text-[16px] font-semibold text-[#111111] mb-1">
                           Reading your spreadsheet&hellip;
                         </p>
-                        <p className="text-sm font-body text-text-secondary">
+                        <p className="text-[14px] text-[#4B4B4B]">
                           {uploadFile?.name && (
-                            <span className="block mb-1 text-text-primary font-medium">{uploadFile.name}</span>
+                            <span className="block mb-1 text-[#111111] font-medium">{uploadFile.name}</span>
                           )}
                           Our AI is extracting your financial data
                         </p>
                       </div>
-                    </Card>
+                    </div>
                   )}
 
                   {/* Confirmation Screen */}
                   {(uploadStep === "confirm" || uploadStep === "saving") && parsedSnapshot && (
                     <div className="space-y-6">
-                      <Card>
+                      <div className="bg-white rounded-xl border border-[#F0F0F2] shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)] p-6">
                         <div className="mb-6">
-                          <h3 className="text-xl font-display text-text-primary mb-2">
+                          <h3 className="text-[16px] font-semibold text-[#111111] mb-1">
                             Here&apos;s what we found in your spreadsheet
                           </h3>
-                          <p className="text-sm font-body text-text-secondary">
+                          <p className="text-[14px] text-[#4B4B4B]">
                             Review before saving. Click any value to edit or fill in missing fields.
                           </p>
                         </div>
 
                         {/* Period Selector */}
                         <div className="mb-6">
-                          <label className="block text-sm font-body font-medium text-text-secondary mb-2">
+                          <label className="text-[13px] font-medium text-[#111111] mb-1.5 block">
                             Which month does this data cover?
                           </label>
                           <input
                             type="month"
                             value={confirmPeriod}
                             onChange={(e) => setConfirmPeriod(e.target.value)}
-                            className="w-full sm:w-auto px-4 py-3 rounded-md border border-text-muted/30 bg-surface text-text-primary font-body focus:outline-none focus:ring-2 focus:ring-orange focus:border-transparent transition-all"
+                            className="w-full sm:w-auto h-10 px-3 rounded-lg border border-[#E4E4E7] bg-white text-[14px] text-[#111111] placeholder:text-[#8B8B8B] focus:border-[#E65100] focus:ring-2 focus:ring-[#E65100]/15 focus:outline-none transition-colors"
                           />
                         </div>
 
@@ -1818,16 +1794,16 @@ ${fileContent}`,
                         <div className="overflow-x-auto space-y-6">
                           {SNAPSHOT_SECTIONS.map((section) => (
                             <div key={section.title}>
-                              <h4 className="text-sm font-body font-semibold text-text-secondary uppercase tracking-wider mb-2 px-4">
+                              <h4 className="text-[12px] uppercase tracking-wider font-semibold text-[#8B8B8B] mb-2 px-6">
                                 {section.title}
                               </h4>
-                              <table className="w-full text-sm">
+                              <table className="w-full text-[14px]">
                                 <thead>
-                                  <tr className="border-b border-text-muted/20">
-                                    <th className="text-left font-body font-medium text-text-secondary py-2 px-4">
+                                  <tr className="border-b border-[#E4E4E7]">
+                                    <th className="text-left text-[12px] uppercase tracking-wider font-semibold text-[#8B8B8B] px-6 py-2.5">
                                       Field
                                     </th>
-                                    <th className="text-right font-body font-medium text-text-secondary py-2 px-4">
+                                    <th className="text-right text-[12px] uppercase tracking-wider font-semibold text-[#8B8B8B] px-6 py-2.5">
                                       Value
                                     </th>
                                   </tr>
@@ -1846,11 +1822,11 @@ ${fileContent}`,
                                         : null;
 
                                     return (
-                                      <tr key={key} className="border-b border-text-muted/10">
-                                        <td className="py-3 px-4 font-body text-text-primary">
+                                      <tr key={key} className="border-b border-[#F0F0F2] last:border-b-0 hover:bg-[#F4F4F5]/50">
+                                        <td className="px-6 py-3 text-[14px] text-[#111111]">
                                           {label}
                                         </td>
-                                        <td className="py-3 px-4 text-right font-body">
+                                        <td className="px-6 py-3 text-right text-[14px]">
                                           {isEditing ? (
                                             <input
                                               type="text"
@@ -1871,7 +1847,7 @@ ${fileContent}`,
                                                   ? "0.0%"
                                                   : "0.00"
                                               }
-                                              className="w-32 ml-auto text-right px-2 py-1 rounded border border-orange/50 bg-white text-text-primary font-body text-sm focus:outline-none focus:ring-2 focus:ring-orange"
+                                              className="w-32 ml-auto text-right px-2 py-1 rounded-lg border border-[#E65100] bg-white text-[14px] text-[#111111] focus:outline-none focus:ring-2 focus:ring-[#E65100]/15"
                                               onBlur={(e) => {
                                                 const raw = e.target.value.replace(/[$,%\s]/g, "").replace(/,/g, "");
                                                 const num = parseFloat(raw);
@@ -1897,18 +1873,17 @@ ${fileContent}`,
                                             <button
                                               type="button"
                                               onClick={() => setEditingField(key)}
-                                              className={`inline-flex items-center gap-1.5 rounded px-2 py-1 transition-colors hover:bg-orange/10 ${
+                                              className={`inline-flex items-center gap-1.5 rounded px-2 py-1 transition-colors hover:bg-[#FFF7F2] ${
                                                 displayValue
-                                                  ? "text-text-primary"
-                                                  : "text-text-muted italic"
+                                                  ? "text-[#111111]"
+                                                  : "text-[#8B8B8B] italic"
                                               }`}
                                               title="Click to edit"
                                             >
                                               {displayValue || "Not found"}
                                               <Icon
                                                 icon="ph:pencil-simple"
-                                                className="w-3 h-3 text-text-muted opacity-0 group-hover:opacity-100"
-                                                style={{ opacity: 0.4 }}
+                                                className="w-3 h-3 text-[#8B8B8B] opacity-40"
                                               />
                                             </button>
                                           )}
@@ -1921,22 +1896,27 @@ ${fileContent}`,
                             </div>
                           ))}
                         </div>
-                      </Card>
+                      </div>
 
                       {/* Action Buttons */}
                       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
-                        <Button
-                          variant="primary"
+                        <button
+                          type="button"
                           onClick={() => {
                             void handleSaveAISnapshot();
                           }}
                           disabled={uploadStep === "saving"}
+                          className="bg-[#E65100] text-white rounded-lg px-6 py-2.5 text-[14px] font-medium hover:bg-[#D84A00] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
                           {uploadStep === "saving" ? "Saving..." : "Save to Dashboard"}
-                        </Button>
-                        <Button variant="cancel" onClick={resetAIUpload}>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={resetAIUpload}
+                          className="rounded-lg px-6 py-2.5 text-[14px] font-medium text-[#4B4B4B] border border-[#E4E4E7] hover:bg-[#F4F4F5] transition-colors"
+                        >
                           Cancel
-                        </Button>
+                        </button>
                       </div>
                     </div>
                   )}
@@ -1947,13 +1927,10 @@ ${fileContent}`,
 
           {/* QuickBooks Tab */}
           {activeTab === "quickbooks" && (
-            <div
-              className="animate-fade-in"
-              style={{ animationDelay: "0.3s" }}
-            >
-              <Card className="mb-6 border border-text-muted/20 bg-surface">
+            <div>
+              <div className="bg-white rounded-xl border border-[#F0F0F2] shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)] p-6">
                 <div className="flex flex-col items-center text-center py-8 px-4 gap-4">
-                  <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center">
+                  <div className="w-16 h-16 rounded-2xl bg-[#F4F4F5] flex items-center justify-center">
                     <img
                       src="/quickbooks.png"
                       alt="QuickBooks"
@@ -1962,82 +1939,75 @@ ${fileContent}`,
                   </div>
                   <div>
                     <div className="flex items-center justify-center gap-2 mb-2">
-                      <h3 className="text-xl font-display text-text-primary">QuickBooks Integration</h3>
-                      <span className="inline-flex items-center gap-1.5 px-3 py-0.5 bg-orange/10 rounded-full text-xs font-semibold text-orange">
+                      <h3 className="text-[20px] font-semibold text-[#111111]">QuickBooks Integration</h3>
+                      <span className="inline-flex items-center gap-1.5 px-3 py-0.5 bg-[#FFF7F2] rounded-full text-[12px] font-semibold text-[#E65100]">
                         Coming Soon
                       </span>
                     </div>
                   </div>
                 </div>
-              </Card>
-
+              </div>
             </div>
           )}
 
           {/* Unified Data Ledger */}
-          <div
-            className="mt-10 animate-fade-in"
-            style={{ animationDelay: "0.4s" }}
-          >
+          <div>
             <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-4">
               <div>
-                <h2 className="text-2xl font-display text-text-primary">Data Ledger</h2>
-                <p className="text-sm font-body text-text-secondary mt-1">
+                <h2 className="text-[20px] font-semibold text-[#111111]">Data Ledger</h2>
+                <p className="text-[14px] text-[#8B8B8B] mt-1">
                   Every saved snapshot used by Dashboard and Scenarios.
                 </p>
               </div>
-              <Button
+              <button
                 type="button"
-                variant="secondary"
-                size="sm"
                 onClick={() => {
                   setLoadingHistory(true);
                   void refreshHistory(false).finally(() => {
                     setLoadingHistory(false);
                   });
                 }}
+                className="rounded-lg px-4 py-2 text-[13px] font-medium text-[#4B4B4B] border border-[#E4E4E7] hover:bg-[#F4F4F5] transition-colors"
               >
                 Refresh Ledger
-              </Button>
+              </button>
             </div>
 
             {loadingHistory ? (
-              <Card className="text-center py-12">
-                <div className="text-text-muted mb-2">
-                  <div className="w-12 h-12 mx-auto mb-4 border-4 border-orange/20 border-t-orange rounded-full animate-spin" />
-                  <p className="font-body text-sm">Loading ledger...</p>
-                </div>
-              </Card>
+              <div className="bg-white rounded-xl border border-[#F0F0F2] shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)] p-6 text-center py-12">
+                <div className="w-10 h-10 mx-auto mb-4 border-3 border-[#E65100]/20 border-t-[#E65100] rounded-full animate-spin" />
+                <p className="text-[14px] text-[#8B8B8B]">Loading ledger...</p>
+              </div>
             ) : historyEntries.length === 0 ? (
-              <Card className="text-center py-16">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-orange/10 rounded-full mb-5">
+              <div className="bg-white rounded-xl border border-[#F0F0F2] shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)] p-6 text-center py-16">
+                <div className="inline-flex items-center justify-center w-14 h-14 bg-[#FFF7F2] rounded-full mb-4">
                   <Icon
                     icon="ph:table-duotone"
-                    className="w-9 h-9 text-orange/70"
+                    className="w-7 h-7 text-[#E65100]"
                   />
                 </div>
-                <h3 className="text-xl font-display text-text-primary mb-2">
+                <h3 className="text-[16px] font-semibold text-[#111111] mb-1">
                   No saved rows yet
                 </h3>
-                <p className="font-body text-text-secondary max-w-xl mx-auto">
+                <p className="text-[14px] text-[#4B4B4B] max-w-md mx-auto">
                   Complete the assessment or save data manually to create your first ledger
                   row.
                 </p>
-              </Card>
+              </div>
             ) : (
-              <Card className="overflow-hidden p-0">
+              <div className="bg-white rounded-xl border border-[#F0F0F2] shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)] overflow-hidden">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="bg-background/60 border-b border-text-muted/20">
-                      <tr>
-                        <th className="text-left font-body font-medium text-text-secondary py-3 px-4">Period</th>
-                        <th className="text-left font-body font-medium text-text-secondary py-3 px-4">Source</th>
-                        <th className="text-right font-body font-medium text-text-secondary py-3 px-4">Cash</th>
-                        <th className="text-right font-body font-medium text-text-secondary py-3 px-4">Revenue</th>
-                        <th className="text-right font-body font-medium text-text-secondary py-3 px-4">Expenses</th>
-                        <th className="text-right font-body font-medium text-text-secondary py-3 px-4">Profit</th>
-                        <th className="text-left font-body font-medium text-text-secondary py-3 px-4">Updated</th>
-                        <th className="text-right font-body font-medium text-text-secondary py-3 px-4"></th>
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-[#E4E4E7]">
+                        <th className="text-left text-[12px] uppercase tracking-wider font-semibold text-[#8B8B8B] px-6 py-2.5">Period</th>
+                        <th className="text-left text-[12px] uppercase tracking-wider font-semibold text-[#8B8B8B] px-6 py-2.5">Source</th>
+                        <th className="text-right text-[12px] uppercase tracking-wider font-semibold text-[#8B8B8B] px-6 py-2.5">Cash</th>
+                        <th className="text-right text-[12px] uppercase tracking-wider font-semibold text-[#8B8B8B] px-6 py-2.5">Revenue</th>
+                        <th className="text-right text-[12px] uppercase tracking-wider font-semibold text-[#8B8B8B] px-6 py-2.5">Expenses</th>
+                        <th className="text-right text-[12px] uppercase tracking-wider font-semibold text-[#8B8B8B] px-6 py-2.5">Profit</th>
+                        <th className="text-left text-[12px] uppercase tracking-wider font-semibold text-[#8B8B8B] px-6 py-2.5">Updated</th>
+                        <th className="text-right text-[12px] uppercase tracking-wider font-semibold text-[#8B8B8B] px-6 py-2.5"></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -2046,17 +2016,17 @@ ${fileContent}`,
                         return (
                           <tr
                             key={entry.id}
-                            className="border-b border-text-muted/10 hover:bg-background/40"
+                            className="border-b border-[#F0F0F2] last:border-b-0 hover:bg-[#F4F4F5]/50"
                           >
-                            <td className="py-3 px-4 font-body text-text-primary">
+                            <td className="px-6 py-3 text-[14px] text-[#111111]">
                               {formatPeriodDisplay(entry.period)}
                             </td>
-                            <td className="py-3 px-4">
+                            <td className="px-6 py-3">
                               <span
-                                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-medium leading-4 ${
+                                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-medium leading-4 ${
                                   entry.dataSource === "quickbooks"
                                     ? "bg-emerald-50 text-emerald-700"
-                                    : "bg-gray-100 text-gray-500"
+                                    : "bg-[#F4F4F5] text-[#8B8B8B]"
                                 }`}
                               >
                                 {entry.dataSource === "quickbooks" && (
@@ -2065,37 +2035,36 @@ ${fileContent}`,
                                 {formatDataSourceLabel(entry.dataSource)}
                               </span>
                             </td>
-                            <td className="py-3 px-4 text-right font-body text-text-primary">
+                            <td className="px-6 py-3 text-right text-[14px] text-[#4B4B4B]">
                               {formatCurrency(entry.cash)}
                             </td>
-                            <td className="py-3 px-4 text-right font-body text-text-primary">
+                            <td className="px-6 py-3 text-right text-[14px] text-[#4B4B4B]">
                               {formatCurrency(entry.revenue)}
                             </td>
-                            <td className="py-3 px-4 text-right font-body text-text-primary">
+                            <td className="px-6 py-3 text-right text-[14px] text-[#4B4B4B]">
                               {formatCurrency(entry.expenses)}
                             </td>
                             <td
-                              className={`py-3 px-4 text-right font-body ${
-                                profit >= 0 ? "text-success" : "text-error"
+                              className={`px-6 py-3 text-right text-[14px] font-medium ${
+                                profit >= 0 ? "text-green-600" : "text-red-600"
                               }`}
                             >
                               {formatCurrency(profit)}
                             </td>
-                            <td className="py-3 px-4 font-body text-text-secondary">
+                            <td className="px-6 py-3 text-[13px] text-[#8B8B8B]">
                               {formatDate(entry.createdAt)}
                             </td>
-                            <td className="py-3 px-4 text-right">
-                              <Button
+                            <td className="px-6 py-3 text-right">
+                              <button
                                 type="button"
-                                variant="cancel"
-                                size="sm"
                                 disabled={deletingEntryId === entry.id}
                                 onClick={() => {
                                   void handleDeleteLedgerEntry(entry.id, entry.period);
                                 }}
+                                className="text-[13px] font-medium text-[#8B8B8B] hover:text-red-600 disabled:opacity-50 transition-colors"
                               >
                                 {deletingEntryId === entry.id ? "Deleting..." : "Delete"}
-                              </Button>
+                              </button>
                             </td>
                           </tr>
                         );
@@ -2103,7 +2072,7 @@ ${fileContent}`,
                     </tbody>
                   </table>
                 </div>
-              </Card>
+              </div>
             )}
           </div>
         </div>

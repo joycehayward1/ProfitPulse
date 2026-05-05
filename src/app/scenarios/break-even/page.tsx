@@ -181,51 +181,42 @@ export default function BreakEvenPage() {
 
   return (
     <AppLayout>
-      <div className="min-h-screen bg-background pb-16">
+      <div className="min-h-screen bg-[#F8F8F8] pb-16">
         {/* Header */}
-        <div className="bg-gradient-to-br from-[#FFF8F5] to-[#FFE8DC] border-b border-orange/10">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-            <button
-              onClick={() => router.push('/scenarios')}
-              className="group flex items-center gap-2 text-text-secondary hover:text-orange transition-colors mb-6"
-            >
-              <ArrowLeft className="w-5 h-5 transition-transform group-hover:-translate-x-1" />
-              <span className="font-body text-sm">Back to Scenarios</span>
-            </button>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+          <button
+            onClick={() => router.push('/scenarios')}
+            className="flex items-center gap-2 text-[#8B8B8B] hover:text-[#111111] transition-colors mb-6"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span className="text-[13px]">Back to Scenarios</span>
+          </button>
 
-            <div className="flex items-start gap-4">
-              <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-orange/10 flex items-center justify-center">
-                <TrendingUp className="w-6 h-6 text-orange" />
-              </div>
-              <div>
-                <h1 className="text-3xl sm:text-4xl font-display text-text-primary mb-2">
-                  Break-Even Calculator
-                </h1>
-                <p className="text-text-secondary font-body">
-                  Calculate the exact sales level you need to cover your costs.
-                </p>
-              </div>
-            </div>
-          </div>
+          <h1 className="text-[28px] font-bold text-[#111111] mb-1">
+            Break-Even Calculator
+          </h1>
+          <p className="text-[14px] text-[#4B4B4B]">
+            Calculate the exact sales level you need to cover your costs.
+          </p>
         </div>
 
         {/* Main Content */}
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 sm:mt-12">
-          <div className="grid lg:grid-cols-2 gap-8">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 space-y-8">
+          <div className="grid lg:grid-cols-2 gap-6">
             {/* Input Form */}
-            <div className="bg-white rounded-2xl border border-gray-100 p-6 sm:p-8 shadow-sm">
-              <h2 className="text-xl font-display text-text-primary mb-6">
+            <div className="bg-white rounded-xl border border-[#F0F0F2] shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-6">
+              <h2 className="text-[16px] font-semibold text-[#111111] mb-4">
                 Your Numbers
               </h2>
 
-              <div className="space-y-6">
+              <div className="space-y-5">
                 {/* Fixed Expenses */}
                 <div>
-                  <label className="block text-sm font-body font-medium text-text-primary mb-2">
+                  <label className="block text-[13px] font-medium text-[#111111] mb-1.5">
                     Monthly Fixed Expenses
                   </label>
                   <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted font-display text-lg">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8B8B8B] text-sm">
                       $
                     </span>
                     <input
@@ -233,22 +224,22 @@ export default function BreakEvenPage() {
                       name="fixedExpenses"
                       value={fixedExpenses}
                       onChange={(e) => setFixedExpenses(e.target.value)}
-                      className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg font-body text-text-primary focus:outline-none focus:ring-2 focus:ring-orange focus:border-transparent transition-all"
+                      className="w-full h-10 pl-8 pr-3 rounded-lg border border-[#E4E4E7] text-[14px] text-[#111111] focus:outline-none focus:border-[#E65100] focus:ring-2 focus:ring-[#E65100]/15 transition-all"
                       placeholder="5000"
                     />
                   </div>
-                  <p className="text-xs text-text-muted font-body mt-1">
+                  <p className="text-[12px] text-[#8B8B8B] mt-1">
                     Rent, salaries, utilities—costs that don&apos;t change with sales
                   </p>
                 </div>
 
                 {/* Price Per Unit */}
                 <div>
-                  <label className="block text-sm font-body font-medium text-text-primary mb-2">
+                  <label className="block text-[13px] font-medium text-[#111111] mb-1.5">
                     Average Price per Service/Product
                   </label>
                   <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted font-display text-lg">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8B8B8B] text-sm">
                       $
                     </span>
                     <input
@@ -256,22 +247,22 @@ export default function BreakEvenPage() {
                       name="pricePerUnit"
                       value={pricePerUnit}
                       onChange={(e) => setPricePerUnit(e.target.value)}
-                      className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg font-body text-text-primary focus:outline-none focus:ring-2 focus:ring-orange focus:border-transparent transition-all"
+                      className="w-full h-10 pl-8 pr-3 rounded-lg border border-[#E4E4E7] text-[14px] text-[#111111] focus:outline-none focus:border-[#E65100] focus:ring-2 focus:ring-[#E65100]/15 transition-all"
                       placeholder="150"
                     />
                   </div>
-                  <p className="text-xs text-text-muted font-body mt-1">
+                  <p className="text-[12px] text-[#8B8B8B] mt-1">
                     What you charge customers on average
                   </p>
                 </div>
 
                 {/* Variable Cost */}
                 <div>
-                  <label className="block text-sm font-body font-medium text-text-primary mb-2">
+                  <label className="block text-[13px] font-medium text-[#111111] mb-1.5">
                     Variable Cost per Service/Product
                   </label>
                   <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted font-display text-lg">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8B8B8B] text-sm">
                       $
                     </span>
                     <input
@@ -279,19 +270,19 @@ export default function BreakEvenPage() {
                       name="variableCost"
                       value={variableCost}
                       onChange={(e) => setVariableCost(e.target.value)}
-                      className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg font-body text-text-primary focus:outline-none focus:ring-2 focus:ring-orange focus:border-transparent transition-all"
+                      className="w-full h-10 pl-8 pr-3 rounded-lg border border-[#E4E4E7] text-[14px] text-[#111111] focus:outline-none focus:border-[#E65100] focus:ring-2 focus:ring-[#E65100]/15 transition-all"
                       placeholder="50"
                     />
                   </div>
-                  <p className="text-xs text-text-muted font-body mt-1">
+                  <p className="text-[12px] text-[#8B8B8B] mt-1">
                     Materials, labor, costs that increase with each sale
                   </p>
                 </div>
 
                 {/* Current Sales (Optional) */}
                 <div>
-                  <label className="block text-sm font-body font-medium text-text-primary mb-2">
-                    Current Monthly Sales <span className="text-text-muted">(optional)</span>
+                  <label className="block text-[13px] font-medium text-[#111111] mb-1.5">
+                    Current Monthly Sales <span className="text-[#8B8B8B]">(optional)</span>
                   </label>
                   <div className="relative">
                     <input
@@ -299,14 +290,14 @@ export default function BreakEvenPage() {
                       name="currentSales"
                       value={currentSales}
                       onChange={(e) => setCurrentSales(e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-lg font-body text-text-primary focus:outline-none focus:ring-2 focus:ring-orange focus:border-transparent transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      className="w-full h-10 px-3 rounded-lg border border-[#E4E4E7] text-[14px] text-[#111111] focus:outline-none focus:border-[#E65100] focus:ring-2 focus:ring-[#E65100]/15 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       placeholder="40"
                     />
-                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-text-muted font-body text-sm">
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8B8B8B] text-[13px]">
                       units
                     </span>
                   </div>
-                  <p className="text-xs text-text-muted font-body mt-1">
+                  <p className="text-[12px] text-[#8B8B8B] mt-1">
                     How many you&apos;re selling now (for comparison)
                   </p>
                 </div>
@@ -327,28 +318,28 @@ export default function BreakEvenPage() {
               {result ? (
                 <div className="space-y-6">
                   {/* Result Card */}
-                  <div className="bg-white rounded-2xl border border-gray-100 p-6 sm:p-8 shadow-sm">
+                  <div className="bg-white rounded-xl border border-[#F0F0F2] shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-6">
                     <div className="flex items-start justify-between mb-6">
-                      <h2 className="text-xl font-display text-text-primary">
+                      <h2 className="text-[16px] font-semibold text-[#111111]">
                         Your Break-Even Point
                       </h2>
                       <StatusBadge status={result.status} />
                     </div>
 
                     {/* Main Result */}
-                    <div className="bg-gradient-to-br from-orange/5 to-orange/10 rounded-xl p-6 mb-6">
-                      <p className="text-sm font-body text-text-secondary mb-2">
+                    <div className="bg-[#FFF7F2] rounded-xl p-6 mb-6">
+                      <p className="text-[13px] text-[#4B4B4B] mb-2">
                         You need to sell
                       </p>
                       <div className="flex items-baseline gap-2">
-                        <span className="text-5xl font-display text-orange">
+                        <span className="text-[24px] font-semibold text-[#E65100] tabular-nums">
                           {result.breakEvenUnits}
                         </span>
-                        <span className="text-lg font-body text-text-secondary">
+                        <span className="text-[14px] text-[#4B4B4B]">
                           units/month
                         </span>
                       </div>
-                      <p className="text-sm font-body text-text-secondary mt-2">
+                      <p className="text-[13px] text-[#4B4B4B] mt-1">
                         to break even
                       </p>
                     </div>
@@ -356,23 +347,23 @@ export default function BreakEvenPage() {
                     {/* Visual Comparison */}
                     {result.currentSales > 0 && (
                       <div className="mb-6">
-                        <h3 className="text-sm font-body font-medium text-text-primary mb-4">
+                        <h3 className="text-[13px] font-medium text-[#111111] mb-3">
                           Where you are now
                         </h3>
                         <div className="space-y-3">
                           {/* Current Sales Bar */}
                           <div>
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-xs font-body text-text-secondary">
+                            <div className="flex items-center justify-between mb-1.5">
+                              <span className="text-[12px] text-[#4B4B4B]">
                                 Current Sales
                               </span>
-                              <span className="text-sm font-display text-text-primary">
+                              <span className="text-[13px] font-semibold text-[#111111] tabular-nums">
                                 {result.currentSales} units
                               </span>
                             </div>
-                            <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+                            <div className="h-2.5 bg-[#F4F4F5] rounded-full overflow-hidden">
                               <div
-                                className="h-full bg-gradient-to-r from-accent/60 to-accent transition-all duration-700"
+                                className="h-full bg-[#16A34A] rounded-full"
                                 style={{
                                   width: `${Math.min((result.currentSales / Math.max(result.breakEvenUnits, result.currentSales)) * 100, 100)}%`
                                 }}
@@ -382,17 +373,17 @@ export default function BreakEvenPage() {
 
                           {/* Break-Even Bar */}
                           <div>
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-xs font-body text-text-secondary">
+                            <div className="flex items-center justify-between mb-1.5">
+                              <span className="text-[12px] text-[#4B4B4B]">
                                 Break-Even Point
                               </span>
-                              <span className="text-sm font-display text-text-primary">
+                              <span className="text-[13px] font-semibold text-[#111111] tabular-nums">
                                 {result.breakEvenUnits} units
                               </span>
                             </div>
-                            <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+                            <div className="h-2.5 bg-[#F4F4F5] rounded-full overflow-hidden">
                               <div
-                                className="h-full bg-gradient-to-r from-orange to-orange/80 transition-all duration-700"
+                                className="h-full bg-[#E65100] rounded-full"
                                 style={{
                                   width: `${Math.min((result.breakEvenUnits / Math.max(result.breakEvenUnits, result.currentSales)) * 100, 100)}%`
                                 }}
@@ -402,17 +393,17 @@ export default function BreakEvenPage() {
                         </div>
 
                         {/* Gap indicator */}
-                        <div className="mt-4 p-4 bg-background rounded-lg">
-                          <p className="text-sm font-body text-text-primary">
+                        <div className="mt-3 p-3 bg-[#F4F4F5] rounded-lg">
+                          <p className="text-[13px] text-[#111111]">
                             {result.currentSales >= result.breakEvenUnits ? (
                               <>
-                                You&apos;re <span className="font-semibold text-success">
+                                You&apos;re <span className="font-semibold text-[#16A34A]">
                                   {result.currentSales - result.breakEvenUnits} units above
-                                </span> break-even 🎉
+                                </span> break-even
                               </>
                             ) : (
                               <>
-                                You need <span className="font-semibold text-orange">
+                                You need <span className="font-semibold text-[#E65100]">
                                   {result.breakEvenUnits - result.currentSales} more units
                                 </span> to break even
                               </>
@@ -423,21 +414,21 @@ export default function BreakEvenPage() {
                     )}
 
                     {/* AI Explanation */}
-                    <div className="border-t border-gray-100 pt-6">
-                      <h3 className="text-sm font-body font-medium text-text-primary mb-3">
+                    <div className="border-t border-[#F0F0F2] pt-5">
+                      <h3 className="text-[13px] font-medium text-[#111111] mb-2">
                         What this means
                       </h3>
                       {aiLoading ? (
                         <div className="space-y-2 animate-pulse">
-                          <div className="h-4 bg-gray-200 rounded w-full" />
-                          <div className="h-4 bg-gray-200 rounded w-5/6" />
+                          <div className="h-3.5 bg-[#F4F4F5] rounded w-full" />
+                          <div className="h-3.5 bg-[#F4F4F5] rounded w-5/6" />
                         </div>
                       ) : result.explanation ? (
-                        <p className="text-sm font-body text-text-secondary leading-relaxed">
+                        <p className="text-[13px] text-[#4B4B4B] leading-relaxed">
                           {result.explanation}
                         </p>
                       ) : (
-                        <p className="text-sm font-body text-text-muted italic">
+                        <p className="text-[13px] text-[#8B8B8B] italic">
                           AI insights temporarily unavailable
                         </p>
                       )}
@@ -464,14 +455,14 @@ export default function BreakEvenPage() {
                   </div>
                 </div>
               ) : (
-                <div className="bg-white rounded-2xl border-2 border-dashed border-gray-200 p-12 text-center">
-                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-background mb-4">
-                    <TrendingUp className="w-8 h-8 text-text-muted" />
+                <div className="bg-white rounded-xl border border-[#F0F0F2] shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-10 text-center">
+                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-lg bg-[#F4F4F5] mb-4">
+                    <TrendingUp className="w-6 h-6 text-[#8B8B8B]" />
                   </div>
-                  <h3 className="text-lg font-display text-text-primary mb-2">
+                  <h3 className="text-[16px] font-semibold text-[#111111] mb-1">
                     Ready to calculate
                   </h3>
-                  <p className="text-sm text-text-secondary font-body">
+                  <p className="text-[13px] text-[#4B4B4B]">
                     Enter your numbers on the left to see your break-even point
                   </p>
                 </div>
