@@ -4,29 +4,39 @@
 
 /* ─── Base ──────────────────────────────────────────────────── */
 
-html {
-  scroll-behavior: smooth;
-}
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    text-rendering: optimizeLegibility;
+  }
 
-body {
-  background-color: #FAF9F7;
-  color: #111111;
-  font-size: 14px;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
-}
+  body {
+    background-color: #FAF9F7;
+    color: #0F0F0F;
+    font-size: 14px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
 
-/* Tabular numbers for financial data */
-.tabular-nums {
-  font-variant-numeric: tabular-nums;
+  /* Premium number rendering */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Metric values use the serif display font */
+  .font-metric {
+    font-family: var(--font-instrument), Georgia, serif;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
 }
 
 /* ─── Selection ─────────────────────────────────────────────── */
 
 ::selection {
-  background-color: rgba(230, 81, 0, 0.12);
-  color: #111111;
+  background-color: rgba(230, 81, 0, 0.1);
+  color: #0F0F0F;
 }
 
 /* ─── Scrollbar (webkit) ────────────────────────────────────── */
@@ -41,12 +51,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: rgba(0, 0, 0, 0.12);
+  background-color: rgba(0, 0, 0, 0.08);
   border-radius: 100px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(0, 0, 0, 0.2);
+  background-color: rgba(0, 0, 0, 0.15);
 }
 
 /* ─── Animations ────────────────────────────────────────────── */
@@ -84,8 +94,13 @@ body {
   }
 }
 
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
 .animate-fade-in {
-  animation: fade-in 0.4s ease-out backwards;
+  animation: fade-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
 
 .animate-slide-in {
@@ -93,8 +108,15 @@ body {
 }
 
 .animate-fadeIn {
-  animation: fadeIn 0.4s ease-out forwards;
+  animation: fadeIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   opacity: 0;
+}
+
+/* Premium loading shimmer */
+.animate-shimmer {
+  background: linear-gradient(90deg, #F5F4F2 25%, #EDECEA 50%, #F5F4F2 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
 }
 
 /* ─── Reduced motion ────────────────────────────────────────── */

@@ -212,7 +212,7 @@ function MetricCard({
       </h3>
 
       {/* Value */}
-      <p className="text-metric-sm text-text-primary tabular-nums leading-tight">
+      <p className="font-display text-metric-sm text-text-primary tabular-nums leading-tight">
         {displayValue}
       </p>
 
@@ -444,7 +444,7 @@ export default function DashboardPage() {
       <div className="space-y-xl">
         {/* Greeting Section */}
         <div>
-          <h1 className="text-display-sm text-text-primary tracking-tight">
+          <h1 className="font-display text-display text-text-primary">
             Good {timeOfDay},{" "}
             <span className="text-orange">
               {userName}
@@ -642,7 +642,7 @@ export default function DashboardPage() {
               <div className="text-center md:text-left">
                 <AnimatedCurrency
                   value={assessment.cash_on_hand}
-                  className="text-metric-lg text-text-primary tracking-tight block tabular-nums"
+                  className="font-display text-metric-lg text-text-primary tracking-tight block tabular-nums"
                   delay={900}
                 />
                 <p className="text-body-sm text-text-muted mt-1 inline-flex items-center gap-1.5">
@@ -673,7 +673,7 @@ export default function DashboardPage() {
                   <div>
                     <AnimatedCurrency
                       value={assessment.monthly_revenue}
-                      className="text-metric-sm text-success block tabular-nums leading-tight"
+                      className="font-display text-metric-sm text-success block tabular-nums leading-tight"
                       delay={1000}
                     />
                     <p className="text-body-sm text-text-muted inline-flex items-center gap-1">
@@ -703,7 +703,7 @@ export default function DashboardPage() {
                   <div>
                     <AnimatedCurrency
                       value={assessment.monthly_expenses}
-                      className="text-metric-sm text-error block tabular-nums leading-tight"
+                      className="font-display text-metric-sm text-error block tabular-nums leading-tight"
                       delay={1100}
                     />
                     <p className="text-body-sm text-text-muted inline-flex items-center gap-1">

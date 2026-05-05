@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Icon } from "@iconify/react";
 
 type GaugeSize = "sm" | "md" | "lg";
 
@@ -13,36 +12,37 @@ interface HealthScoreGaugeProps {
   animate?: boolean;
 }
 
-const sizeConfig: Record<GaugeSize, { dimension: number; strokeWidth: number; fontSize: string; iconSize: string }> = {
-  sm: { dimension: 100, strokeWidth: 8, fontSize: "28px", iconSize: "24px" },
-  md: { dimension: 160, strokeWidth: 10, fontSize: "44px", iconSize: "36px" },
-  lg: { dimension: 220, strokeWidth: 12, fontSize: "60px", iconSize: "48px" },
+const sizeConfig: Record<GaugeSize, { dimension: number; strokeWidth: number; fontSize: string; trackWidth: number }> = {
+  sm: { dimension: 100, strokeWidth: 6, fontSize: "28px", trackWidth: 6 },
+  md: { dimension: 160, strokeWidth: 8, fontSize: "40px", trackWidth: 8 },
+  lg: { dimension: 220, strokeWidth: 10, fontSize: "56px", trackWidth: 10 },
 };
 
 function getScoreColor(score: number): string {
-  if (score >= 80) return "#43A047";
-  if (score >= 50) return "#F9A825";
-  return "#D32F2F";
+  if (score >= 80) return "#16A34A";
+  if (score >= 60) return "#E65100";
+  if (score >= 40) return "#D97706";
+  return "#DC2626";
 }
 
-function getScoreIcon(score: number): string {
-  if (score >= 80) return "ph:heart-fill";
-  if (score >= 50) return "ph:warning-fill";
-  return "ph:x-circle-fill";
+function getScoreLabel(score: number): string {
+  if (score >= 90) return "Thriving";
+  if (score >= 75) return "Solid";
+  if (score >= 60) return "Attention";
+  if (score >= 40) return "At Risk";
+  return "Critical";
 }
 
 function HealthScoreGauge({
   score,
   size = "md",
   className = "",
-  showIcon = true,
   animate = true
 }: HealthScoreGaugeProps) {
   const clampedScore = Math.max(0, Math.min(100, score));
   const config = sizeConfig[size];
-  const { dimension, strokeWidth, fontSize, iconSize } = config;
+  const { dimension, strokeWidth, fontSize, trackWidth } = config;
 
-  // Animated count-up effect
   const [displayScore, setDisplayScore] = useState(animate ? 0 : clampedScore);
 
   useEffect(() => {
@@ -51,9 +51,8 @@ function HealthScoreGauge({
       return;
     }
 
-    const duration = 1500; // 1.5 seconds
+    const duration = 1200;
     const steps = 60;
-    const increment = clampedScore / steps;
     let currentStep = 0;
 
     const timer = setInterval(() => {
@@ -62,7 +61,9 @@ function HealthScoreGauge({
         setDisplayScore(clampedScore);
         clearInterval(timer);
       } else {
-        setDisplayScore(Math.floor(increment * currentStep));
+        const progress = currentStep / steps;
+        const eased = 1 - Math.pow(1 - progress, 3);
+        setDisplayScore(Math.floor(clampedScore * eased));
       }
     }, duration / steps);
 
@@ -70,15 +71,15 @@ function HealthScoreGauge({
   }, [clampedScore, animate]);
 
   const center = dimension / 2;
-  const radius = center - strokeWidth;
+  const radius = center - strokeWidth - 2;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (clampedScore / 100) * circumference;
   const color = getScoreColor(clampedScore);
-  const icon = getScoreIcon(clampedScore);
 
   return (
     <div
-      className={`inline-flex items-center justify-center ${className}`}
+      className={`relative inline-flex flex-col items-center justify-center ${className}`}
+      style={{ width: dimension, height: dimension }}
       role="img"
       aria-label={`Health score: ${clampedScore} out of 100`}
     >
@@ -88,20 +89,20 @@ function HealthScoreGauge({
         viewBox={`0 0 ${dimension} ${dimension}`}
         className="transform -rotate-90"
       >
-        {/* Dark background circle */}
+        {/* Light track */}
         <circle
           cx={center}
           cy={center}
           r={radius}
-          fill="#2D2A26"
-          stroke="#3A3632"
-          strokeWidth={strokeWidth}
+          fill="none"
+          stroke="#F0EDEB"
+          strokeWidth={trackWidth}
         />
 
-        {/* Colored score ring with gradient */}
+        {/* Score arc */}
         <defs>
-          <linearGradient id={`gauge-gradient-${clampedScore}`} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor={color} stopOpacity="1" />
+          <linearGradient id={`gauge-grad-${clampedScore}`} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor={color} />
             <stop offset="100%" stopColor={color} stopOpacity="0.7" />
           </linearGradient>
         </defs>
@@ -111,42 +112,33 @@ function HealthScoreGauge({
           cy={center}
           r={radius}
           fill="none"
-          stroke={`url(#gauge-gradient-${clampedScore})`}
+          stroke={`url(#gauge-grad-${clampedScore})`}
           strokeWidth={strokeWidth}
           strokeDasharray={circumference}
           strokeDashoffset={offset}
           strokeLinecap="round"
-          className={`transition-all duration-700 ease-out ${
-            clampedScore >= 80 ? 'animate-pulse' : ''
-          }`}
-          style={{
-            filter: clampedScore >= 80 ? 'drop-shadow(0 0 8px rgba(67, 160, 71, 0.4))' : 'none'
-          }}
+          className="transition-all duration-1000 ease-out"
         />
       </svg>
 
-      {/* Score number overlay */}
-      <span
-        className="absolute font-display text-white tabular-nums"
-        style={{ fontSize }}
-        aria-hidden="true"
-      >
-        {displayScore}
-      </span>
-
-      {/* Center icon */}
-      {showIcon && (
-        <Icon
-          icon={icon}
-          className="absolute"
-          style={{
-            fontSize: iconSize,
-            color: color,
-            top: `${dimension * 0.65}px`,
-            opacity: 0.9
-          }}
-        />
-      )}
+      {/* Score number — centered */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span
+          className="font-display text-text-primary tabular-nums"
+          style={{ fontSize }}
+          aria-hidden="true"
+        >
+          {displayScore}
+        </span>
+        {size === "lg" && (
+          <span
+            className="text-label uppercase tracking-wider mt-1"
+            style={{ color }}
+          >
+            {getScoreLabel(clampedScore)}
+          </span>
+        )}
+      </div>
     </div>
   );
 }

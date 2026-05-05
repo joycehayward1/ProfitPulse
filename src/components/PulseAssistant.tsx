@@ -86,13 +86,13 @@ export function PulseAssistant({ message }: PulseAssistantProps) {
           <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-orange animate-ping" style={{ animationDuration: "2s" }} />
         )}
 
-        <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-medium group-hover:shadow-elevated transition-all duration-200 group-hover:scale-105 ring-2 ring-white">
+        <div className="w-44 h-44 transition-all duration-200 group-hover:scale-105 drop-shadow-lg group-hover:drop-shadow-xl">
           <Image
-            src="/profit-pulse-mascot.png"
+            src="/profit-pulse-mascot2.png"
             alt="Pulse — your financial assistant"
-            width={128}
-            height={128}
-            className="w-full h-full object-cover scale-[1.3]"
+            width={352}
+            height={352}
+            className="w-full h-full object-contain"
             priority
           />
         </div>

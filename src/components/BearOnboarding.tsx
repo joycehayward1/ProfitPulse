@@ -104,21 +104,20 @@ export function BearOnboarding({ userId, onComplete }: BearOnboardingProps) {
         <div className="relative flex-shrink-0">
           <div
             className={[
-              "w-[200px] h-[200px] md:w-[240px] md:h-[240px]",
-              "rounded-3xl overflow-hidden",
-              "shadow-elevated ring-4 ring-white/80",
+              "w-[320px] h-[420px] md:w-[420px] md:h-[540px]",
               "transition-transform duration-500",
+              "drop-shadow-2xl",
             ].join(" ")}
             style={{
               animation: entering ? undefined : "mascotBounceIn 0.6s ease-out",
             }}
           >
             <Image
-              src="/profit-pulse-mascot.png"
+              src="/profit-pulse-mascot2.png"
               alt="Pulse — your financial assistant"
-              width={480}
-              height={480}
-              className="w-full h-full object-cover scale-[1.15]"
+              width={840}
+              height={1080}
+              className="w-full h-full object-contain"
               priority
             />
           </div>
