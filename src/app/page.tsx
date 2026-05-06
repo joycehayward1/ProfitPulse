@@ -1162,12 +1162,12 @@ export default function LandingPage() {
               </p>
               <ul className="space-y-sm">
                 <li>
-                  <a href="#" className="font-body text-body text-white/40 hover:text-white/70 transition-colors">
+                  <a href="/privacy" className="font-body text-body text-white/40 hover:text-white/70 transition-colors">
                     Privacy Policy
                   </a>
                 </li>
                 <li>
-                  <a href="#" className="font-body text-body text-white/40 hover:text-white/70 transition-colors">
+                  <a href="/terms" className="font-body text-body text-white/40 hover:text-white/70 transition-colors">
                     Terms of Service
                   </a>
                 </li>
