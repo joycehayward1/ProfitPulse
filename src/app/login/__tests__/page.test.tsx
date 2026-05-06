@@ -70,7 +70,10 @@ describe("LoginPage", () => {
   });
 
   it("calls InsForge signInWithPassword on valid submission", async () => {
-    mockSignIn.mockResolvedValue({ data: { user: { id: "1" } }, error: null });
+    mockSignIn.mockResolvedValue({
+      data: { accessToken: "test-token", user: { id: "1" } },
+      error: null,
+    });
 
     render(<LoginPage />);
 
@@ -92,7 +95,10 @@ describe("LoginPage", () => {
   });
 
   it("redirects to /dashboard on successful login", async () => {
-    mockSignIn.mockResolvedValue({ data: { user: { id: "1" } }, error: null });
+    mockSignIn.mockResolvedValue({
+      data: { accessToken: "test-token", user: { id: "1" } },
+      error: null,
+    });
 
     render(<LoginPage />);
 
@@ -129,7 +135,7 @@ describe("LoginPage", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText("Invalid email or password. Please try again.")
+        screen.getByText("Invalid credentials")
       ).toBeInTheDocument();
     });
   });

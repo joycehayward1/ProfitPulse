@@ -20,10 +20,18 @@ jest.mock("next/image", () => ({
 
 // Mock InsForge client
 const mockSignUp = jest.fn();
+const mockProfileUpdate = jest.fn(() => ({
+  eq: jest.fn().mockResolvedValue({ data: null, error: null }),
+}));
 jest.mock("@/lib/insforge", () => ({
   getInsForgeClient: () => ({
     auth: {
       signUp: mockSignUp,
+    },
+    database: {
+      from: jest.fn(() => ({
+        update: mockProfileUpdate,
+      })),
     },
   }),
 }));
@@ -124,6 +132,9 @@ describe("SignUpPage", () => {
 
     render(<SignUpPage />);
 
+    fireEvent.change(screen.getByLabelText(/full name/i), {
+      target: { value: "Test User" },
+    });
     fireEvent.change(screen.getByLabelText(/email address/i), {
       target: { value: "test@business.com" },
     });
@@ -146,16 +157,22 @@ describe("SignUpPage", () => {
       expect(mockSignUp).toHaveBeenCalledWith({
         email: "test@business.com",
         password: "password123",
-        name: "Test Corp",
+        name: "Test User",
       });
     });
   });
 
-  it("shows email verification state on successful signup", async () => {
-    mockSignUp.mockResolvedValue({ data: { user: { id: "1" } }, error: null });
+  it("redirects to email verification when required", async () => {
+    mockSignUp.mockResolvedValue({
+      data: { user: { id: "1" }, requireEmailVerification: true },
+      error: null,
+    });
 
     render(<SignUpPage />);
 
+    fireEvent.change(screen.getByLabelText(/full name/i), {
+      target: { value: "Test User" },
+    });
     fireEvent.change(screen.getByLabelText(/email address/i), {
       target: { value: "test@business.com" },
     });
@@ -175,16 +192,18 @@ describe("SignUpPage", () => {
     fireEvent.click(screen.getByRole("button", { name: /get started/i }));
 
     await waitFor(() => {
-      expect(screen.getByText("Check your email")).toBeInTheDocument();
-      expect(screen.getByText(/test@business.com/)).toBeInTheDocument();
+      expect(mockPush).toHaveBeenCalledWith("/verify-email?email=test%40business.com");
     });
   });
 
-  it("navigates to checkout from verification state", async () => {
+  it("redirects to dashboard when signup signs the user in", async () => {
     mockSignUp.mockResolvedValue({ data: { user: { id: "1" } }, error: null });
 
     render(<SignUpPage />);
 
+    fireEvent.change(screen.getByLabelText(/full name/i), {
+      target: { value: "Test User" },
+    });
     fireEvent.change(screen.getByLabelText(/email address/i), {
       target: { value: "test@business.com" },
     });
@@ -204,11 +223,8 @@ describe("SignUpPage", () => {
     fireEvent.click(screen.getByRole("button", { name: /get started/i }));
 
     await waitFor(() => {
-      expect(screen.getByText("Check your email")).toBeInTheDocument();
+      expect(mockPush).toHaveBeenCalledWith("/dashboard");
     });
-
-    fireEvent.click(screen.getByRole("button", { name: /continue to checkout/i }));
-    expect(mockPush).toHaveBeenCalledWith("/checkout");
   });
 
   it("shows API error on signup failure", async () => {
@@ -219,6 +235,9 @@ describe("SignUpPage", () => {
 
     render(<SignUpPage />);
 
+    fireEvent.change(screen.getByLabelText(/full name/i), {
+      target: { value: "Test User" },
+    });
     fireEvent.change(screen.getByLabelText(/email address/i), {
       target: { value: "test@business.com" },
     });

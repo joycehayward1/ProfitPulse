@@ -23,7 +23,7 @@ import {
 } from "../database.types";
 
 describe("TABLE_NAMES", () => {
-  it("contains all 9 required tables", () => {
+  it("contains all required tables", () => {
     const expectedTables = [
       "profiles",
       "subscriptions",
@@ -34,10 +34,12 @@ describe("TABLE_NAMES", () => {
       "alert_history",
       "scenarios",
       "quickbooks_connections",
+      "financial_snapshots",
+      "payment_records",
     ];
 
     expect(Object.values(TABLE_NAMES)).toEqual(expectedTables);
-    expect(Object.keys(TABLE_NAMES)).toHaveLength(9);
+    expect(Object.keys(TABLE_NAMES)).toHaveLength(expectedTables.length);
   });
 
   it("has correct table name values", () => {
@@ -50,6 +52,8 @@ describe("TABLE_NAMES", () => {
     expect(TABLE_NAMES.alert_history).toBe("alert_history");
     expect(TABLE_NAMES.scenarios).toBe("scenarios");
     expect(TABLE_NAMES.quickbooks_connections).toBe("quickbooks_connections");
+    expect(TABLE_NAMES.financial_snapshots).toBe("financial_snapshots");
+    expect(TABLE_NAMES.payment_records).toBe("payment_records");
   });
 });
 

@@ -4,6 +4,7 @@
 
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { AppLayout } from "../AppLayout";
+import { useAuth } from "@/contexts/AuthContext";
 
 // Mock next/navigation
 const mockPush = jest.fn();
@@ -21,8 +22,43 @@ jest.mock("next/image", () => ({
 }));
 
 describe("AppLayout", () => {
+  const mockSignOut = jest.fn().mockResolvedValue(undefined);
+
   beforeEach(() => {
     jest.clearAllMocks();
+    (useAuth as jest.Mock).mockReturnValue({
+      user: {
+        id: "test-user",
+        email: "owner@profitpulse.test",
+        name: "Test Owner",
+        profile: { business_name: "Profit Pulse Test Co." },
+      },
+      subscription: {
+        id: "test-subscription",
+        user_id: "test-user",
+        plan: "pro",
+        billing_interval: "monthly",
+        subscription_status: "active",
+        trial_start_date: null,
+        trial_end_date: null,
+        anet_customer_profile_id: null,
+        anet_payment_profile_id: null,
+        anet_subscription_id: null,
+        billing_cycle_start_date: "2026-01-01T00:00:00Z",
+        current_period_end: "2099-01-01T00:00:00Z",
+        next_billing_date: "2099-01-01T00:00:00Z",
+        pending_switch_to: null,
+        pending_switch_sub_id: null,
+        last_payment_date: "2026-01-01T00:00:00Z",
+        last_payment_amount: 29,
+        last_payment_status: "success",
+        created_at: "2026-01-01T00:00:00Z",
+        updated_at: "2026-01-01T00:00:00Z",
+      },
+      loading: false,
+      signOut: mockSignOut,
+      refreshUser: jest.fn().mockResolvedValue(undefined),
+    });
   });
 
   it("renders the logo in sidebar", () => {
@@ -65,7 +101,8 @@ describe("AppLayout", () => {
 
     expect(screen.getAllByText("OVERVIEW").length).toBeGreaterThan(0);
     expect(screen.getAllByText("FINANCIALS").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("SETTINGS").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("MANAGE").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("HELP").length).toBeGreaterThan(0);
   });
 
   it("renders user avatar in top bar", () => {
@@ -101,7 +138,7 @@ describe("AppLayout", () => {
     await waitFor(() => {
       expect(screen.getByRole("link", { name: /profile/i })).toBeInTheDocument();
       expect(screen.getByRole("link", { name: /billing/i })).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: /logout/i })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /log out/i })).toBeInTheDocument();
     });
   });
 
@@ -116,13 +153,13 @@ describe("AppLayout", () => {
     fireEvent.click(screen.getByLabelText("User menu"));
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /logout/i })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /log out/i })).toBeInTheDocument();
     });
 
     // Click logout
-    fireEvent.click(screen.getByRole("button", { name: /logout/i }));
+    fireEvent.click(screen.getByRole("button", { name: /log out/i }));
 
-    expect(mockPush).toHaveBeenCalledWith("/login");
+    expect(mockSignOut).toHaveBeenCalled();
   });
 
   it("opens mobile menu when hamburger is clicked", async () => {
@@ -169,7 +206,7 @@ describe("AppLayout", () => {
     );
 
     // The sidebar should exist with proper width class
-    const sidebar = document.querySelector("aside.md\\:w-\\[220px\\]");
+    const sidebar = document.querySelector("aside.md\\:w-\\[232px\\]");
     expect(sidebar).toBeInTheDocument();
   });
 });

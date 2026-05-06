@@ -19,10 +19,10 @@ describe("Card", () => {
     expect(card.className).toContain("border-l-orange");
   });
 
-  it("applies highlight variant with cream bg", () => {
+  it("applies highlight variant with inset surface", () => {
     render(<Card variant="highlight">Highlight</Card>);
     const card = screen.getByText("Highlight").closest("div")!;
-    expect(card.className).toContain("bg-background");
+    expect(card.className).toContain("bg-surface-inset");
   });
 
   it("is clickable and responds to click events", () => {

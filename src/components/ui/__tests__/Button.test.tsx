@@ -24,7 +24,8 @@ describe("Button", () => {
   it("applies cancel variant styles", () => {
     render(<Button variant="cancel">Cancel</Button>);
     const btn = screen.getByRole("button");
-    expect(btn.className).toContain("bg-[#F5F5F5]");
+    expect(btn.className).toContain("bg-surface-inset");
+    expect(btn.className).toContain("text-text-primary");
   });
 
   it("shows loading state with spinner text", () => {
@@ -60,9 +61,9 @@ describe("Button", () => {
 
   it("applies size classes", () => {
     const { rerender } = render(<Button size="sm">S</Button>);
-    expect(screen.getByRole("button").className).toContain("px-4");
+    expect(screen.getByRole("button").className).toContain("px-3");
 
     rerender(<Button size="lg">L</Button>);
-    expect(screen.getByRole("button").className).toContain("px-8");
+    expect(screen.getByRole("button").className).toContain("px-6");
   });
 });

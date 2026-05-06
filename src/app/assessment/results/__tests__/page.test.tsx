@@ -51,7 +51,7 @@ describe('AssessmentResultsPage', () => {
 
     render(<AssessmentResultsPage />);
 
-    expect(screen.getByText(/calculating your health score/i)).toBeInTheDocument();
+    expect(screen.getByText(/loading your breakdown/i)).toBeInTheDocument();
   });
 
   it('should display health score and breakdown for healthy business', async () => {
@@ -200,7 +200,7 @@ describe('AssessmentResultsPage', () => {
     render(<AssessmentResultsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('Critical')).toBeInTheDocument();
+      expect(screen.getAllByText('Critical').length).toBeGreaterThan(0);
     });
   });
 
@@ -247,7 +247,7 @@ describe('AssessmentResultsPage', () => {
     render(<AssessmentResultsPage />);
 
     await waitFor(() => {
-      expect(mockShowToast).toHaveBeenCalledWith('error', expect.stringContaining('Failed to load'));
+      expect(mockShowToast).toHaveBeenCalledWith('error', expect.stringContaining('No assessment'));
       expect(mockPush).toHaveBeenCalledWith('/assessment');
     });
   });

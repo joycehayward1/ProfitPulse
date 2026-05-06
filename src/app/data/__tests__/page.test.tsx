@@ -14,6 +14,27 @@ jest.mock("@/components/ui/Toast", () => ({
   useToast: () => ({ showToast: mockShowToast }),
 }));
 
+jest.mock("@/lib/insforge", () => ({
+  getInsForgeClient: jest.fn(() => ({
+    auth: {
+      getCurrentSession: jest.fn().mockResolvedValue({
+        data: { session: { accessToken: "test-token" } },
+        error: null,
+      }),
+    },
+    database: {
+      from: jest.fn(() => ({
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        order: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        single: jest.fn().mockResolvedValue({ data: null, error: null }),
+        upsert: jest.fn().mockResolvedValue({ data: null, error: null }),
+      })),
+    },
+  })),
+}));
+
 // Mock Papa Parse
 jest.mock("papaparse", () => ({
   __esModule: true,
@@ -57,8 +78,8 @@ describe("DataPage", () => {
       const uploadTab = screen.getByText("Upload Spreadsheet");
       fireEvent.click(uploadTab);
 
-      expect(screen.getByText("Drop your financial spreadsheet here")).toBeInTheDocument();
-      expect(screen.getByText("Choose CSV File")).toBeInTheDocument();
+      expect(screen.getByText("Upload your financial spreadsheet")).toBeInTheDocument();
+      expect(screen.getByText("Choose File")).toBeInTheDocument();
     });
 
     it("switches back to manual tab when clicked", () => {
@@ -66,7 +87,7 @@ describe("DataPage", () => {
 
       // Switch to upload
       fireEvent.click(screen.getByText("Upload Spreadsheet"));
-      expect(screen.getByText("Drop your financial spreadsheet here")).toBeInTheDocument();
+      expect(screen.getByText("Upload your financial spreadsheet")).toBeInTheDocument();
 
       // Switch back to manual
       fireEvent.click(screen.getByText("Enter Manually"));
@@ -125,7 +146,7 @@ describe("DataPage", () => {
     it("renders QuickBooks connection link", () => {
       render(<DataPage />);
       expect(
-        screen.getByText(/Or connect QuickBooks for automatic sync/i)
+        screen.getByText(/Or connect QuickBooks to use sync-only mode/i)
       ).toBeInTheDocument();
     });
   });
@@ -238,62 +259,41 @@ describe("DataPage", () => {
       fireEvent.click(saveButton);
 
       await waitFor(() => {
-        // After reset, get fresh inputs
-        const updatedInputs = screen.getAllByPlaceholderText("0") as HTMLInputElement[];
-        expect(updatedInputs[0].value).toBe("");
-        expect(updatedInputs[1].value).toBe("");
-        expect(updatedInputs[2].value).toBe("");
-        expect(updatedInputs[3].value).toBe("");
+        expect(mockShowToast).toHaveBeenCalledWith(
+          "success",
+          "Financial data saved successfully"
+        );
       });
     });
   });
 
   describe("History Section", () => {
-    it("renders Previous Entries header", () => {
+    it("renders Data Ledger header", () => {
       render(<DataPage />);
-      expect(screen.getByText("Previous Entries")).toBeInTheDocument();
+      expect(screen.getByText("Data Ledger")).toBeInTheDocument();
     });
 
-    it("displays mock history entries with formatted data", () => {
+    it("renders ledger refresh controls", () => {
       render(<DataPage />);
 
-      // Check for period display
-      expect(screen.getByText("January 2026")).toBeInTheDocument();
-      expect(screen.getByText("December 2025")).toBeInTheDocument();
-
-      // Check for data source badges
-      const manualBadges = screen.getAllByText("manual");
-      expect(manualBadges.length).toBeGreaterThan(0);
-
-      // Check for formatted currency values
-      expect(screen.getByText("$24,500")).toBeInTheDocument();
-      expect(screen.getByText("$18,200")).toBeInTheDocument();
-    });
-
-    it("displays formatted date for entries", () => {
-      render(<DataPage />);
-
-      // Should show "Entered" followed by date
-      const enteredTexts = screen.getAllByText(/Entered/i);
-      expect(enteredTexts.length).toBeGreaterThan(0);
+      expect(screen.getByText("Refresh Ledger")).toBeInTheDocument();
     });
   });
 
   describe("Utility Functions", () => {
-    it("formats currency correctly", () => {
+    it("renders currency inputs with currency affordances", () => {
       render(<DataPage />);
 
-      // Check that mock data is formatted properly
-      expect(screen.getByText("$24,500")).toBeInTheDocument();
-      expect(screen.getByText("$22,100")).toBeInTheDocument();
+      expect(screen.getAllByText("$").length).toBeGreaterThan(0);
     });
 
-    it("formats period display correctly", () => {
+    it("defaults the period input to the current month", () => {
       render(<DataPage />);
 
-      // Should display as "Month Year"
-      expect(screen.getByText("January 2026")).toBeInTheDocument();
-      expect(screen.getByText("December 2025")).toBeInTheDocument();
+      const periodInput = screen.getByLabelText(
+        "Which month are these numbers for?"
+      ) as HTMLInputElement;
+      expect(periodInput.value).toMatch(/^\d{4}-\d{2}$/);
     });
   });
 });
