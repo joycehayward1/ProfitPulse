@@ -123,6 +123,7 @@ export async function POST(request: NextRequest) {
       oldSubscriptionId,
       customerProfileId,
       customerPaymentProfileId,
+      currentPeriodEnd: current.current_period_end ? new Date(current.current_period_end) : undefined,
     });
   }
 
@@ -156,10 +157,24 @@ interface SwitchArgs {
   customerPaymentProfileId: string;
 }
 
-async function handleMonthlyToAnnual(args: SwitchArgs): Promise<NextResponse> {
-  const { client, userId, oldSubscriptionId, customerProfileId, customerPaymentProfileId } =
+async function handleMonthlyToAnnual(args: SwitchArgs & { currentPeriodEnd?: Date }): Promise<NextResponse> {
+  const { client, userId, oldSubscriptionId, customerProfileId, customerPaymentProfileId, currentPeriodEnd } =
     args;
   const ANNUAL_AMOUNT = 599.88;
+  const MONTHLY_AMOUNT = 59.99;
+
+  // Calculate proration credit for unused days of current monthly period
+  let credit = 0;
+  if (currentPeriodEnd) {
+    const now = new Date();
+    const periodEndDate = new Date(currentPeriodEnd);
+    const daysRemaining = Math.max(0, Math.ceil((periodEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+    const daysInMonth = 30;
+    credit = Math.round((MONTHLY_AMOUNT * (daysRemaining / daysInMonth)) * 100) / 100;
+  }
+
+  const chargeAmount = Math.round((ANNUAL_AMOUNT - credit) * 100) / 100;
+  console.log(`[switch-plan] Annual upgrade: $${ANNUAL_AMOUNT} - $${credit} credit = $${chargeAmount}`);
 
   // Step 1: Cancel current monthly ARB
   try {
@@ -172,14 +187,14 @@ async function handleMonthlyToAnnual(args: SwitchArgs): Promise<NextResponse> {
     );
   }
 
-  // Step 2: Charge $599.88 via stored Customer Profile
+  // Step 2: Charge prorated amount via stored Customer Profile
   let chargeResult;
   try {
     chargeResult = await chargeCustomerProfile({
-      amount: ANNUAL_AMOUNT,
+      amount: chargeAmount,
       customerProfileId,
       customerPaymentProfileId,
-      description: "ProfitPulse Pro — upgrade to annual",
+      description: `ProfitPulse Pro — upgrade to annual ($${credit} credit applied)`,
     });
   } catch (err) {
     // ROLLBACK: re-create the monthly ARB
@@ -251,7 +266,7 @@ async function handleMonthlyToAnnual(args: SwitchArgs): Promise<NextResponse> {
       current_period_end: annualPeriodEnd.toISOString(),
       next_billing_date: annualPeriodEnd.toISOString(),
       last_payment_date: now.toISOString(),
-      last_payment_amount: ANNUAL_AMOUNT,
+      last_payment_amount: chargeAmount,
       last_payment_status: "success",
       pending_switch_to: null,
       pending_switch_sub_id: null,
@@ -268,10 +283,10 @@ async function handleMonthlyToAnnual(args: SwitchArgs): Promise<NextResponse> {
     user_id: userId,
     anet_transaction_id: chargeResult.transId,
     type: "plan_switch",
-    amount: ANNUAL_AMOUNT,
+    amount: chargeAmount,
     status: "success",
     billing_interval: "annual",
-    description: "Switched from monthly to annual",
+    description: `Switched monthly→annual ($${credit.toFixed(2)} credit for unused days)`,
   });
 
   return NextResponse.json({

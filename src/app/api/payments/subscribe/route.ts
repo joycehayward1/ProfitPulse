@@ -133,16 +133,27 @@ export async function POST(request: NextRequest) {
 
       if (scenario === "C-new-card") {
         // Add a new payment profile under the existing customer
-        const newProfile = await createCustomerPaymentProfile({
-          customerProfileId,
-          nonce: body.nonce!,
-          billTo: {
-            firstName: body.customer?.firstName,
-            lastName: body.customer?.lastName,
-            zip: body.customer?.zip,
-          },
-        });
-        customerPaymentProfileId = newProfile.customerPaymentProfileId;
+        try {
+          const newProfile = await createCustomerPaymentProfile({
+            customerProfileId,
+            nonce: body.nonce!,
+            billTo: {
+              firstName: body.customer?.firstName,
+              lastName: body.customer?.lastName,
+              zip: body.customer?.zip,
+            },
+          });
+          customerPaymentProfileId = newProfile.customerPaymentProfileId;
+        } catch (profileErr: unknown) {
+          // If duplicate card or invalid fields, fall back to existing payment profile
+          const msg = profileErr instanceof Error ? profileErr.message : String(profileErr);
+          console.warn("createCustomerPaymentProfile failed, falling back to existing profile:", msg);
+          if (existingSub?.anet_payment_profile_id) {
+            customerPaymentProfileId = existingSub.anet_payment_profile_id as string;
+          } else {
+            throw profileErr;
+          }
+        }
       } else {
         // Scenario B: reuse the stored payment profile
         customerPaymentProfileId = existingSub!.anet_payment_profile_id as string;

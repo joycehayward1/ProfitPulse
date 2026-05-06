@@ -36,12 +36,107 @@ interface QbTestResult {
   };
 }
 
+function BillingHistory({ userId }: { userId?: string }) {
+  const [records, setRecords] = useState<Array<{
+    id: string;
+    amount: string;
+    status: string;
+    billing_interval: string;
+    created_at: string;
+    description?: string;
+  }>>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetch() {
+      if (!userId) return;
+      try {
+        const { getInsForgeClient } = await import("@/lib/insforge");
+        const client = getInsForgeClient();
+        const { data } = await client.database
+          .from("payment_records")
+          .select("*")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false })
+          .limit(20);
+        setRecords(data || []);
+      } catch (e) {
+        console.error("Failed to load billing history:", e);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetch();
+  }, [userId]);
+
+  return (
+    <div className="bg-white rounded-xl border border-[#F0F0F2] shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)] p-6">
+      <h3 className="text-[16px] font-semibold text-[#111111] mb-1">Billing History</h3>
+      <p className="text-[13px] text-[#8B8B8B] mb-4">Your past invoices and payments</p>
+
+      {loading ? (
+        <div className="h-20 bg-[#F4F4F5] rounded-lg animate-pulse" />
+      ) : records.length === 0 ? (
+        <div className="text-center py-10">
+          <Icon icon="ph:receipt-duotone" className="w-12 h-12 text-[#E4E4E7] mx-auto mb-3" />
+          <p className="text-[13px] text-[#8B8B8B]">
+            No billing history yet. Your first invoice will appear here.
+          </p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-[14px]">
+            <thead>
+              <tr className="border-b border-[#F0F0F2]">
+                <th className="text-left text-[12px] uppercase tracking-wider font-semibold text-[#8B8B8B] py-2.5">Date</th>
+                <th className="text-left text-[12px] uppercase tracking-wider font-semibold text-[#8B8B8B] py-2.5">Description</th>
+                <th className="text-right text-[12px] uppercase tracking-wider font-semibold text-[#8B8B8B] py-2.5">Amount</th>
+                <th className="text-right text-[12px] uppercase tracking-wider font-semibold text-[#8B8B8B] py-2.5">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {records.map((r) => (
+                <tr key={r.id} className="border-b border-[#F0F0F2] last:border-b-0">
+                  <td className="py-3 text-[#4B4B4B]">
+                    {new Date(r.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                  </td>
+                  <td className="py-3 text-[#4B4B4B]">
+                    ProfitPulse Pro — {r.billing_interval}
+                  </td>
+                  <td className="py-3 text-right font-semibold text-[#111111]">
+                    ${parseFloat(r.amount).toFixed(2)}
+                  </td>
+                  <td className="py-3 text-right">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${
+                      r.status === "success" ? "bg-[#F0FDF4] text-[#16A34A]" : "bg-[#FEF2F2] text-[#DC2626]"
+                    }`}>
+                      {r.status === "success" ? "Paid" : r.status}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SettingsContent() {
   const { user, refreshUser } = useRequireAuth();
   const { subscription, refreshUser: refreshAuth } = useAuth();
   const { showToast } = useToast();
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [switchingPlan, setSwitchingPlan] = useState(false);
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [passwordStep, setPasswordStep] = useState<"idle" | "code" | "newpass" | "done">("idle");
+  const [resetCode, setResetCode] = useState("");
+  const [resetToken, setResetToken] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
   const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
   const [isSaving, setIsSaving] = useState(false);
 
@@ -799,6 +894,62 @@ function SettingsContent() {
                       )}
 
                       <div className="flex flex-wrap gap-3">
+                        {status === "active" && interval === "monthly" && (
+                          <button
+                            onClick={async () => {
+                              if (!user || switchingPlan) return;
+                              setSwitchingPlan(true);
+                              try {
+                                const res = await fetch("/api/payments/switch-plan", {
+                                  method: "POST",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ userId: user.id, target: "annual" }),
+                                });
+                                const data = await res.json();
+                                if (!res.ok) throw new Error(data.error || "Switch failed");
+                                showToast("success", "Switched to annual plan — you're saving $120/year!");
+                                window.location.reload();
+                              } catch (err) {
+                                showToast("error", err instanceof Error ? err.message : "Failed to switch plan");
+                              } finally {
+                                setSwitchingPlan(false);
+                              }
+                            }}
+                            disabled={switchingPlan}
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#E65100] text-white text-[13px] font-medium hover:bg-[#D84900] disabled:opacity-50 transition-colors"
+                          >
+                            <Icon icon="ph:arrows-clockwise-bold" className="w-4 h-4" />
+                            {switchingPlan ? "Switching..." : "Switch to Annual (Save $120/yr)"}
+                          </button>
+                        )}
+                        {status === "active" && interval === "annual" && (
+                          <button
+                            onClick={async () => {
+                              if (!user || switchingPlan) return;
+                              setSwitchingPlan(true);
+                              try {
+                                const res = await fetch("/api/payments/switch-plan", {
+                                  method: "POST",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ userId: user.id, target: "monthly" }),
+                                });
+                                const data = await res.json();
+                                if (!res.ok) throw new Error(data.error || "Switch failed");
+                                showToast("success", "Switched to monthly billing");
+                                window.location.reload();
+                              } catch (err) {
+                                showToast("error", err instanceof Error ? err.message : "Failed to switch plan");
+                              } finally {
+                                setSwitchingPlan(false);
+                              }
+                            }}
+                            disabled={switchingPlan}
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-[#E4E4E7] text-[13px] font-medium text-[#4B4B4B] hover:border-[#111111] disabled:opacity-50 transition-colors"
+                          >
+                            <Icon icon="ph:arrows-clockwise-bold" className="w-4 h-4" />
+                            {switchingPlan ? "Switching..." : "Switch to Monthly"}
+                          </button>
+                        )}
                         {status === "active" && (
                           <button
                             onClick={() => setShowCancelModal(true)}
@@ -830,16 +981,7 @@ function SettingsContent() {
               </div>
 
               {/* Billing History */}
-              <div className="bg-white rounded-xl border border-[#F0F0F2] shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)] p-6">
-                <h3 className="text-[16px] font-semibold text-[#111111] mb-1">Billing History</h3>
-                <p className="text-[13px] text-[#8B8B8B] mb-4">Your past invoices and payments</p>
-                <div className="text-center py-10">
-                  <Icon icon="ph:receipt-duotone" className="w-12 h-12 text-[#E4E4E7] mx-auto mb-3" />
-                  <p className="text-[13px] text-[#8B8B8B]">
-                    No billing history yet. Your first invoice will appear here.
-                  </p>
-                </div>
-              </div>
+              <BillingHistory userId={user?.id} />
             </div>
           )}
 
@@ -919,26 +1061,169 @@ function SettingsContent() {
                 <p className="text-[13px] text-[#8B8B8B] mb-4">Manage your account security settings</p>
 
                 <div className="space-y-0">
-                  <div className="flex items-center justify-between py-4 border-b border-[#F0F0F2]">
-                    <div>
-                      <h4 className="text-[14px] font-medium text-[#111111] mb-0.5">Password</h4>
-                      <p className="text-[13px] text-[#8B8B8B]">Last changed 30 days ago</p>
+                  {passwordStep === "idle" && (
+                    <div className="flex items-center justify-between py-4 border-b border-[#F0F0F2]">
+                      <div>
+                        <h4 className="text-[14px] font-medium text-[#111111] mb-0.5">Password</h4>
+                        <p className="text-[13px] text-[#8B8B8B]">Change your account password</p>
+                      </div>
+                      <button
+                        onClick={async () => {
+                          if (!user?.email || savingPassword) return;
+                          setSavingPassword(true);
+                          setPasswordError("");
+                          try {
+                            const res = await fetch("/api/auth/change-password", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ email: user.email }),
+                            });
+                            if (!res.ok) throw new Error("Failed");
+                            setPasswordStep("code");
+                            showToast("success", "Check your email for a 6-digit code");
+                          } catch {
+                            showToast("error", "Failed to send reset code. Try again.");
+                          } finally {
+                            setSavingPassword(false);
+                          }
+                        }}
+                        disabled={savingPassword}
+                        className="px-4 py-2 rounded-lg border border-[#E4E4E7] text-[13px] font-medium text-[#4B4B4B] hover:border-[#E65100] hover:text-[#E65100] disabled:opacity-50 transition-colors"
+                      >
+                        {savingPassword ? "Sending..." : "Change Password"}
+                      </button>
                     </div>
-                    <button className="px-4 py-2 rounded-lg border border-[#E4E4E7] text-[13px] font-medium text-[#4B4B4B] hover:border-[#E65100] hover:text-[#E65100] transition-colors">
-                      Change Password
-                    </button>
-                  </div>
-                  <div className="flex items-center justify-between py-4">
-                    <div>
-                      <h4 className="text-[14px] font-medium text-[#111111] mb-0.5">
-                        Two-Factor Authentication
-                      </h4>
-                      <p className="text-[13px] text-[#8B8B8B]">Add an extra layer of security</p>
+                  )}
+
+                  {passwordStep === "code" && (
+                    <div className="py-4 border-b border-[#F0F0F2] space-y-4">
+                      <h4 className="text-[14px] font-medium text-[#111111]">Enter the 6-digit code from your email</h4>
+                      <input
+                        type="text"
+                        value={resetCode}
+                        onChange={(e) => setResetCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                        placeholder="000000"
+                        maxLength={6}
+                        className="w-48 h-12 px-4 rounded-lg border border-[#E4E4E7] bg-white text-[20px] text-center tracking-[0.3em] text-[#111111] placeholder:text-[#E4E4E7] focus:border-[#E65100] focus:ring-2 focus:ring-[#E65100]/15 focus:outline-none transition-colors"
+                      />
+                      {passwordError && <p className="text-[13px] text-[#DC2626]">{passwordError}</p>}
+                      <div className="flex gap-3">
+                        <button
+                          onClick={async () => {
+                            if (resetCode.length !== 6 || !user?.email) return;
+                            setSavingPassword(true);
+                            setPasswordError("");
+                            try {
+                              const { getInsForgeClient } = await import("@/lib/insforge");
+                              const client = getInsForgeClient();
+                              const { data, error } = await client.auth.exchangeResetPasswordToken({
+                                email: user.email,
+                                code: resetCode,
+                              });
+                              if (error || !data?.token) throw new Error(error?.message || "Invalid code");
+                              setResetToken(data.token);
+                              setPasswordStep("newpass");
+                            } catch (err) {
+                              setPasswordError(err instanceof Error ? err.message : "Invalid code. Try again.");
+                            } finally {
+                              setSavingPassword(false);
+                            }
+                          }}
+                          disabled={savingPassword || resetCode.length !== 6}
+                          className="bg-[#E65100] text-white rounded-lg px-5 py-2 text-[13px] font-medium hover:bg-[#D84900] disabled:opacity-50 transition-colors"
+                        >
+                          {savingPassword ? "Verifying..." : "Verify Code"}
+                        </button>
+                        <button
+                          onClick={() => { setPasswordStep("idle"); setResetCode(""); setPasswordError(""); }}
+                          className="px-5 py-2 rounded-lg border border-[#E4E4E7] text-[13px] font-medium text-[#4B4B4B] hover:border-[#111111] transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
                     </div>
-                    <button className="px-4 py-2 rounded-lg border border-[#E4E4E7] text-[13px] font-medium text-[#4B4B4B] hover:border-[#E65100] hover:text-[#E65100] transition-colors">
-                      Enable
-                    </button>
-                  </div>
+                  )}
+
+                  {passwordStep === "newpass" && (
+                    <div className="py-4 border-b border-[#F0F0F2] space-y-4">
+                      <h4 className="text-[14px] font-medium text-[#111111]">Set your new password</h4>
+                      <div>
+                        <label className="text-[13px] font-medium text-[#111111] mb-1.5 block">New Password</label>
+                        <input
+                          type="password"
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          placeholder="At least 8 characters"
+                          className="w-full sm:w-80 h-10 px-3 rounded-lg border border-[#E4E4E7] bg-white text-[14px] text-[#111111] placeholder:text-[#8B8B8B] focus:border-[#E65100] focus:ring-2 focus:ring-[#E65100]/15 focus:outline-none transition-colors"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[13px] font-medium text-[#111111] mb-1.5 block">Confirm Password</label>
+                        <input
+                          type="password"
+                          value={confirmNewPassword}
+                          onChange={(e) => setConfirmNewPassword(e.target.value)}
+                          placeholder="Type it again"
+                          className="w-full sm:w-80 h-10 px-3 rounded-lg border border-[#E4E4E7] bg-white text-[14px] text-[#111111] placeholder:text-[#8B8B8B] focus:border-[#E65100] focus:ring-2 focus:ring-[#E65100]/15 focus:outline-none transition-colors"
+                        />
+                      </div>
+                      {passwordError && <p className="text-[13px] text-[#DC2626]">{passwordError}</p>}
+                      <div className="flex gap-3">
+                        <button
+                          onClick={async () => {
+                            setPasswordError("");
+                            if (newPassword.length < 8) { setPasswordError("At least 8 characters"); return; }
+                            if (newPassword !== confirmNewPassword) { setPasswordError("Passwords don't match"); return; }
+                            setSavingPassword(true);
+                            try {
+                              const { getInsForgeClient } = await import("@/lib/insforge");
+                              const client = getInsForgeClient();
+                              const { error } = await client.auth.resetPassword({
+                                newPassword,
+                                otp: resetToken,
+                              });
+                              if (error) throw new Error(error.message || "Failed to reset password");
+                              showToast("success", "Password changed successfully");
+                              setPasswordStep("done");
+                              setNewPassword("");
+                              setConfirmNewPassword("");
+                              setResetCode("");
+                              setResetToken("");
+                            } catch (err) {
+                              setPasswordError(err instanceof Error ? err.message : "Failed to change password");
+                            } finally {
+                              setSavingPassword(false);
+                            }
+                          }}
+                          disabled={savingPassword}
+                          className="bg-[#E65100] text-white rounded-lg px-5 py-2 text-[13px] font-medium hover:bg-[#D84900] disabled:opacity-50 transition-colors"
+                        >
+                          {savingPassword ? "Saving..." : "Update Password"}
+                        </button>
+                        <button
+                          onClick={() => { setPasswordStep("idle"); setNewPassword(""); setConfirmNewPassword(""); setPasswordError(""); }}
+                          className="px-5 py-2 rounded-lg border border-[#E4E4E7] text-[13px] font-medium text-[#4B4B4B] hover:border-[#111111] transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {passwordStep === "done" && (
+                    <div className="flex items-center justify-between py-4 border-b border-[#F0F0F2]">
+                      <div>
+                        <h4 className="text-[14px] font-medium text-[#111111] mb-0.5">Password</h4>
+                        <p className="text-[13px] text-[#16A34A]">Password updated successfully</p>
+                      </div>
+                      <button
+                        onClick={() => setPasswordStep("idle")}
+                        className="px-4 py-2 rounded-lg border border-[#16A34A] text-[13px] font-medium text-[#16A34A]"
+                      >
+                        Done ✓
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 
