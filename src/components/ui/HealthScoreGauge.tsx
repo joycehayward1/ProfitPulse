@@ -13,9 +13,9 @@ interface HealthScoreGaugeProps {
 }
 
 const sizeConfig: Record<GaugeSize, { dimension: number; strokeWidth: number; fontSize: string; trackWidth: number }> = {
-  sm: { dimension: 100, strokeWidth: 6, fontSize: "28px", trackWidth: 6 },
-  md: { dimension: 160, strokeWidth: 8, fontSize: "40px", trackWidth: 8 },
-  lg: { dimension: 220, strokeWidth: 10, fontSize: "56px", trackWidth: 10 },
+  sm: { dimension: 110, strokeWidth: 6, fontSize: "32px", trackWidth: 6 },
+  md: { dimension: 180, strokeWidth: 8, fontSize: "48px", trackWidth: 8 },
+  lg: { dimension: 240, strokeWidth: 10, fontSize: "64px", trackWidth: 10 },
 };
 
 function getScoreColor(score: number): string {

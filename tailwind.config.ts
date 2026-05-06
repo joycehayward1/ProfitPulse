@@ -14,11 +14,11 @@ const config: Config = {
         "orange-light": "#FF7A00",
         "orange-subtle": "#FFF7F2",
 
-        // Surfaces — warm undertone with layered depth
-        background: "#FAF9F7",
+        // Surfaces — subtle purple undertone matching brand
+        background: "#F8F7FB",
         surface: "#FFFFFF",
         "surface-elevated": "#FFFFFF",
-        "surface-inset": "#F5F4F2",
+        "surface-inset": "#F3F2F7",
         "surface-dark": "#1C1917",
 
         // Typography
@@ -67,29 +67,29 @@ const config: Config = {
       },
       fontSize: {
         // Display / hero — uses serif font via font-display class
-        "display-lg": ["48px", { lineHeight: "1.08", letterSpacing: "-0.02em", fontWeight: "400" }],
-        "display": ["36px", { lineHeight: "1.12", letterSpacing: "-0.015em", fontWeight: "400" }],
-        "display-sm": ["28px", { lineHeight: "1.18", letterSpacing: "-0.01em", fontWeight: "400" }],
+        "display-lg": ["56px", { lineHeight: "1.08", letterSpacing: "-0.02em", fontWeight: "400" }],
+        "display": ["42px", { lineHeight: "1.12", letterSpacing: "-0.015em", fontWeight: "400" }],
+        "display-sm": ["32px", { lineHeight: "1.18", letterSpacing: "-0.01em", fontWeight: "400" }],
         // Headings — sans-serif
-        "heading-lg": ["24px", { lineHeight: "1.25", letterSpacing: "-0.02em", fontWeight: "700" }],
-        "heading": ["20px", { lineHeight: "1.3", letterSpacing: "-0.015em", fontWeight: "700" }],
-        "heading-sm": ["16px", { lineHeight: "1.4", letterSpacing: "-0.01em", fontWeight: "600" }],
+        "heading-lg": ["28px", { lineHeight: "1.25", letterSpacing: "-0.02em", fontWeight: "700" }],
+        "heading": ["24px", { lineHeight: "1.3", letterSpacing: "-0.015em", fontWeight: "700" }],
+        "heading-sm": ["18px", { lineHeight: "1.4", letterSpacing: "-0.01em", fontWeight: "600" }],
         // Metric values — uses serif for editorial feel
-        "metric-lg": ["48px", { lineHeight: "1", letterSpacing: "-0.03em", fontWeight: "400" }],
-        "metric": ["36px", { lineHeight: "1", letterSpacing: "-0.025em", fontWeight: "400" }],
-        "metric-sm": ["24px", { lineHeight: "1.1", letterSpacing: "-0.02em", fontWeight: "400" }],
+        "metric-lg": ["56px", { lineHeight: "1", letterSpacing: "-0.03em", fontWeight: "400" }],
+        "metric": ["42px", { lineHeight: "1", letterSpacing: "-0.025em", fontWeight: "400" }],
+        "metric-sm": ["28px", { lineHeight: "1.1", letterSpacing: "-0.02em", fontWeight: "400" }],
         // Body — clean sans
-        "body-lg": ["16px", { lineHeight: "1.65", fontWeight: "400" }],
-        "body": ["14px", { lineHeight: "1.65", fontWeight: "400" }],
-        "body-sm": ["13px", { lineHeight: "1.5", fontWeight: "500" }],
+        "body-lg": ["18px", { lineHeight: "1.6", fontWeight: "400" }],
+        "body": ["16px", { lineHeight: "1.6", fontWeight: "400" }],
+        "body-sm": ["14px", { lineHeight: "1.5", fontWeight: "500" }],
         // Small / labels
-        "label": ["12px", { lineHeight: "1.4", letterSpacing: "0.03em", fontWeight: "600" }],
-        "caption": ["11px", { lineHeight: "1.4", letterSpacing: "0.02em", fontWeight: "500" }],
+        "label": ["13px", { lineHeight: "1.4", letterSpacing: "0.03em", fontWeight: "600" }],
+        "caption": ["12px", { lineHeight: "1.4", letterSpacing: "0.02em", fontWeight: "500" }],
         // Legacy aliases
-        h1: "32px",
-        h2: "24px",
-        h3: "18px",
-        small: "12px",
+        h1: "36px",
+        h2: "28px",
+        h3: "22px",
+        small: "13px",
       },
       boxShadow: {
         "xs": "0 1px 2px 0 rgba(0, 0, 0, 0.03)",

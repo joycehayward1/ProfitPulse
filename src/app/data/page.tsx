@@ -919,10 +919,10 @@ function DataContent() {
   }
 
   async function handleAIUpload(file: File) {
-    const maxSize = 2 * 1024 * 1024;
+    const maxSize = 10 * 1024 * 1024;
     if (file.size > maxSize) {
       setUploadError(
-        "File is over 2 MB. Please use a smaller file or enter data manually."
+        "File is over 10 MB. Please use a smaller file or enter data manually."
       );
       return;
     }
@@ -935,7 +935,7 @@ function DataContent() {
       let fileContent = "";
 
       if (file.name.endsWith(".xlsx") || file.name.endsWith(".xls")) {
-        const XLSX = (await import("xlsx")).default;
+        const XLSX = await import("xlsx");
         const buffer = await file.arrayBuffer();
         const workbook = XLSX.read(buffer, { type: "array" });
 

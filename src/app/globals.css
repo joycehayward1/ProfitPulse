@@ -11,9 +11,9 @@
   }
 
   body {
-    background-color: #FAF9F7;
+    background-color: #F8F7FB;
     color: #0F0F0F;
-    font-size: 14px;
+    font-size: 16px;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";

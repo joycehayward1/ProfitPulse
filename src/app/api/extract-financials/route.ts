@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     const client = getInsForgeAdmin();
 
     const completion = await client.ai.chat.completions.create({
-      model: "anthropic/claude-sonnet-4-6",
+      model: "anthropic/claude-sonnet-4.6",
       messages: [
         {
           role: "user",
