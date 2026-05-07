@@ -1259,7 +1259,7 @@ function AssessmentContent() {
 
               {/* Financial Data Section */}
               <div className="space-y-6">
-              {dataSource === "upload" && parsedSnapshot ? (
+              {dataSource === "upload" && parsedSnapshots.length > 0 ? (
                 <div className="space-y-6">
                   <div className="mb-6">
                     <h3 className="text-xl font-display text-text-primary mb-2">
@@ -1267,44 +1267,13 @@ function AssessmentContent() {
                     </h3>
                     <p className="text-sm font-body text-text-secondary">
                       {parsedSnapshots.length > 1
-                        ? `We found ${parsedSnapshots.length} months of data. Review each month below.`
+                        ? `We found ${parsedSnapshots.length} months of data. Review all months below before saving.`
                         : "Review before saving. Click any value to edit or fill in missing fields."}
                     </p>
                   </div>
 
-                  {/* Multi-month tabs or single-month period selector */}
-                  {parsedSnapshots.length > 1 ? (
-                    <div className="mb-6">
-                      <label className="block text-sm font-body font-medium text-text-secondary mb-2">
-                        Select a month to review
-                      </label>
-                      <div className="flex flex-wrap gap-2">
-                        {parsedSnapshots.map((snap, idx) => {
-                          let tabLabel = `Month ${idx + 1}`;
-                          if (snap.period_date) {
-                            const d = new Date(snap.period_date);
-                            if (!isNaN(d.getTime())) {
-                              tabLabel = d.toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
-                            }
-                          }
-                          return (
-                            <button
-                              key={idx}
-                              type="button"
-                              onClick={() => setActiveSnapshotIndex(idx)}
-                              className={`px-4 py-2 rounded-md text-sm font-body font-medium transition-colors ${
-                                activeSnapshotIndex === idx
-                                  ? "bg-orange text-white"
-                                  : "bg-surface border border-text-muted/30 text-text-secondary hover:border-orange/50 hover:text-text-primary"
-                              }`}
-                            >
-                              {tabLabel}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ) : (
+                  {/* Single-month: show period selector */}
+                  {parsedSnapshots.length === 1 && (
                     <div className="mb-6">
                       <label className="block text-sm font-body font-medium text-text-secondary mb-2">
                         Which month does this data cover?
@@ -1318,116 +1287,137 @@ function AssessmentContent() {
                     </div>
                   )}
 
-                  {/* Data Table - grouped by section */}
-                  <div className="overflow-x-auto space-y-6">
-                    {SNAPSHOT_SECTIONS.map((section) => (
-                      <div key={section.title}>
-                        <h4 className="text-sm font-body font-semibold text-text-secondary uppercase tracking-wider mb-2 px-4">
-                          {section.title}
-                        </h4>
-                        <table className="w-full text-sm">
-                          <thead>
-                            <tr className="border-b border-text-muted/20">
-                              <th className="text-left font-body font-medium text-text-secondary py-2 px-4">
-                                Field
-                              </th>
-                              <th className="text-right font-body font-medium text-text-secondary py-2 px-4">
-                                Value
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {section.fields.map(({ key, label, format }) => {
-                              const val = parsedSnapshot[key];
-                              const isEditing = editingField === key;
-                              const displayValue =
-                                val != null && typeof val === "number"
-                                  ? format === "currency"
-                                    ? formatCurrency(val)
-                                    : format === "percent"
-                                    ? `${(val * 100).toFixed(1)}%`
-                                    : val.toFixed(2)
-                                  : null;
+                  {/* Show ALL months, each in its own section */}
+                  {parsedSnapshots.map((snap, snapIdx) => {
+                    let monthLabel = `Month ${snapIdx + 1}`;
+                    if (snap.period_date) {
+                      const d = new Date(snap.period_date);
+                      if (!isNaN(d.getTime())) {
+                        monthLabel = d.toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
+                      }
+                    }
 
-                              return (
-                                <tr key={key} className="border-b border-text-muted/10">
-                                  <td className="py-3 px-4 font-body text-text-primary">
-                                    {label}
-                                  </td>
-                                  <td className="py-3 px-4 text-right font-body">
-                                    {isEditing ? (
-                                      <input
-                                        type="text"
-                                        autoFocus
-                                        defaultValue={
-                                          val != null && typeof val === "number"
-                                            ? format === "percent"
-                                              ? (val * 100).toFixed(1)
-                                              : format === "currency"
-                                              ? Math.round(val).toLocaleString("en-US")
-                                              : val.toFixed(2)
-                                            : ""
-                                        }
-                                        placeholder={
-                                          format === "currency"
-                                            ? "$0"
-                                            : format === "percent"
-                                            ? "0.0%"
-                                            : "0.00"
-                                        }
-                                        className="w-32 ml-auto text-right px-2 py-1 rounded border border-orange/50 bg-white text-text-primary font-body text-sm focus:outline-none focus:ring-2 focus:ring-orange"
-                                        onBlur={(e) => {
-                                          const raw = e.target.value.replace(/[$,%\s]/g, "").replace(/,/g, "");
-                                          const num = parseFloat(raw);
-                                          setParsedSnapshots((prev) => {
-                                            const updated = [...prev];
-                                            const current = updated[activeSnapshotIndex];
-                                            if (!current) return prev;
-                                            updated[activeSnapshotIndex] = {
-                                              ...current,
-                                              [key]: raw === "" || isNaN(num)
-                                                ? null
-                                                : format === "percent"
-                                                ? num / 100
-                                                : num,
-                                            };
-                                            return updated;
-                                          });
-                                          setEditingField(null);
-                                        }}
-                                        onKeyDown={(e) => {
-                                          if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-                                          if (e.key === "Escape") setEditingField(null);
-                                        }}
-                                      />
-                                    ) : (
-                                      <button
-                                        type="button"
-                                        onClick={() => setEditingField(key)}
-                                        className={`inline-flex items-center gap-1.5 rounded px-2 py-1 transition-colors hover:bg-orange/10 ${
-                                          displayValue
-                                            ? "text-text-primary"
-                                            : "text-text-muted italic"
-                                        }`}
-                                        title="Click to edit"
-                                      >
-                                        {displayValue || "Not found"}
-                                        <Icon
-                                          icon="ph:pencil-simple"
-                                          className="w-3 h-3 text-text-muted"
-                                          style={{ opacity: 0.4 }}
-                                        />
-                                      </button>
-                                    )}
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
+                    return (
+                      <div key={snapIdx} className={`space-y-4 ${parsedSnapshots.length > 1 ? "pb-6 mb-6 border-b-2 border-orange/20 last:border-b-0 last:mb-0 last:pb-0" : ""}`}>
+                        {parsedSnapshots.length > 1 && (
+                          <h3 className="text-lg font-display text-orange font-semibold">
+                            {monthLabel}
+                          </h3>
+                        )}
+
+                        <div className="overflow-x-auto space-y-4">
+                          {SNAPSHOT_SECTIONS.map((section) => (
+                            <div key={section.title}>
+                              <h4 className="text-sm font-body font-semibold text-text-secondary uppercase tracking-wider mb-2 px-4">
+                                {section.title}
+                              </h4>
+                              <table className="w-full text-sm">
+                                <thead>
+                                  <tr className="border-b border-text-muted/20">
+                                    <th className="text-left font-body font-medium text-text-secondary py-2 px-4">
+                                      Field
+                                    </th>
+                                    <th className="text-right font-body font-medium text-text-secondary py-2 px-4">
+                                      Value
+                                    </th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {section.fields.map(({ key, label, format }) => {
+                                    const val = snap[key];
+                                    const editKey = `${snapIdx}-${key}`;
+                                    const isEditing = editingField === editKey;
+                                    const displayValue =
+                                      val != null && typeof val === "number"
+                                        ? format === "currency"
+                                          ? formatCurrency(val)
+                                          : format === "percent"
+                                          ? `${(val * 100).toFixed(1)}%`
+                                          : val.toFixed(2)
+                                        : null;
+
+                                    return (
+                                      <tr key={key} className="border-b border-text-muted/10">
+                                        <td className="py-3 px-4 font-body text-text-primary">
+                                          {label}
+                                        </td>
+                                        <td className="py-3 px-4 text-right font-body">
+                                          {isEditing ? (
+                                            <input
+                                              type="text"
+                                              autoFocus
+                                              defaultValue={
+                                                val != null && typeof val === "number"
+                                                  ? format === "percent"
+                                                    ? (val * 100).toFixed(1)
+                                                    : format === "currency"
+                                                    ? Math.round(val).toLocaleString("en-US")
+                                                    : val.toFixed(2)
+                                                  : ""
+                                              }
+                                              placeholder={
+                                                format === "currency"
+                                                  ? "$0"
+                                                  : format === "percent"
+                                                  ? "0.0%"
+                                                  : "0.00"
+                                              }
+                                              className="w-32 ml-auto text-right px-2 py-1 rounded border border-orange/50 bg-white text-text-primary font-body text-sm focus:outline-none focus:ring-2 focus:ring-orange"
+                                              onBlur={(e) => {
+                                                const raw = e.target.value.replace(/[$,%\s]/g, "").replace(/,/g, "");
+                                                const num = parseFloat(raw);
+                                                setParsedSnapshots((prev) => {
+                                                  const updated = [...prev];
+                                                  const current = updated[snapIdx];
+                                                  if (!current) return prev;
+                                                  updated[snapIdx] = {
+                                                    ...current,
+                                                    [key]: raw === "" || isNaN(num)
+                                                      ? null
+                                                      : format === "percent"
+                                                      ? num / 100
+                                                      : num,
+                                                  };
+                                                  return updated;
+                                                });
+                                                setEditingField(null);
+                                              }}
+                                              onKeyDown={(e) => {
+                                                if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                                                if (e.key === "Escape") setEditingField(null);
+                                              }}
+                                            />
+                                          ) : (
+                                            <button
+                                              type="button"
+                                              onClick={() => setEditingField(editKey)}
+                                              className={`inline-flex items-center gap-1.5 rounded px-2 py-1 transition-colors hover:bg-orange/10 ${
+                                                displayValue
+                                                  ? "text-text-primary"
+                                                  : "text-text-muted italic"
+                                              }`}
+                                              title="Click to edit"
+                                            >
+                                              {displayValue || "Not found"}
+                                              <Icon
+                                                icon="ph:pencil-simple"
+                                                className="w-3 h-3 text-text-muted"
+                                                style={{ opacity: 0.4 }}
+                                              />
+                                            </button>
+                                          )}
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    ))}
-                  </div>
+                    );
+                  })}
                 </div>
               ) : (
                 /* Manual / QuickBooks flow: CurrencyInput form */
