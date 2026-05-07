@@ -128,6 +128,9 @@ function SettingsContent() {
   const { subscription, refreshUser: refreshAuth, signOut } = useAuth();
   const { showToast } = useToast();
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [cancelling, setCancelling] = useState(false);
   const [switchingPlan, setSwitchingPlan] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
@@ -1258,9 +1261,75 @@ function SettingsContent() {
                   <p className="text-[13px] text-[#8B8B8B] mb-4">
                     Permanently delete your account and all associated data. This action cannot be undone.
                   </p>
-                  <button className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-[#DC2626] text-[14px] font-medium text-[#DC2626] hover:bg-[#DC2626] hover:text-white transition-colors">
+                  <button
+                    onClick={() => setShowDeleteModal(true)}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-[#DC2626] text-[14px] font-medium text-[#DC2626] hover:bg-[#DC2626] hover:text-white transition-colors"
+                  >
                     <Icon icon="ph:warning-bold" className="w-4 h-4" />
                     Delete Account
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Delete Account Modal */}
+          {showDeleteModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+              <div className="max-w-md w-full bg-white rounded-xl shadow-[0_20px_60px_-10px_rgba(0,0,0,0.2)] border border-[#F0F0F2] p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-full bg-[#DC2626]/10 flex items-center justify-center">
+                    <Icon icon="ph:warning-bold" className="text-[#DC2626]" width={20} height={20} />
+                  </div>
+                  <h3 className="text-[16px] font-semibold text-[#111111]">Delete your account?</h3>
+                </div>
+                <p className="text-[14px] text-[#4B4B4B] mb-4">
+                  This will permanently delete your account, all financial data, assessments, and settings. This cannot be undone.
+                </p>
+                <p className="text-[13px] text-[#8B8B8B] mb-2">
+                  Type <strong className="text-[#DC2626]">DELETE</strong> to confirm:
+                </p>
+                <input
+                  type="text"
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  placeholder="DELETE"
+                  className="w-full h-10 px-3 rounded-lg border border-[#E4E4E7] bg-white text-[14px] text-[#111111] focus:border-[#DC2626] focus:ring-2 focus:ring-[#DC2626]/15 focus:outline-none transition-colors mb-6"
+                />
+                <div className="flex gap-3 justify-end">
+                  <button
+                    onClick={() => { setShowDeleteModal(false); setDeleteConfirmText(""); }}
+                    disabled={deleting}
+                    className="px-4 py-2.5 rounded-lg border border-[#E4E4E7] text-[14px] font-medium text-[#4B4B4B] hover:bg-[#F4F4F5] transition-colors disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    disabled={deleteConfirmText !== "DELETE" || deleting}
+                    onClick={async () => {
+                      if (!user?.id) return;
+                      setDeleting(true);
+                      try {
+                        const res = await fetch("/api/auth/delete-account", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ userId: user.id }),
+                        });
+                        if (!res.ok) {
+                          const data = await res.json().catch(() => ({}));
+                          throw new Error(data.error || "Failed to delete account");
+                        }
+                        await signOut();
+                        router.push("/");
+                      } catch (err) {
+                        showToast("error", err instanceof Error ? err.message : "Failed to delete account");
+                      } finally {
+                        setDeleting(false);
+                      }
+                    }}
+                    className="px-4 py-2.5 rounded-lg bg-[#DC2626] text-white text-[14px] font-medium hover:bg-[#B91C1C] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {deleting ? "Deleting..." : "Delete Account"}
                   </button>
                 </div>
               </div>
