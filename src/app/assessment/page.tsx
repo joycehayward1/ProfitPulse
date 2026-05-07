@@ -590,13 +590,16 @@ function AssessmentContent() {
       const monthLabel = parsedArray.length > 1 ? `${parsedArray.length} months, ` : "";
       console.log(`Found ${totalFields} financial fields across ${parsedArray.length} month(s)`);
       showToast("success", `Found ${monthLabel}${totalFields} financial fields in your files!`);
+
+      setIsProcessing(false);
+      setCurrentStep("review");
+      return;
     } catch (aiError) {
       console.error("AI extraction failed:", aiError);
       showToast("error", "AI analysis failed. Please try again.");
     }
 
     setIsProcessing(false);
-    setCurrentStep("review");
   }
 
   // Submit Assessment

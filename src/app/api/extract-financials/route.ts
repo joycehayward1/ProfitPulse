@@ -14,12 +14,7 @@ export async function POST(request: NextRequest) {
 
     const client = getInsForgeAdmin();
 
-    const completion = await client.ai.chat.completions.create({
-      model: "anthropic/claude-sonnet-4.6",
-      messages: [
-        {
-          role: "user",
-          content: `You are a financial data parser. The spreadsheet may contain data for ONE month or MULTIPLE months, and may span multiple sheets (Profit & Loss, Balance Sheet, Cash Flow). Extract data from ALL sheets/sections and ALL months.
+    const prompt = `You are a financial data parser. The spreadsheet may contain data for ONE month or MULTIPLE months, and may span multiple sheets (Profit & Loss, Balance Sheet, Cash Flow). Extract data from ALL sheets/sections and ALL months.
 
 IMPORTANT: The spreadsheet may have columns for different months (e.g. Jan, Feb, Mar) or separate sheets per month. Extract EACH month as a separate object.
 
@@ -59,13 +54,37 @@ Look for common labels: "Total Revenue", "Sales", "Income", "COGS", "Cost of Goo
 If working_capital, current_ratio, roa, or roe are not explicitly stated but can be calculated from other extracted values, calculate them.
 
 Spreadsheet content:
-${fileContent}`,
-        },
-      ],
-      maxTokens: 4000,
-    });
+${fileContent}`;
 
-    const aiResponse = completion.choices[0]?.message?.content || "";
+    // Retry up to 3 times for transient AI gateway failures
+    let aiResponse = "";
+    let lastError: unknown = null;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        const completion = await client.ai.chat.completions.create({
+          model: "anthropic/claude-sonnet-4.6",
+          messages: [{ role: "user", content: prompt }],
+          maxTokens: 8000,
+        });
+        aiResponse = completion.choices[0]?.message?.content || "";
+        lastError = null;
+        break;
+      } catch (err) {
+        lastError = err;
+        console.error(`AI extraction attempt ${attempt}/3 failed:`, err);
+        if (attempt < 3) {
+          await new Promise((r) => setTimeout(r, 1000 * attempt));
+        }
+      }
+    }
+
+    if (lastError) {
+      console.error("AI extraction failed after 3 attempts:", lastError);
+      return NextResponse.json(
+        { error: "AI extraction failed after multiple attempts. Please try again." },
+        { status: 500 }
+      );
+    }
 
     // Parse response — try array first, then single object
     const arrayMatch = aiResponse.match(/\[[\s\S]*\]/);
