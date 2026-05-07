@@ -125,7 +125,7 @@ function BillingHistory({ userId }: { userId?: string }) {
 
 function SettingsContent() {
   const { user, refreshUser } = useRequireAuth();
-  const { subscription, refreshUser: refreshAuth } = useAuth();
+  const { subscription, refreshUser: refreshAuth, signOut } = useAuth();
   const { showToast } = useToast();
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelling, setCancelling] = useState(false);
@@ -496,8 +496,15 @@ function SettingsContent() {
 
       if (error) throw error;
 
+      if (emailChanged) {
+        showToast("success", "Email updated! Please log in again with your new email.");
+        await signOut();
+        router.push("/login");
+        return;
+      }
+
       await refreshUser();
-      showToast("success", emailChanged ? "Profile and email updated successfully" : "Profile updated successfully");
+      showToast("success", "Profile updated successfully");
     } catch (error) {
       console.error("Error updating profile:", error);
       showToast("error", error instanceof Error ? error.message : "Failed to update profile");
