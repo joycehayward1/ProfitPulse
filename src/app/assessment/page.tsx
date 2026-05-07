@@ -651,6 +651,12 @@ function AssessmentContent() {
         // Upsert ALL months to financial_snapshots
         const snapshotRows = parsedSnapshots.map((snap) => {
           let periodDate = snap.period_date;
+
+          // For single-month uploads, use the user-confirmed period
+          if (parsedSnapshots.length === 1 && confirmPeriod) {
+            periodDate = confirmPeriod + "-01";
+          }
+
           if (periodDate) {
             const d = new Date(periodDate);
             if (!isNaN(d.getTime())) {
@@ -1257,22 +1263,57 @@ function AssessmentContent() {
                       Here&apos;s what we found in your spreadsheet
                     </h3>
                     <p className="text-sm font-body text-text-secondary">
-                      Review before saving. Click any value to edit or fill in missing fields.
+                      {parsedSnapshots.length > 1
+                        ? `We found ${parsedSnapshots.length} months of data. Review each month below.`
+                        : "Review before saving. Click any value to edit or fill in missing fields."}
                     </p>
                   </div>
 
-                  {/* Period Selector */}
-                  <div className="mb-6">
-                    <label className="block text-sm font-body font-medium text-text-secondary mb-2">
-                      Which month does this data cover?
-                    </label>
-                    <input
-                      type="month"
-                      value={confirmPeriod}
-                      onChange={(e) => setConfirmPeriod(e.target.value)}
-                      className="w-full sm:w-auto px-4 py-3 rounded-md border border-text-muted/30 bg-surface text-text-primary font-body focus:outline-none focus:ring-2 focus:ring-orange focus:border-transparent transition-all"
-                    />
-                  </div>
+                  {/* Multi-month tabs or single-month period selector */}
+                  {parsedSnapshots.length > 1 ? (
+                    <div className="mb-6">
+                      <label className="block text-sm font-body font-medium text-text-secondary mb-2">
+                        Select a month to review
+                      </label>
+                      <div className="flex flex-wrap gap-2">
+                        {parsedSnapshots.map((snap, idx) => {
+                          let tabLabel = `Month ${idx + 1}`;
+                          if (snap.period_date) {
+                            const d = new Date(snap.period_date);
+                            if (!isNaN(d.getTime())) {
+                              tabLabel = d.toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
+                            }
+                          }
+                          return (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => setActiveSnapshotIndex(idx)}
+                              className={`px-4 py-2 rounded-md text-sm font-body font-medium transition-colors ${
+                                activeSnapshotIndex === idx
+                                  ? "bg-orange text-white"
+                                  : "bg-surface border border-text-muted/30 text-text-secondary hover:border-orange/50 hover:text-text-primary"
+                              }`}
+                            >
+                              {tabLabel}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mb-6">
+                      <label className="block text-sm font-body font-medium text-text-secondary mb-2">
+                        Which month does this data cover?
+                      </label>
+                      <input
+                        type="month"
+                        value={confirmPeriod}
+                        onChange={(e) => setConfirmPeriod(e.target.value)}
+                        className="w-full sm:w-auto px-4 py-3 rounded-md border border-text-muted/30 bg-surface text-text-primary font-body focus:outline-none focus:ring-2 focus:ring-orange focus:border-transparent transition-all"
+                      />
+                    </div>
+                  )}
 
                   {/* Data Table - grouped by section */}
                   <div className="overflow-x-auto space-y-6">
