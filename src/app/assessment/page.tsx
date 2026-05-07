@@ -553,8 +553,9 @@ function AssessmentContent() {
         throw new Error(err.error || "AI extraction failed");
       }
 
-      const { snapshots } = await res.json();
-      const parsedArray = snapshots as AISnapshotData[];
+      const responseData = await res.json();
+      console.log("API response snapshots count:", responseData.snapshots?.length, "raw:", JSON.stringify(responseData.snapshots?.map((s: AISnapshotData) => s.period_date)));
+      const parsedArray = responseData.snapshots as AISnapshotData[];
 
       // Fix percentages if AI returned them as whole numbers (68.3) instead of decimals (0.683)
       const pctFields: (keyof AISnapshotData)[] = [

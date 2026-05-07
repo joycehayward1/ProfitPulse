@@ -86,29 +86,63 @@ ${fileContent}`;
       );
     }
 
-    // Parse response — try array first, then single object
-    const arrayMatch = aiResponse.match(/\[[\s\S]*\]/);
-    const objectMatch = aiResponse.match(/\{[\s\S]*\}/);
+    // Parse response — robust JSON extraction
+    console.log("AI raw response length:", aiResponse.length);
 
-    let result;
-    if (arrayMatch) {
-      result = JSON.parse(arrayMatch[0]);
-    } else if (objectMatch) {
-      result = [JSON.parse(objectMatch[0])];
-    } else {
+    let result: unknown[] | null = null;
+
+    // Strategy 1: Try parsing the whole response as JSON directly
+    try {
+      const parsed = JSON.parse(aiResponse.trim());
+      if (Array.isArray(parsed)) result = parsed;
+      else if (parsed && typeof parsed === "object") result = [parsed];
+    } catch {
+      // not pure JSON, try extraction
+    }
+
+    // Strategy 2: Find the first [ and try parsing substrings ending at each ] from the end
+    if (!result) {
+      const firstBracket = aiResponse.indexOf("[");
+      if (firstBracket !== -1) {
+        for (let i = aiResponse.lastIndexOf("]"); i > firstBracket; i = aiResponse.lastIndexOf("]", i - 1)) {
+          try {
+            const candidate = aiResponse.substring(firstBracket, i + 1);
+            const parsed = JSON.parse(candidate);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              result = parsed;
+              break;
+            }
+          } catch {
+            continue;
+          }
+        }
+      }
+    }
+
+    // Strategy 3: Extract individual JSON objects with period_date field
+    if (!result) {
+      const objects: unknown[] = [];
+      const objRegex = /\{[^{}]*"period_date"[^{}]*\}/g;
+      let match;
+      while ((match = objRegex.exec(aiResponse)) !== null) {
+        try {
+          objects.push(JSON.parse(match[0]));
+        } catch {
+          // skip malformed
+        }
+      }
+      if (objects.length > 0) result = objects;
+    }
+
+    if (!result || result.length === 0) {
+      console.error("Could not parse AI response:", aiResponse.substring(0, 500));
       return NextResponse.json(
         { error: "Could not parse financial data from the AI response" },
         { status: 422 }
       );
     }
 
-    if (!Array.isArray(result) || result.length === 0) {
-      return NextResponse.json(
-        { error: "No financial data found" },
-        { status: 422 }
-      );
-    }
-
+    console.log("Parsed snapshots count:", result.length);
     return NextResponse.json({ snapshots: result });
   } catch (error) {
     console.error("AI extraction error:", error);
