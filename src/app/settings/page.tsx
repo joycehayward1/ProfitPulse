@@ -471,6 +471,20 @@ function SettingsContent() {
 
       await ensureProfileRow();
 
+      // Check if email changed
+      const emailChanged = profileData.email !== user?.email && profileData.email.trim() !== "";
+      if (emailChanged) {
+        const res = await fetch("/api/auth/change-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: user?.id, newEmail: profileData.email.trim() }),
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error || "Failed to update email");
+        }
+      }
+
       // Update profile in InsForge
       const { error } = await client.database
         .from("profiles")
@@ -483,10 +497,10 @@ function SettingsContent() {
       if (error) throw error;
 
       await refreshUser();
-      showToast("success", "Profile updated successfully");
+      showToast("success", emailChanged ? "Profile and email updated successfully" : "Profile updated successfully");
     } catch (error) {
       console.error("Error updating profile:", error);
-      showToast("error", "Failed to update profile");
+      showToast("error", error instanceof Error ? error.message : "Failed to update profile");
     } finally {
       setIsSaving(false);
     }
@@ -622,12 +636,10 @@ function SettingsContent() {
                       <input
                         type="email"
                         value={profileData.email}
-                        disabled
-                        className="w-full h-10 px-3 rounded-lg border border-[#E4E4E7] bg-[#F4F4F5] text-[14px] text-[#8B8B8B] cursor-not-allowed"
+                        onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
+                        className="w-full h-10 px-3 rounded-lg border border-[#E4E4E7] bg-white text-[14px] text-[#111111] focus:border-[#E65100] focus:ring-2 focus:ring-[#E65100]/15 focus:outline-none transition-colors"
+                        placeholder="your@email.com"
                       />
-                      <p className="text-[12px] text-[#8B8B8B] mt-1.5">
-                        Email cannot be changed for security reasons
-                      </p>
                     </div>
                   </div>
 
