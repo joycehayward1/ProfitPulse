@@ -1,614 +1,199 @@
 # ProfitPulse
 
-A CEO dashboard for service-based business owners that provides clear, actionable financial insights without the complexity of traditional accounting software.
+ProfitPulse is a CEO dashboard for service-based business owners — the kind of operators who can read a P&L but don't want to live inside one. It takes the financial data they already have (a spreadsheet, a QuickBooks login, or a few numbers typed into a form) and turns it into a single page that answers the only three questions a small-business owner actually wakes up worrying about: *Am I making money? Do I have enough cash? What should I do next?*
 
-## 📋 Table of Contents
+A fractional CFO costs $2,500 to $5,000 a month. ProfitPulse is built for the owners who can't justify that yet but still need someone in the room with them when they're deciding whether to hire, raise prices, or take on a new client.
 
-- [Overview](#overview)
-- [Tech Stack](#tech-stack)
-- [Project Status](#project-status)
-- [Project Structure](#project-structure)
-- [Setup Instructions](#setup-instructions)
-- [Environment Variables](#environment-variables)
-- [Key Features](#key-features)
-- [Database Schema](#database-schema)
-- [Design System](#design-system)
-- [Development Workflow](#development-workflow)
-- [Testing](#testing)
-- [Deployment](#deployment)
-- [Next Steps](#next-steps)
+## What it actually does
 
----
+Every account starts with a **Health Assessment**. Twelve plain-English questions, or — more commonly — a spreadsheet upload that the AI extracts into the same answers. The result is a single number from 1 to 100, calculated transparently from weighted metrics (revenue trend, margin, cash runway, customer concentration, etc.), and a short written summary with the top three things the owner should focus on.
 
-## 🎯 Overview
+From there, the **Dashboard** becomes the daily home. Cash position, runway, burn rate, and revenue growth, each with a traffic-light indicator. Green / amber / red appear *only* on health signals — never as decoration — so the colors mean something the moment a user sees them.
 
-**Client:** Joyce Hayward / Fusion 4 Business (Bermuda)
-**Built by:** Apps Built With AI
-**Version:** 1.0 MVP (February 2026)
+The hero of the product is the **Scenario Calculator** suite. Four calculators (break-even, goal planning, hiring readiness, cash runway) let an owner ask "what if?" before they commit. Every result is accompanied by an AI-generated plain-English explanation, not just numbers. This is the feature that turns ProfitPulse from a dashboard into a thinking partner.
 
-ProfitPulse transforms scattered financial data into a simple, visual dashboard with:
-- Traffic-light health indicators (Green/Amber/Red)
-- AI-powered plain-English insights
-- Interactive Scenario Calculators (hero feature)
-- Business Health Score (1-100) with transparent formula
-- Multi-channel data input (CSV/Excel upload + QuickBooks sync)
-- Automated weekly summaries and threshold alerts
+Surrounding all of this:
 
-**Target Market:** First-generation service-based business owners who need CFO-level insights without the $2,500-$5,000/month cost of a fractional CFO.
+- **Reports**: balance sheet, cash flow, and P&L views generated from connected data.
+- **Data entry**: manual forms, CSV / Excel upload, or QuickBooks Online sync.
+- **Alerts & weekly summaries**: threshold-based notifications and a Monday-morning email recap, sent via Resend.
+- **Billing**: tiered subscriptions ($49 / $99 / $199 per month) processed through Authorize.net, which works for the product's Bermuda-based merchant of record. (Stripe was deliberately not used.)
+- **Admin panel**: user management, stats, and tier overrides for the operator.
 
-**Monetization:** Subscription tiers ($49/$99/$199/month) with Authorize.net payment processing (Bermuda-compliant).
+## How it's built
 
----
+ProfitPulse is a Next.js 14 App Router app written in TypeScript, styled with Tailwind, and deployed on Vercel. The backend is **InsForge** — a Supabase-style BaaS that provides Postgres with row-level security, authentication, storage, and an AI Gateway for LLM calls. There is no separate API server; the few backend routes that exist live alongside the frontend as Next.js route handlers (`src/app/api/*`).
 
-## 🛠 Tech Stack
+External services are kept narrow and load-bearing:
 
-### Frontend
-- **Framework:** Next.js 14 (App Router)
-- **Language:** TypeScript
-- **Styling:** Tailwind CSS
-- **Icons:** Phosphor Icons (via @iconify/react)
-- **UI Components:** Custom design system aligned to brand
+| Concern | Service |
+|---|---|
+| Database, auth, storage, AI gateway | InsForge |
+| Payments & recurring billing | Authorize.net (ARB) |
+| Accounting sync | QuickBooks Online (OAuth2) |
+| Transactional + scheduled email | Resend |
+| AI model behind the gateway | Google Gemini |
+| Spreadsheet parsing | Papa Parse (CSV), SheetJS (Excel) |
 
-### Backend
-- **BaaS:** InsForge (https://docs.insforge.dev)
-  - PostgreSQL database with Row Level Security (RLS)
-  - Authentication (email/password + magic links)
-  - AI Gateway (same pricing as direct OpenAI/Anthropic)
-  - Edge Functions (Deno runtime)
-  - Storage (file uploads)
+Two cron jobs run on Vercel: `weekly-summary` every Monday at 09:00 UTC, and `arb-reconcile` daily at 10:00 UTC to reconcile Authorize.net's recurring billing state with our subscription records.
 
-### Integrations
-- **Payment:** Authorize.net (Bermuda-compliant, NOT Stripe)
-- **Accounting:** QuickBooks Online (OAuth2)
-- **Email:** Resend (transactional emails + weekly summaries)
-- **AI:** Google Gemini via InsForge AI Gateway
-- **File Parsing:** Papa Parse (CSV) + SheetJS (Excel)
+## The design system, briefly
 
-### Testing
-- **Framework:** Jest + React Testing Library
-- **Coverage:** Unit tests for components, pages, and utilities
+Georgia for display, Arial for body. The brand color is a confident orange (`#E65100`) on a warm off-white background (`#FFF8F5`). The original design spec called for Nunito Sans and Inter, but Georgia + Arial tested better — it feels less like a SaaS template and more like something a CEO would actually use.
+
+Phosphor Icons throughout (`@iconify/react`). Purple `#7B1FA2` exists but is used sparingly. The three functional colors — `#43A047` green, `#F9A825` amber, `#D32F2F` red — are reserved exclusively for health indicators.
+
+Tokens live in `tailwind.config.ts` and there's a full visual reference at `/showcase` once the app is running.
 
 ---
 
-## ✅ Project Status
+# For developers
 
-### Completed (Phases 1-4)
+The rest of this document is the handoff guide.
 
-**Phase 1: Foundation** ✅
-- US-001: Project Scaffolding & Tailwind Config
-- US-002: Core UI Components (Button, Input, Card, Toast, StatusBadge, etc.)
-- US-003: Health Score Gauge & Traffic Light Components
-- US-004: Landing Page with hero, features, pricing, CTA
-
-**Phase 2: Authentication & Database** ✅
-- US-005: Database Schema (users, businesses, health_assessments, financial_data, ai_insights, alerts)
-- US-006: Sign Up & Login Pages
-- US-007: Password Reset & Email Verification
-- US-010: Authenticated App Layout with Navigation
-
-**Phase 3: Health Assessment** ✅
-- US-011: Health Assessment Questionnaire UI (12 questions, plain-English)
-- US-012: Score Calculation (transparent formula, weighted metrics)
-- US-013: AI-powered Summary & Top 3 Recommendations
-
-**Phase 4: Dashboard & Scenario Calculators** ✅
-- US-014: Dashboard Layout with Greeting & Health Score Card
-- US-015: Metric Cards (Cash Position, Runway, Burn Rate, Revenue Growth)
-- US-016: Manual Data Entry Forms
-- US-017: CSV/Excel Spreadsheet Upload (drag-and-drop, multi-file)
-- US-018: Scenario Calculator Page Layout
-- US-019: Break-Even Calculator
-- US-020: Goal Planning Calculator
-- US-021: Hiring Readiness Calculator
-- US-022: Cash Runway & Shortfall Recovery Calculator
-- US-023: AI Insights Engine
-
-### Pending (Phases 5-6)
-
-**Phase 5: Alerts & Email** (Requires Resend API Key)
-- US-024: Alert Configuration & Threshold Settings
-- US-025: Alert Email Sending & Threshold Checking
-- US-026: Weekly Email Summary
-
-**Phase 6: Payments & QuickBooks** (Requires Credentials)
-- US-008: Authorize.net Checkout & Tier Selection
-- US-009: Authorize.net Webhooks & Subscription Management
-- US-027: QuickBooks OAuth Flow & Connection
-- US-028: QuickBooks Data Sync
-- US-029: Subscription Tier Feature Gating
-- US-030: Settings & Profile Page
-- US-031: Mobile Optimization & Final Polish
-
----
-
-## 📁 Project Structure
+## Project structure
 
 ```
-profit-pulse/
-├── src/
-│   ├── app/                      # Next.js App Router pages
-│   │   ├── page.tsx              # Landing page (/)
-│   │   ├── signup/               # Sign up page
-│   │   ├── login/                # Login page
-│   │   ├── forgot-password/      # Password reset request
-│   │   ├── reset-password/       # Password reset confirmation
-│   │   ├── verify-email/         # Email verification
-│   │   ├── assessment/           # Health assessment questionnaire
-│   │   │   └── results/          # Assessment results & AI summary
-│   │   ├── dashboard/            # CEO dashboard (main app)
-│   │   ├── data/                 # Data entry (manual + upload)
-│   │   ├── scenarios/            # Scenario calculators
-│   │   │   ├── break-even/
-│   │   │   ├── goal-planning/
-│   │   │   ├── hiring/
-│   │   │   └── runway/
-│   │   ├── settings/             # User settings & profile
-│   │   ├── chat/                 # AI chat interface
-│   │   └── layout.tsx            # Root layout
-│   ├── components/
-│   │   ├── ui/                   # Design system components
-│   │   │   ├── Button.tsx
-│   │   │   ├── Input.tsx
-│   │   │   ├── Card.tsx
-│   │   │   ├── Toast.tsx
-│   │   │   ├── HealthScoreGauge.tsx
-│   │   │   ├── TrafficLightDot.tsx
-│   │   │   ├── StatusBadge.tsx
-│   │   │   ├── ProgressBar.tsx
-│   │   │   └── CurrencyInput.tsx
-│   │   ├── layout/               # Layout components
-│   │   │   └── AppLayout.tsx     # Authenticated app shell
-│   │   ├── auth/                 # Auth-specific components
-│   │   │   └── AuthLayout.tsx
-│   │   └── Providers.tsx         # Context providers
-│   ├── contexts/
-│   │   └── AuthContext.tsx       # Authentication state
-│   ├── lib/
-│   │   ├── insforge.ts           # InsForge client initialization
-│   │   ├── database.types.ts     # TypeScript types for database
-│   │   ├── healthScore.ts        # Health score calculation logic
-│   │   ├── subscription.ts       # Subscription tier utilities
-│   │   └── ai-insights.ts        # AI insights generation
-│   └── hooks/
-│       └── useCountUp.ts         # Animated number counter
-├── tasks/
-│   └── prd-profitpulse.md        # Complete Product Requirements Doc
-├── .env.example                  # Environment variable template
-├── .env.local                    # Local environment (gitignored)
-├── package.json
-├── tailwind.config.ts            # Design system tokens
-├── tsconfig.json
-└── jest.config.js
+src/
+├── app/                      Next.js App Router routes
+│   ├── page.tsx              Landing
+│   ├── (auth)                signup, login, forgot-password, reset-password, verify-email
+│   ├── assessment/           Health assessment flow + results
+│   ├── dashboard/            Main app home
+│   ├── data/                 Manual + spreadsheet entry
+│   ├── scenarios/            Break-even, goal planning, hiring, runway calculators
+│   ├── reports/              Balance sheet, cash flow, P&L
+│   ├── settings/             Profile, billing, integrations, alerts
+│   ├── billing/              Plan selection + payment
+│   ├── admin/                Operator-only user management
+│   ├── chat/                 AI chat interface
+│   ├── glossary/             Financial term reference
+│   ├── showcase/             Internal design system reference
+│   ├── pricing/, terms/, privacy/
+│   └── api/
+│       ├── auth/             Email change, account deletion, session helpers
+│       ├── payments/         Authorize.net subscribe / cancel / switch-plan / update-card
+│       ├── webhooks/         Authorize.net webhook receiver
+│       ├── quickbooks/       Status, disconnect, assessment-data, test
+│       ├── connect/, callback/  OAuth2 flows
+│       ├── cron/             weekly-summary, arb-reconcile
+│       ├── extract-financials/  AI spreadsheet → structured data
+│       ├── notifications/    Threshold alerts
+│       └── admin/            Admin API endpoints
+├── components/
+│   ├── ui/                   Design system primitives
+│   ├── layout/               AppLayout (authenticated shell)
+│   └── auth/                 AuthLayout (public shell)
+├── contexts/AuthContext.tsx
+├── hooks/
+└── lib/
+    ├── insforge.ts           Client init
+    ├── database.types.ts     DB types
+    ├── healthScore.ts        Scoring formula
+    ├── subscription.ts       Tier logic
+    └── ai-insights.ts        LLM prompts + post-processing
 ```
 
----
-
-## 🚀 Setup Instructions
-
-### Prerequisites
-- Node.js 18+ and npm/yarn
-- InsForge account (https://insforge.dev)
-- Git
-
-### 1. Clone the Repository
+## Getting it running locally
 
 ```bash
-git clone <repository-url>
-cd profit-pulse
-```
-
-### 2. Install Dependencies
-
-```bash
+git clone https://github.com/joycehayward1/ProfitPulse.git
+cd ProfitPulse
 npm install
-```
-
-### 3. Configure Environment Variables
-
-Copy `.env.example` to `.env.local`:
-
-```bash
-cp .env.example .env.local
-```
-
-Edit `.env.local` with your credentials (see [Environment Variables](#environment-variables) below).
-
-### 4. Set Up InsForge Backend
-
-**Required for Phase 2+:**
-
-1. Create an InsForge project at https://insforge.dev
-2. Copy your project URL and API keys
-3. Run the database schema migration (see [Database Schema](#database-schema))
-4. Enable Row Level Security policies
-5. Configure authentication settings (email/password + magic links)
-
-### 5. Run Development Server
-
-```bash
+cp .env.example .env.local   # then fill in the values below
 npm run dev
 ```
 
-Open http://localhost:3000
+Open http://localhost:3000. The dev server, type checking, and Tailwind JIT all run together.
 
-### 6. Run Tests
+## Environment variables
 
-```bash
-npm test
-```
+The app won't boot without InsForge. Everything else degrades gracefully — a missing Resend key disables outbound email but doesn't break the app, a missing QuickBooks key just hides the integration.
 
----
-
-## 🔐 Environment Variables
-
-### Required (Phase 1-4)
+### Always required
 
 ```env
-# InsForge Backend
 NEXT_PUBLIC_INSFORGE_URL=https://your-project.us-east.insforge.app
-NEXT_PUBLIC_INSFORGE_ANON_KEY=your-anon-key
-INSFORGE_API_KEY=your-admin-api-key
+NEXT_PUBLIC_INSFORGE_ANON_KEY=...
+INSFORGE_API_KEY=...
+NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
-**How to get InsForge credentials:**
-1. Sign up at https://insforge.dev
-2. Create a new project
-3. Go to Settings → API Keys
-4. Copy URL, Anon Key, and Admin API Key
-
-### Required (Phase 5 - Email)
+### Authorize.net (payments)
 
 ```env
-# Resend (Email)
+NEXT_PUBLIC_ANET_API_LOGIN_ID=...
+NEXT_PUBLIC_ANET_CLIENT_KEY=...
+NEXT_PUBLIC_ANET_ENVIRONMENT=sandbox   # or "production"
+ANET_API_LOGIN_ID=...
+ANET_TRANSACTION_KEY=...
+ANET_SIGNATURE_KEY=...                 # used to verify webhooks
+```
+
+### QuickBooks Online (optional integration)
+
+```env
+QUICKBOOKS_CLIENT_ID=...
+QUICKBOOKS_CLIENT_SECRET=...
+QUICKBOOKS_REDIRECT_URI=http://localhost:3000/api/callback/quickbooks
+TOKEN_ENCRYPTION_KEY=...               # 32-byte hex, encrypts stored OAuth tokens
+```
+
+### Resend (email)
+
+```env
 RESEND_API_KEY=re_...
 ```
 
-**How to get Resend API key:**
-1. Sign up at https://resend.com
-2. Create API key
-3. Verify sending domain
-
-### Required (Phase 6 - Payments & QuickBooks)
+### Cron + admin
 
 ```env
-# Authorize.net (Payment Processing)
-NEXT_PUBLIC_AUTHORIZENET_API_LOGIN_ID=your-login-id
-NEXT_PUBLIC_AUTHORIZENET_CLIENT_KEY=your-client-key
-AUTHORIZENET_TRANSACTION_KEY=your-transaction-key
-AUTHORIZENET_SIGNATURE_KEY=your-signature-key
-
-# QuickBooks / Intuit (Accounting Integration)
-INTUIT_CLIENT_ID=your-client-id
-INTUIT_CLIENT_SECRET=your-client-secret
-INTUIT_REDIRECT_URI=http://localhost:3000/api/callback/quickbooks
+CRON_SECRET=...                        # required header for /api/cron/* invocations
+ADMIN_EMAILS=joyce@fusion4business.com,...   # comma-separated allow-list for /admin
 ```
 
-**How to get Authorize.net credentials:**
-- Contact Joyce Hayward (client has Bermuda-based merchant account)
-
-**How to get QuickBooks credentials:**
-1. Create Intuit Developer account
-2. Register OAuth2 app
-3. Configure redirect URIs
-4. Copy Client ID & Secret
-
----
-
-## ✨ Key Features
-
-### 1. Health Assessment (One-Time, Auto-Updates)
-- 12 plain-English questions covering revenue, expenses, cash, customers
-- Transparent scoring formula (1-100 scale)
-- AI-powered summary with Top 3 recommendations
-- Auto-updates when financial data changes (no re-takes)
-
-### 2. CEO Dashboard
-- **Health Score Card:** Gauge with traffic-light color coding
-- **Metric Cards:** Cash Position, Runway, Burn Rate, Revenue Growth
-- **Visual Design:** Georgia display font, orange accent (#E65100), clean white cards
-- **Real-time Updates:** Syncs from manual entry, CSV upload, or QuickBooks
-
-### 3. Scenario Calculators (Hero Feature)
-- **Break-Even:** Calculate units/revenue needed to cover costs
-- **Goal Planning:** Model revenue target scenarios with timeline
-- **Hiring Readiness:** Assess affordability of new hires
-- **Cash Runway:** Project runway and recovery from shortfalls
-- **AI Analysis:** Plain-English explanations for every calculation
-
-### 4. Multi-Channel Data Entry
-- **Manual Forms:** Direct input for revenue, expenses, cash
-- **Spreadsheet Upload:** Drag-and-drop CSV/Excel with auto-parsing
-- **QuickBooks Sync:** OAuth2 flow for automatic data sync (Phase 6)
-
-### 5. Alerts & Email (Phase 5)
-- Threshold-based alerts (cash, runway, burn rate)
-- Weekly automated summaries via Resend
-- Email verification for new accounts
-
-### 6. Subscription Tiers (Phase 6)
-- **Starter ($49/mo):** Core dashboard + 1 scenario/month
-- **Professional ($99/mo):** Unlimited scenarios + QuickBooks
-- **VIP ($199/mo):** All features + priority support
-- Authorize.net checkout (Bermuda-compliant)
-
----
-
-## 🗄 Database Schema
-
-The app uses InsForge (PostgreSQL) with the following tables:
-
-### `users`
-- Managed by InsForge Auth
-- Stores: id, email, created_at, etc.
-
-### `businesses`
-```sql
-- id (uuid, primary key)
-- user_id (uuid, foreign key → users)
-- name (text)
-- industry (text)
-- tier ('starter' | 'professional' | 'vip')
-- created_at, updated_at
-```
-**RLS:** Users can only access their own business.
-
-### `health_assessments`
-```sql
-- id (uuid, primary key)
-- business_id (uuid, foreign key → businesses)
-- score (integer 1-100)
-- responses (jsonb) -- questionnaire answers
-- ai_summary (text)
-- recommendations (jsonb)
-- created_at
-```
-**RLS:** Users can only access assessments for their business.
-
-### `financial_data`
-```sql
-- id (uuid, primary key)
-- business_id (uuid, foreign key → businesses)
-- period_start, period_end (date)
-- revenue, expenses, profit_margin (numeric)
-- cash_balance, accounts_receivable, accounts_payable (numeric)
-- monthly_burn_rate, runway_months (numeric)
-- revenue_growth_rate (numeric)
-- data_source ('manual' | 'csv' | 'quickbooks')
-- created_at, updated_at
-```
-**RLS:** Users can only access their business's financial data.
-
-### `ai_insights`
-```sql
-- id (uuid, primary key)
-- business_id (uuid, foreign key → businesses)
-- insight_type ('health_summary' | 'scenario_analysis' | 'trend_alert')
-- title (text)
-- content (text)
-- metadata (jsonb)
-- created_at
-```
-**RLS:** Users can only access their business's insights.
-
-### `alerts`
-```sql
-- id (uuid, primary key)
-- business_id (uuid, foreign key → businesses)
-- alert_type ('cash_low' | 'runway_short' | 'burn_high')
-- threshold_value (numeric)
-- is_active (boolean)
-- email_enabled (boolean)
-- created_at, updated_at
-```
-**RLS:** Users can only access their business's alerts.
-
-**Migration:** Database schema SQL is in PRD (US-005). Apply via InsForge SQL editor.
-
----
-
-## 🎨 Design System
-
-### Typography
-- **Display:** Georgia (serif) – used for headings, hero text
-- **Body:** Arial (sans-serif) – used for paragraphs, UI text
-
-**Note:** Design spec PDF originally called for Nunito Sans + Inter, but client approved Georgia + Arial for better readability and classic CEO aesthetic.
-
-### Colors
-
-**Primary Orange:** `#E65100`
-Used for: Buttons, links, icons, accents
-
-**Backgrounds:**
-- Page Background: `#FFF8F5` (warm off-white)
-- Card/Surface: `#FFFFFF` (clean white)
-
-**Text:**
-- Primary: `#2D2A26` (near-black)
-- Secondary: `#6B6560` (medium gray)
-- Muted: `#9A948E` (light gray)
-
-**Functional (Health Indicators ONLY):**
-- Success/Green: `#43A047` (score 71-100)
-- Warning/Amber: `#F9A825` (score 41-70)
-- Error/Red: `#D32F2F` (score 0-40)
-
-**Accent (Use Sparingly):**
-- Purple: `#7B1FA2` (CTAs, special highlights)
-
-**Important:** Green/Amber/Red are ONLY for functional health indicators, NOT decorative elements.
-
-### Spacing
-- xs: 8px
-- sm: 16px
-- md: 24px
-- lg: 32px
-- xl: 48px
-- 2xl: 64px
-
-### Border Radius
-- sm: 6px
-- md: 10px
-- lg: 16px
-- full: 50% (circular)
-
-### Icons
-**Phosphor Icons** (via @iconify/react)
-Used throughout for consistency: `ph:`, `ph:bold:`, `ph:duotone:`
-
-Example:
-```tsx
-import { Icon } from '@iconify/react';
-<Icon icon="ph:chart-line-bold" className="text-orange" />
-```
-
----
-
-## 👨‍💻 Development Workflow
-
-### Branching Strategy
-- **`main`**: Production-ready code (merge at launch)
-- **`develop`**: Active development branch (current)
-- **Feature branches:** Create from `develop`, merge back via PR
-
-### Commit Convention
-```
-feat: Add break-even calculator
-fix: Resolve health score rounding bug
-docs: Update README with deployment steps
-test: Add unit tests for AI insights
-```
-
-### Testing Strategy
-- **Unit Tests:** All components in `__tests__/` directories
-- **Coverage:** Run `npm test` before committing
-- **E2E:** Manual testing until Phase 6
-
-### Code Quality
-- TypeScript strict mode enabled
-- ESLint configured (Next.js rules)
-- Run `npm run lint` before committing
-
----
-
-## 🧪 Testing
-
-### Run All Tests
-```bash
-npm test
-```
-
-### Run Tests in Watch Mode
-```bash
-npm test -- --watch
-```
-
-### Test Coverage
-```bash
-npm test -- --coverage
-```
-
-### Test Structure
-```
-src/
-├── app/
-│   └── dashboard/
-│       ├── page.tsx
-│       └── __tests__/
-│           └── page.test.tsx
-├── components/
-│   └── ui/
-│       ├── Button.tsx
-│       └── __tests__/
-│           └── Button.test.tsx
-└── lib/
-    ├── healthScore.ts
-    └── __tests__/
-        └── healthScore.test.ts
-```
-
----
-
-## 🚢 Deployment
-
-### Vercel (Recommended)
-
-1. Connect GitHub repository to Vercel
-2. Add environment variables in Vercel dashboard
-3. Deploy `main` branch for production
-4. Deploy `develop` branch for staging
-
-**Deployment Settings:**
-- Framework: Next.js
-- Build Command: `npm run build`
-- Output Directory: `.next`
-- Node Version: 18.x
-
-### Environment Variables on Vercel
-Add all variables from `.env.local` to Vercel dashboard:
-- Settings → Environment Variables
-- Add separately for Production, Preview, Development
-
-### Domain Setup
-- Custom domain: TBD (client to provide)
-- SSL: Auto-configured by Vercel
-
----
-
-## 🔜 Next Steps
-
-### Immediate (Handoff Checklist)
-- [ ] **Get InsForge credentials from Joyce** (blocks Phase 2+ testing)
-- [ ] **Set up Resend account** (blocks Phase 5)
-- [ ] **Get Authorize.net credentials from Joyce** (blocks Phase 6)
-- [ ] **Get QuickBooks OAuth credentials from Joyce** (blocks Phase 6)
-- [ ] **Get logo assets (SVG/PNG)** (currently using placeholder)
-- [ ] **Deploy to Vercel staging** (test full flow)
-
-### Phase 5: Alerts & Email (3-5 days)
-- [ ] US-024: Alert Configuration UI
-- [ ] US-025: Email sending with Resend
-- [ ] US-026: Weekly summary cron job
-
-### Phase 6: Payments & QuickBooks (5-7 days)
-- [ ] US-008: Authorize.net checkout flow
-- [ ] US-009: Webhook handling for subscriptions
-- [ ] US-027: QuickBooks OAuth2 flow
-- [ ] US-028: QuickBooks data sync
-- [ ] US-029: Tier-based feature gating
-- [ ] US-030: Settings & profile page
-- [ ] US-031: Mobile optimization
-
-### Pre-Launch
-- [ ] Full QA testing (all user flows)
-- [ ] Performance optimization (Lighthouse audit)
-- [ ] Security audit (RLS policies, auth flows)
-- [ ] Legal pages (Terms, Privacy, Cookie Policy)
-- [ ] Analytics setup (Google Analytics or Plausible)
-- [ ] Customer support system (email or chat)
-
----
-
-## 📚 Resources
-
-- **PRD:** `/tasks/prd-profitpulse.md` (31 user stories, detailed acceptance criteria)
-- **Design System PDF:** `/ProfitPulse_DesignSystem_v1.pptx (1).pdf`
-- **InsForge Docs:** https://docs.insforge.dev
-- **Authorize.net Docs:** https://developer.authorize.net
-- **QuickBooks API:** https://developer.intuit.com
-- **Resend Docs:** https://resend.com/docs
-
----
-
-## 🤝 Support
-
-For questions about this codebase:
-- **Developer:** Apps Built With AI
-- **Client:** Joyce Hayward (joyce@fusion4business.com)
-- **PRD Reference:** All user stories documented in `/tasks/prd-profitpulse.md`
-
----
-
-## 📝 License
-
-Proprietary - © 2026 Fusion 4 Business / Apps Built With AI
+## Database
+
+InsForge is Postgres with RLS. The schema is documented in `tasks/prd-profitpulse.md` (US-005) and consists of five tables:
+
+| Table | Purpose |
+|---|---|
+| `businesses` | One per user. Holds business name, industry, subscription tier. |
+| `health_assessments` | The 1–100 score, the raw responses, AI summary, recommendations. |
+| `financial_data` | Period-keyed revenue, expenses, cash, AR/AP, burn, runway, growth — plus a `data_source` of `manual`, `csv`, or `quickbooks`. |
+| `ai_insights` | Generated explanations attached to assessments, scenarios, or alerts. |
+| `alerts` | Per-business threshold configs for cash / runway / burn. |
+
+Every table has RLS scoped to `auth.uid() = user_id` (directly, or through `business_id → businesses.user_id`). Apply schema changes via the InsForge SQL editor; raw SQL can also be sent through the `/api/admin` helpers in dev.
+
+## Workflows
+
+**Branching**: `main` is production. `develop` is the integration branch. `staging` is the current working branch. Feature work happens on branches off `develop` and merges back via PR.
+
+**Commits**: conventional prefixes — `feat:`, `fix:`, `docs:`, `test:`, `refactor:`.
+
+**Tests**: `npm test` runs Jest + React Testing Library. Tests live in `__tests__/` folders next to the code they cover.
+
+**Lint / types**: `npm run lint` (ESLint, Next.js config) and TypeScript strict mode.
+
+## Deployment
+
+The app is deployed on Vercel with Next.js as the framework preset. The build command is `npm run build`, output directory is `.next`, and the runtime is Node.js (default).
+
+Environment variables must be configured in the Vercel dashboard for all three environments (Production, Preview, Development). Cron jobs are declared in `vercel.json` and execute against the production deployment.
+
+Authorize.net needs a publicly reachable webhook URL pointing at `/api/webhooks/authorize-net` — configure this in the Authorize.net merchant dashboard once the production domain is live. The webhook handler verifies the HMAC signature using `ANET_SIGNATURE_KEY`.
+
+## Where to look first
+
+If you're new to this codebase, start in this order:
+
+1. `src/lib/healthScore.ts` — the scoring formula. Understand this and you understand the product.
+2. `src/app/dashboard/page.tsx` — the page everything else feeds into.
+3. `src/app/api/extract-financials/route.ts` — the AI pipeline that turns spreadsheets into structured records.
+4. `src/app/scenarios/*` — the calculators. Each is self-contained.
+5. `tasks/prd-profitpulse.md` — the original PRD with all 31 user stories. Use it as a reference, not a roadmap; the implementation has diverged in places.
+
+## License
+
+Proprietary. © 2026 Fusion 4 Business.
