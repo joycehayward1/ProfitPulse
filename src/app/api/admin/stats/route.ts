@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@insforge/sdk";
 
+const MONTHLY_PRICE = 59.99;
+const ANNUAL_PRICE = 599.88;
+
 /**
  * GET /api/admin/stats
  *
  * Returns dashboard statistics: total users, active subscribers,
- * trial users, and monthly revenue.
+ * trial users, gross receipts MTD, and calculated MRR.
+ *
+ * Subscriptions without a matching profile (orphan rows) are excluded
+ * from user-counting metrics.
  */
 export async function GET(request: NextRequest) {
   const email = request.nextUrl.searchParams.get("email");
@@ -28,29 +34,40 @@ export async function GET(request: NextRequest) {
     anonKey: process.env.INSFORGE_API_KEY || process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY!,
   });
 
-  // Total users (profile count)
   const { data: profiles } = await client.database
     .from("profiles")
     .select("user_id");
 
-  const totalUsers = profiles?.length ?? 0;
+  const profileIds = new Set<string>(
+    (profiles || []).map((p: { user_id: string }) => p.user_id)
+  );
+  const totalUsers = profileIds.size;
 
-  // Subscriptions breakdown
   const { data: subscriptions } = await client.database
     .from("subscriptions")
-    .select("subscription_status, billing_interval");
+    .select("user_id, subscription_status, billing_interval");
 
   let activeSubscribers = 0;
   let trialUsers = 0;
+  let mrr = 0;
 
   if (subscriptions) {
     for (const sub of subscriptions) {
-      if (sub.subscription_status === "active") activeSubscribers++;
-      if (sub.subscription_status === "trial") trialUsers++;
+      if (!profileIds.has(sub.user_id)) continue;
+
+      if (sub.subscription_status === "active") {
+        activeSubscribers++;
+        if (sub.billing_interval === "annual") {
+          mrr += ANNUAL_PRICE / 12;
+        } else {
+          mrr += MONTHLY_PRICE;
+        }
+      } else if (sub.subscription_status === "trial") {
+        trialUsers++;
+      }
     }
   }
 
-  // Monthly revenue — sum of successful payments this month
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
@@ -60,10 +77,10 @@ export async function GET(request: NextRequest) {
     .gte("created_at", monthStart)
     .eq("status", "success");
 
-  let monthlyRevenue = 0;
+  let grossReceiptsMTD = 0;
   if (payments) {
     for (const p of payments) {
-      monthlyRevenue += parseFloat(p.amount) || 0;
+      grossReceiptsMTD += parseFloat(p.amount) || 0;
     }
   }
 
@@ -71,6 +88,9 @@ export async function GET(request: NextRequest) {
     totalUsers,
     activeSubscribers,
     trialUsers,
-    monthlyRevenue,
+    grossReceiptsMTD,
+    mrr,
+    // Kept for backwards compatibility with any older client cache
+    monthlyRevenue: grossReceiptsMTD,
   });
 }

@@ -4,7 +4,7 @@ import { createClient } from "@insforge/sdk";
 /**
  * GET /api/admin/users
  *
- * Returns all users with their profile and subscription data.
+ * Returns all users with their profile, subscription, and auth email.
  * Admin-only — checks ADMIN_EMAILS env var against the email query param.
  */
 export async function GET(request: NextRequest) {
@@ -28,7 +28,6 @@ export async function GET(request: NextRequest) {
     anonKey: process.env.INSFORGE_API_KEY || process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY!,
   });
 
-  // Fetch profiles
   const { data: profiles, error: profilesError } = await client.database
     .from("profiles")
     .select("*")
@@ -41,22 +40,46 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Fetch all subscriptions
-  const { data: subscriptions } = await client.database
-    .from("subscriptions")
-    .select("*");
+  const [{ data: subscriptions }, { data: healthScores }, { data: financialPeriods }] =
+    await Promise.all([
+      client.database.from("subscriptions").select("*"),
+      client.database.from("health_assessments").select("user_id, overall_score"),
+      client.database.from("financial_data").select("user_id"),
+    ]);
 
-  // Fetch health assessment scores
-  const { data: healthScores } = await client.database
-    .from("health_assessments")
-    .select("user_id, overall_score");
+  // Fetch emails from auth.users via raw SQL endpoint (profiles table has no
+  // email column; InsForge SDK doesn't expose auth.users directly).
+  const emailMap = new Map<string, string>();
+  const baseUrl = process.env.NEXT_PUBLIC_INSFORGE_URL;
+  const apiKey = process.env.INSFORGE_API_KEY;
 
-  // Fetch financial data period counts
-  const { data: financialPeriods } = await client.database
-    .from("financial_data")
-    .select("user_id");
+  if (baseUrl && apiKey && profiles && profiles.length > 0) {
+    const userIds = profiles.map((p: Record<string, unknown>) => p.user_id as string);
+    const placeholders = userIds.map((_, i) => `$${i + 1}`).join(",");
+    try {
+      const res = await fetch(`${baseUrl}/api/database/advance/rawsql/unrestricted`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          query: `SELECT id, email FROM auth.users WHERE id IN (${placeholders})`,
+          params: userIds,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const rows = (data?.rows || data || []) as { id: string; email: string }[];
+        for (const row of rows) {
+          if (row.id && row.email) emailMap.set(row.id, row.email);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch auth emails:", err);
+    }
+  }
 
-  // Build a map of subscription by user_id
   const subMap = new Map<string, Record<string, unknown>>();
   if (subscriptions) {
     for (const sub of subscriptions) {
@@ -64,7 +87,6 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // Build health score map
   const healthMap = new Map<string, number>();
   if (healthScores) {
     for (const h of healthScores) {
@@ -72,7 +94,6 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // Build period count map
   const periodMap = new Map<string, number>();
   if (financialPeriods) {
     for (const f of financialPeriods) {
@@ -80,7 +101,6 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // Combine data
   const users = (profiles || []).map((profile: Record<string, unknown>) => {
     const userId = profile.user_id as string;
     const sub = subMap.get(userId) as Record<string, unknown> | undefined;
@@ -88,7 +108,7 @@ export async function GET(request: NextRequest) {
     return {
       id: userId,
       name: profile.name || "—",
-      email: profile.email || "—",
+      email: emailMap.get(userId) || "—",
       business_name: profile.business_name || null,
       avatar_url: profile.avatar_url || null,
       plan: sub?.subscription_status || "none",

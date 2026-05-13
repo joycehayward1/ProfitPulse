@@ -23,7 +23,8 @@ interface AdminStats {
   totalUsers: number;
   activeSubscribers: number;
   trialUsers: number;
-  monthlyRevenue: number;
+  grossReceiptsMTD: number;
+  mrr: number;
 }
 
 function PlanBadge({ plan }: { plan: string }) {
@@ -201,8 +202,8 @@ export default function AdminPage() {
 
         {/* KPI Cards */}
         {loadingData ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {[1, 2, 3, 4].map((i) => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+            {[1, 2, 3, 4, 5].map((i) => (
               <div
                 key={i}
                 className="bg-white rounded-xl border border-[#F0F0F2] shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)] p-6"
@@ -213,7 +214,7 @@ export default function AdminPage() {
             ))}
           </div>
         ) : stats ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
             <div className="bg-white rounded-xl border border-[#F0F0F2] shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)] p-6">
               <div className="flex items-center gap-2 mb-2">
                 <Icon icon="ph:users-bold" className="w-4 h-4 text-[#8B8B8B]" />
@@ -240,11 +241,27 @@ export default function AdminPage() {
 
             <div className="bg-white rounded-xl border border-[#F0F0F2] shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)] p-6">
               <div className="flex items-center gap-2 mb-2">
-                <Icon icon="ph:currency-dollar-bold" className="w-4 h-4 text-[#16A34A]" />
-                <p className="text-[13px] font-medium text-[#8B8B8B]">Monthly Revenue</p>
+                <Icon icon="ph:chart-line-up-bold" className="w-4 h-4 text-[#16A34A]" />
+                <p className="text-[13px] font-medium text-[#8B8B8B]">MRR</p>
               </div>
               <p className="text-[28px] font-bold text-[#111111]">
-                ${stats.monthlyRevenue.toFixed(2)}
+                ${stats.mrr.toFixed(2)}
+              </p>
+              <p className="text-[11px] text-[#8B8B8B] mt-1">
+                Active subs &times; monthly equivalent
+              </p>
+            </div>
+
+            <div className="bg-white rounded-xl border border-[#F0F0F2] shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)] p-6">
+              <div className="flex items-center gap-2 mb-2">
+                <Icon icon="ph:currency-dollar-bold" className="w-4 h-4 text-[#16A34A]" />
+                <p className="text-[13px] font-medium text-[#8B8B8B]">Gross Receipts (MTD)</p>
+              </div>
+              <p className="text-[28px] font-bold text-[#111111]">
+                ${stats.grossReceiptsMTD.toFixed(2)}
+              </p>
+              <p className="text-[11px] text-[#8B8B8B] mt-1">
+                All successful payments this month
               </p>
             </div>
           </div>
