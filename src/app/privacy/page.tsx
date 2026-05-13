@@ -661,7 +661,7 @@ export default function PrivacyPolicy() {
               >
                 privacy.bm
               </a>
-              . Our Privacy Officer can be reached at{" "}
+              . You can also reach us at{" "}
               <a
                 href="mailto:hello@myprofitpulse.app"
                 className="text-orange hover:underline"
@@ -699,7 +699,6 @@ export default function PrivacyPolicy() {
             </p>
             <div className="mt-3 bg-surface-inset rounded-lg p-5">
               <p className="font-semibold text-text-primary">Fusion 4 Business</p>
-              <p className="mt-1">Privacy Officer</p>
               <p className="mt-1">Bermuda</p>
               <p className="mt-1">
                 Email:{" "}
