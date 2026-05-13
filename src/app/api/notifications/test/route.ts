@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/server-auth";
-import { getResend, FROM_EMAIL } from "@/lib/resend";
+import { getResend, FROM_EMAIL, REPLY_TO_EMAIL } from "@/lib/resend";
 
 export async function POST(request: NextRequest) {
   const user = await getAuthenticatedUser(request);
@@ -11,6 +11,7 @@ export async function POST(request: NextRequest) {
   try {
     const result = await getResend().emails.send({
       from: FROM_EMAIL,
+      replyTo: REPLY_TO_EMAIL,
       to: user.email,
       subject: "ProfitPulse — Test Email",
       html: `

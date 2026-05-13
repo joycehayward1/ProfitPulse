@@ -13,3 +13,8 @@ export function getResend(): Resend {
 }
 
 export const FROM_EMAIL = "ProfitPulse <hello@contact.myprofitpulse.app>";
+
+// Customer-facing inbox. Replies to any ProfitPulse email route here.
+// Kept separate from FROM_EMAIL so the sending domain (contact.*) stays
+// transactional-only and deliverability isn't tied to human-mail issues.
+export const REPLY_TO_EMAIL = "hello@myprofitpulse.app";

@@ -284,10 +284,10 @@ export default function PrivacyPolicy() {
                 <strong className="text-text-primary">Export.</strong> You can request a
                 copy of your data by contacting us at{" "}
                 <a
-                  href="mailto:hello@contact.myprofitpulse.app"
+                  href="mailto:hello@myprofitpulse.app"
                   className="text-orange hover:underline"
                 >
-                  hello@contact.myprofitpulse.app
+                  hello@myprofitpulse.app
                 </a>
                 . We&apos;ll provide your data in a portable format within 30 days.
               </li>
@@ -391,10 +391,10 @@ export default function PrivacyPolicy() {
             <p className="mt-3">
               To exercise any of these rights, contact us at{" "}
               <a
-                href="mailto:hello@contact.myprofitpulse.app"
+                href="mailto:hello@myprofitpulse.app"
                 className="text-orange hover:underline"
               >
-                hello@contact.myprofitpulse.app
+                hello@myprofitpulse.app
               </a>
               .
             </p>
@@ -463,10 +463,10 @@ export default function PrivacyPolicy() {
               <p className="mt-1">
                 Email:{" "}
                 <a
-                  href="mailto:hello@contact.myprofitpulse.app"
+                  href="mailto:hello@myprofitpulse.app"
                   className="text-orange hover:underline"
                 >
-                  hello@contact.myprofitpulse.app
+                  hello@myprofitpulse.app
                 </a>
               </p>
             </div>

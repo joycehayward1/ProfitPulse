@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@insforge/sdk";
-import { getResend, FROM_EMAIL } from "@/lib/resend";
+import { getResend, FROM_EMAIL, REPLY_TO_EMAIL } from "@/lib/resend";
 import { buildWeeklySummaryEmail } from "@/lib/email-templates";
 
 function isAuthorized(request: NextRequest): boolean {
@@ -84,6 +84,7 @@ export async function GET(request: NextRequest) {
 
       await getResend().emails.send({
         from: FROM_EMAIL,
+        replyTo: REPLY_TO_EMAIL,
         to: pref.email,
         subject: `ProfitPulse Weekly Summary — Health Score: ${assessment.health_score || 0}`,
         html,

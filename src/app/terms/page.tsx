@@ -67,10 +67,10 @@ export default function TermsOfService() {
               You&apos;re responsible for keeping your login credentials secure. If you
               suspect unauthorized access to your account, contact us immediately at{" "}
               <a
-                href="mailto:hello@contact.myprofitpulse.app"
+                href="mailto:hello@myprofitpulse.app"
                 className="text-orange hover:underline"
               >
-                hello@contact.myprofitpulse.app
+                hello@myprofitpulse.app
               </a>
               . We&apos;re not liable for any loss resulting from unauthorized use of your
               account.
@@ -274,10 +274,10 @@ export default function TermsOfService() {
               Before initiating any formal legal proceedings, you agree to first attempt
               to resolve the dispute informally by contacting us at{" "}
               <a
-                href="mailto:hello@contact.myprofitpulse.app"
+                href="mailto:hello@myprofitpulse.app"
                 className="text-orange hover:underline"
               >
-                hello@contact.myprofitpulse.app
+                hello@myprofitpulse.app
               </a>
               . We&apos;ll work in good faith to resolve the matter within 30 days.
             </p>
@@ -343,10 +343,10 @@ export default function TermsOfService() {
               <p className="mt-1">
                 Email:{" "}
                 <a
-                  href="mailto:hello@contact.myprofitpulse.app"
+                  href="mailto:hello@myprofitpulse.app"
                   className="text-orange hover:underline"
                 >
-                  hello@contact.myprofitpulse.app
+                  hello@myprofitpulse.app
                 </a>
               </p>
             </div>
