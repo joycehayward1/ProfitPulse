@@ -5,6 +5,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/Button";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { useToast } from "@/components/ui/Toast";
+import { buildChatSystemPrompt } from "@/lib/prompts";
 
 interface Message {
   role: "user" | "assistant";
@@ -100,23 +101,7 @@ export default function ChatPage() {
         messages: [
           {
             role: "system",
-            content: `You are a helpful financial advisor assistant for ProfitPulse.
-
-${context}
-
-IMPORTANT Guidelines:
-- Answer questions about their financial data using the context above
-- Recommend specific ProfitPulse features/calculators when relevant:
-  * Break-Even Calculator
-  * Cash Runway Calculator
-  * Shortfall Recovery
-  * Hiring Readiness
-  * Goal Planning
-  * Scenario Planning
-- Be conversational, warm, and encouraging
-- Keep responses concise (2-3 paragraphs max)
-- If you don't have data to answer, politely say so and suggest they add it
-- Focus on actionable advice they can implement this week`,
+            content: buildChatSystemPrompt(context),
           },
           {
             role: "user",

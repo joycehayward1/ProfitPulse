@@ -8,6 +8,11 @@
  */
 
 import { getInsForgeClient } from "./insforge";
+import {
+  DASHBOARD_INSIGHT_PROMPT,
+  ASSESSMENT_SUMMARY_PROMPT,
+  SCENARIO_EXPLANATION_PROMPT,
+} from "./prompts";
 import type {
   FinancialData,
   ScenarioType,
@@ -108,10 +113,7 @@ export async function generateDashboardInsight(
   const cached = getCached(cacheKey);
   if (cached) return cached;
 
-  const systemPrompt = `You are a friendly financial advisor for small business owners.
-Your job is to provide a single, actionable insight based on their financial data.
-Use plain English, no jargon. Be warm and encouraging, not clinical.
-Keep it to ONE sentence maximum.`;
+  const systemPrompt = DASHBOARD_INSIGHT_PROMPT;
 
   const userMessage = `Based on this business data:
 - Cash: $${financialData.cash_balance.toLocaleString()}
@@ -153,33 +155,7 @@ export async function generateAssessmentSummary(
   const cached = getCached(cacheKey);
   if (cached) return JSON.parse(cached);
 
-  const systemPrompt = `You are a financial advisor helping business owners use ProfitPulse features.
-
-CRITICAL: Recommendations MUST direct users to specific ProfitPulse features based on their financial data.
-
-Available ProfitPulse Features:
-- Break-Even Calculator: Shows how many sales needed to cover costs
-- Cash Runway Calculator: Calculates how long cash will last
-- Shortfall Recovery: Plans recovery from missed revenue targets
-- Hiring Readiness: Determines if they can afford to hire
-- Goal Planning: Tracks progress toward financial goals
-- Scenario Planning: Test "what-if" decisions before acting
-
-Generate:
-1. Warm 2-3 sentence summary of their financial health
-2. THREE recommendations that each direct them to use a SPECIFIC ProfitPulse feature that will help their situation
-
-Each recommendation should reference a feature by name and explain why it's relevant to their numbers.
-
-Respond in JSON format:
-{
-  "summary": "2-3 sentences about their financial situation",
-  "recommendations": [
-    {"title": "Use [Feature Name]", "description": "Based on your [situation], use our [Feature] to [benefit]"},
-    {"title": "Try [Feature Name]", "description": "Your [metric] shows you should use [Feature] to [outcome]"},
-    {"title": "Check [Feature Name]", "description": "With [situation], our [Feature] will help you [action]"}
-  ]
-}`;
+  const systemPrompt = ASSESSMENT_SUMMARY_PROMPT;
 
   const profit = data.monthly_revenue - data.monthly_expenses;
   const profitMargin =
@@ -237,10 +213,7 @@ export async function generateScenarioExplanation(
   const cached = getCached(cacheKey);
   if (cached) return cached;
 
-  const systemPrompt = `You are a financial advisor explaining scenario results to a small business owner.
-Use plain English, be warm and conversational. Avoid jargon.
-Provide context about whether the result is good/bad/needs attention and WHY.
-Keep it to 2-3 sentences maximum.`;
+  const systemPrompt = SCENARIO_EXPLANATION_PROMPT;
 
   let userMessage = "";
 
