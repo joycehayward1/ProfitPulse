@@ -49,6 +49,17 @@ export default function TermsOfService() {
               By creating an account or using ProfitPulse, you agree to these Terms. If
               you don&apos;t agree, please don&apos;t use the Service.
             </p>
+            <p className="mt-3">
+              We&apos;ve tried to write these in plain English. If anything is unclear,
+              email us at{" "}
+              <a
+                href="mailto:hello@myprofitpulse.app"
+                className="text-orange hover:underline"
+              >
+                hello@myprofitpulse.app
+              </a>
+              .
+            </p>
           </section>
 
           {/* 1. Account Registration */}
@@ -86,44 +97,100 @@ export default function TermsOfService() {
             <ul className="list-disc pl-6 mt-3 space-y-2">
               <li>
                 <strong className="text-text-primary">Free Trial.</strong> New accounts
-                receive a 7-day free trial with full access to all features. No charge is
-                made during the trial period.
+                receive a 7-day free trial with full access to all features. We collect
+                your payment method at signup but do not charge it until the trial ends.
+                You can cancel any time during the trial and you will not be charged.
               </li>
               <li>
                 <strong className="text-text-primary">Pricing.</strong> After your trial,
                 you&apos;ll be billed at $59.99/month or $599.88/year, depending on the plan
-                you choose.
+                you choose. All prices are in U.S. dollars unless stated otherwise.
               </li>
               <li>
                 <strong className="text-text-primary">Auto-Renewal.</strong> Subscriptions
                 renew automatically at the end of each billing cycle. You&apos;ll be charged
                 using the payment method on file unless you cancel before the renewal date.
+                We&apos;ll send a billing receipt by email after each successful charge.
               </li>
               <li>
-                <strong className="text-text-primary">Payment Processing.</strong> All
-                payments are processed securely through Authorize.net. We never store your
-                credit card information on our servers.
+                <strong className="text-text-primary">Failed Payments.</strong> If a charge
+                fails, we&apos;ll retry over the following 7 days and send you reminder
+                emails. If payment isn&apos;t recovered, we may suspend access until the
+                balance is paid. Repeated non-payment may result in account termination.
               </li>
               <li>
                 <strong className="text-text-primary">Cancellation.</strong> You can cancel
                 your subscription at any time from your account Settings. When you cancel,
-                you&apos;ll retain access until the end of your current billing period. No
-                partial refunds are issued for unused time.
+                you&apos;ll retain access until the end of your current billing period. We do
+                not issue prorated refunds for unused time.
               </li>
               <li>
                 <strong className="text-text-primary">Price Changes.</strong> We may adjust
-                pricing with at least 30 days&apos; notice. Continued use after the change
-                constitutes acceptance of the new pricing.
+                pricing with at least 30 days&apos; notice by email. Continued use after the
+                change becomes effective constitutes acceptance of the new pricing. If you
+                don&apos;t agree, you can cancel before the new price takes effect.
               </li>
             </ul>
           </section>
 
-          {/* 3. Acceptable Use */}
+          {/* 3. Payment Processing and PCI Compliance */}
           <section>
             <h2 className="font-display text-display-sm text-text-primary mb-3">
-              3. Acceptable Use
+              3. Payment Processing and PCI Compliance
             </h2>
-            <p>You agree to use ProfitPulse only for its intended purpose: analyzing and understanding your business&apos;s financial data. You may not:</p>
+            <p>
+              All payments are processed by Authorize.net, a PCI DSS Level 1-compliant
+              payment processor.{" "}
+              <strong className="text-text-primary">
+                Your credit card details are entered into a form served directly by
+                Authorize.net and never touch our servers.
+              </strong>{" "}
+              We receive only a transaction confirmation and a secure token for processing
+              future renewals.
+            </p>
+            <p className="mt-3">
+              <strong className="text-text-primary">Chargebacks.</strong> If you initiate
+              a chargeback rather than contacting us for a refund or cancellation, we
+              reserve the right to suspend your account pending resolution. We&apos;re happy
+              to resolve billing concerns directly — email us before disputing a charge
+              with your card issuer.
+            </p>
+          </section>
+
+          {/* 4. Refund Policy */}
+          <section>
+            <h2 className="font-display text-display-sm text-text-primary mb-3">
+              4. Refund Policy
+            </h2>
+            <p>
+              <strong className="text-text-primary">All sales are final.</strong> Because
+              you have a 7-day free trial before your first charge, we do not issue
+              refunds for subscription payments — including unused time, mid-cycle
+              cancellations, or accidental renewals. You can cancel at any time and you
+              will not be billed again.
+            </p>
+            <p className="mt-3">
+              If you believe you were charged in error or are experiencing a technical
+              issue that prevents you from using the Service, contact{" "}
+              <a
+                href="mailto:hello@myprofitpulse.app"
+                className="text-orange hover:underline"
+              >
+                hello@myprofitpulse.app
+              </a>{" "}
+              and we&apos;ll work with you in good faith to make it right.
+            </p>
+          </section>
+
+          {/* 5. Acceptable Use */}
+          <section>
+            <h2 className="font-display text-display-sm text-text-primary mb-3">
+              5. Acceptable Use
+            </h2>
+            <p>
+              You agree to use ProfitPulse only for its intended purpose: analyzing and
+              understanding your own business&apos;s financial data. You may not:
+            </p>
             <ul className="list-disc pl-6 mt-3 space-y-2">
               <li>Use the Service for any illegal or unauthorized purpose</li>
               <li>Attempt to gain unauthorized access to our systems or other users&apos; accounts</li>
@@ -132,13 +199,18 @@ export default function TermsOfService() {
               <li>Use automated tools (bots, scrapers) to access the Service without our permission</li>
               <li>Resell, sublicense, or redistribute the Service to third parties</li>
               <li>Interfere with or disrupt the integrity or performance of the Service</li>
+              <li>
+                Upload personal information about anyone other than yourself or your own
+                business without their authorization — including client lists,
+                health-related details, or other people&apos;s identifiable financial data
+              </li>
             </ul>
           </section>
 
-          {/* 4. Your Data */}
+          {/* 6. Your Data and Ownership */}
           <section>
             <h2 className="font-display text-display-sm text-text-primary mb-3">
-              4. Your Data
+              6. Your Data and Ownership
             </h2>
             <p>
               You retain full ownership of all financial data and business information you
@@ -154,93 +226,161 @@ export default function TermsOfService() {
               </Link>
               .
             </p>
+            <p className="mt-3">
+              <strong className="text-text-primary">Data export on termination.</strong>{" "}
+              When you cancel or delete your account, you can request a copy of your data
+              in a portable format (CSV/JSON) within 30 days of termination by emailing{" "}
+              <a
+                href="mailto:hello@myprofitpulse.app"
+                className="text-orange hover:underline"
+              >
+                hello@myprofitpulse.app
+              </a>
+              . After 30 days, deleted data may no longer be recoverable.
+            </p>
           </section>
 
-          {/* 5. Intellectual Property */}
+          {/* 7. QuickBooks / Intuit Integration */}
           <section>
             <h2 className="font-display text-display-sm text-text-primary mb-3">
-              5. Intellectual Property
+              7. QuickBooks / Intuit Integration
             </h2>
             <p>
-              The ProfitPulse platform&mdash;including its design, code, features, logo,
-              and content&mdash;is owned by Fusion 4 Business and protected by
-              intellectual property laws. These Terms don&apos;t transfer any ownership rights
-              to you.
+              ProfitPulse offers an optional integration with QuickBooks Online. If you
+              choose to connect your QuickBooks account, you authorize ProfitPulse to
+              access financial data from your QuickBooks account on your behalf to power
+              your dashboard and insights.
             </p>
             <p className="mt-3">
-              Your subscription grants you a personal, non-exclusive, non-transferable
-              license to use ProfitPulse for your business during your active subscription
-              period.
+              You can disconnect the integration at any time from your Settings page.
+              Disconnection stops future data syncs immediately. Data previously imported
+              into ProfitPulse remains in your dashboard until you delete it.
+            </p>
+            <p className="mt-3">
+              Your use of QuickBooks Online itself is governed by{" "}
+              <a
+                href="https://www.intuit.com/legal/terms/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-orange hover:underline"
+              >
+                Intuit&apos;s own Terms of Service
+              </a>
+              . ProfitPulse is not affiliated with or endorsed by Intuit.
             </p>
           </section>
 
-          {/* 6. Financial Insights Disclaimer */}
+          {/* 8. AI Insights — Not Financial Advice */}
           <section>
             <h2 className="font-display text-display-sm text-text-primary mb-3">
-              6. Financial Insights Disclaimer
+              8. AI Insights — Not Financial Advice
             </h2>
             <p>
               <strong className="text-text-primary">
                 ProfitPulse provides financial insights and analysis tools. It does not
-                provide financial, tax, legal, or investment advice.
+                provide financial, tax, legal, or investment advice. No fiduciary or
+                advisory relationship is created by your use of the Service.
               </strong>
             </p>
             <p className="mt-3">
               The health scores, scenarios, projections, and recommendations generated by
-              ProfitPulse are based on the data you provide and are intended to help you
-              understand your business&apos;s financial position. They should not be used as the
-              sole basis for making significant financial decisions.
+              ProfitPulse are produced by automated systems including artificial
+              intelligence. They are based on the data you provide and on general
+              best-practice principles. They are intended as informational tools — not as
+              the basis for significant financial decisions.
             </p>
             <p className="mt-3">
-              The accuracy of our analysis depends entirely on the accuracy and
-              completeness of the data you upload. We recommend consulting with a
-              qualified financial professional for specific financial advice. We are not
-              responsible for decisions made based on ProfitPulse&apos;s output.
+              <strong className="text-text-primary">AI output may be wrong.</strong> AI
+              systems can produce inaccurate, incomplete, or misleading results. You are
+              responsible for verifying any AI-generated insight before acting on it. We
+              recommend consulting with a qualified financial professional for specific
+              financial decisions. We are not responsible for decisions made based on
+              ProfitPulse&apos;s output.
+            </p>
+            <p className="mt-3">
+              You own the AI-generated output that ProfitPulse displays in your account.
+              You may use it for your own business purposes. You may not redistribute
+              ProfitPulse-generated output as your own commercial product.
             </p>
           </section>
 
-          {/* 7. Limitation of Liability */}
+          {/* 9. Intellectual Property */}
           <section>
             <h2 className="font-display text-display-sm text-text-primary mb-3">
-              7. Limitation of Liability
+              9. Intellectual Property
+            </h2>
+            <p>
+              The ProfitPulse platform&mdash;including its design, code, features, logo,
+              brand, content, and proprietary algorithms&mdash;is owned by Fusion 4
+              Business and protected by intellectual property laws. These Terms don&apos;t
+              transfer any ownership rights to you.
+            </p>
+            <p className="mt-3">
+              Your subscription grants you a personal, non-exclusive, non-transferable,
+              revocable license to use ProfitPulse for your business during your active
+              subscription period.
+            </p>
+          </section>
+
+          {/* 10. Service Availability */}
+          <section>
+            <h2 className="font-display text-display-sm text-text-primary mb-3">
+              10. Service Availability
+            </h2>
+            <p>
+              We work hard to keep ProfitPulse available and performant, but we don&apos;t
+              guarantee uninterrupted service. The Service may occasionally be unavailable
+              due to maintenance, infrastructure issues, third-party outages (e.g., our
+              hosting provider or payment processor), or events outside our reasonable
+              control.
+            </p>
+            <p className="mt-3">
+              The Service is provided &quot;as is&quot; and &quot;as available&quot; without
+              warranties of any kind, whether express or implied, including but not
+              limited to implied warranties of merchantability, fitness for a particular
+              purpose, and non-infringement.
+            </p>
+          </section>
+
+          {/* 11. Limitation of Liability */}
+          <section>
+            <h2 className="font-display text-display-sm text-text-primary mb-3">
+              11. Limitation of Liability
             </h2>
             <p>
               To the maximum extent permitted by law, Fusion 4 Business and its
-              directors, employees, and agents shall not be liable for any indirect,
-              incidental, special, consequential, or punitive damages arising from your
-              use of ProfitPulse. This includes, but is not limited to, loss of profits,
-              data, or business opportunities.
+              directors, employees, agents, and service providers shall not be liable for
+              any indirect, incidental, special, consequential, exemplary, or punitive
+              damages arising from your use of ProfitPulse — including, but not limited
+              to, loss of profits, loss of revenue, loss of business opportunities, loss
+              of goodwill, or loss of data.
             </p>
             <p className="mt-3">
-              Our total liability for any claim arising from or related to the Service
-              shall not exceed the amount you paid us in the 12 months preceding the
-              claim.
-            </p>
-            <p className="mt-3">
-              The Service is provided &quot;as is&quot; and &quot;as available&quot; without warranties of
-              any kind, whether express or implied, including but not limited to implied
-              warranties of merchantability, fitness for a particular purpose, and
-              non-infringement.
+              Our total cumulative liability for any claim arising from or related to the
+              Service shall not exceed the amount you paid us in the 12 months preceding
+              the event giving rise to the claim.
             </p>
           </section>
 
-          {/* 8. Indemnification */}
+          {/* 12. Indemnification */}
           <section>
             <h2 className="font-display text-display-sm text-text-primary mb-3">
-              8. Indemnification
+              12. Indemnification
             </h2>
             <p>
-              You agree to indemnify and hold harmless Fusion 4 Business from any claims,
-              damages, or expenses (including reasonable legal fees) arising from your use
-              of the Service, your violation of these Terms, or your violation of any
-              rights of a third party.
+              You agree to indemnify, defend, and hold harmless Fusion 4 Business and its
+              affiliates from any claims, damages, losses, liabilities, or expenses
+              (including reasonable legal fees) arising from: (a) your use of the Service,
+              (b) your violation of these Terms, (c) your violation of any third
+              party&apos;s rights, or (d) any data you upload that you didn&apos;t have
+              authorization to share.
             </p>
           </section>
 
-          {/* 9. Termination */}
+          {/* 13. Termination */}
           <section>
             <h2 className="font-display text-display-sm text-text-primary mb-3">
-              9. Termination
+              13. Termination
             </h2>
             <p>
               You can delete your account at any time from the Settings page. Upon
@@ -249,24 +389,38 @@ export default function TermsOfService() {
             </p>
             <p className="mt-3">
               We reserve the right to suspend or terminate your account if you violate
-              these Terms or use the Service in a way that could harm us, other users, or
-              third parties. Where possible, we will provide notice before taking action.
+              these Terms, fail to pay, or use the Service in a way that could harm us,
+              other users, or third parties. Where reasonably possible, we will provide
+              notice and an opportunity to cure before taking action.
             </p>
             <p className="mt-3">
-              Sections that by their nature should survive termination (including
-              Limitation of Liability, Indemnification, and Governing Law) will remain in
-              effect after your account is closed.
+              Sections that by their nature should survive termination — including
+              Refund Policy, Data Ownership, Limitation of Liability, Indemnification,
+              and Governing Law — will remain in effect after your account is closed.
             </p>
           </section>
 
-          {/* 10. Governing Law */}
+          {/* 14. Tax Responsibility */}
           <section>
             <h2 className="font-display text-display-sm text-text-primary mb-3">
-              10. Governing Law and Disputes
+              14. Tax Responsibility
+            </h2>
+            <p>
+              The subscription price does not include any applicable sales tax, VAT, GST,
+              or similar transaction taxes. If you are required to pay such taxes in your
+              jurisdiction, you are responsible for them. Where required by law, we will
+              add applicable taxes to your invoice.
+            </p>
+          </section>
+
+          {/* 15. Governing Law and Dispute Resolution */}
+          <section>
+            <h2 className="font-display text-display-sm text-text-primary mb-3">
+              15. Governing Law and Dispute Resolution
             </h2>
             <p>
               These Terms are governed by and construed in accordance with the laws of
-              Bermuda, without regard to its conflict of law provisions. Any disputes
+              Bermuda, without regard to its conflict-of-law provisions. Any disputes
               arising from these Terms or your use of the Service shall be subject to the
               exclusive jurisdiction of the courts of Bermuda.
             </p>
@@ -279,31 +433,38 @@ export default function TermsOfService() {
               >
                 hello@myprofitpulse.app
               </a>
-              . We&apos;ll work in good faith to resolve the matter within 30 days.
+              . We&apos;ll work in good faith to resolve the matter within 30 days. Most
+              disputes can be solved with a conversation — try us first.
+            </p>
+            <p className="mt-3">
+              <strong className="text-text-primary">No class actions.</strong> Any claim
+              must be brought in your individual capacity, not as a plaintiff or class
+              member in any purported class or representative proceeding.
             </p>
           </section>
 
-          {/* 11. Changes to These Terms */}
+          {/* 16. Changes to These Terms */}
           <section>
             <h2 className="font-display text-display-sm text-text-primary mb-3">
-              11. Changes to These Terms
+              16. Changes to These Terms
             </h2>
             <p>
               We may update these Terms from time to time. When we make significant
-              changes, we&apos;ll notify you by email or through the Service at least 14 days
-              before the changes take effect. Your continued use of ProfitPulse after the
-              changes become effective constitutes your acceptance of the updated Terms.
+              changes, we&apos;ll notify you by email and through the Service at least 14
+              days before the changes take effect. Your continued use of ProfitPulse after
+              the changes become effective constitutes your acceptance of the updated
+              Terms.
             </p>
             <p className="mt-3">
-              We encourage you to review these Terms periodically. The &quot;Last updated&quot;
-              date at the top of this page indicates when these Terms were last revised.
+              The &quot;Last updated&quot; date at the top of this page indicates when these
+              Terms were last revised.
             </p>
           </section>
 
-          {/* 12. Miscellaneous */}
+          {/* 17. Miscellaneous */}
           <section>
             <h2 className="font-display text-display-sm text-text-primary mb-3">
-              12. Miscellaneous
+              17. Miscellaneous
             </h2>
             <ul className="list-disc pl-6 space-y-2">
               <li>
@@ -318,21 +479,28 @@ export default function TermsOfService() {
               </li>
               <li>
                 <strong className="text-text-primary">No Waiver.</strong> Our failure to
-                enforce any right or provision of these Terms does not constitute a waiver
-                of that right or provision.
+                enforce any right or provision of these Terms does not constitute a
+                waiver of that right or provision.
               </li>
               <li>
                 <strong className="text-text-primary">Assignment.</strong> You may not
-                assign your rights under these Terms without our prior written consent. We
-                may assign our rights without restriction.
+                assign your rights under these Terms without our prior written consent.
+                We may assign our rights without restriction (for example, in connection
+                with a merger or acquisition).
+              </li>
+              <li>
+                <strong className="text-text-primary">Force Majeure.</strong> Neither
+                party is liable for failure to perform due to events outside their
+                reasonable control (natural disasters, pandemics, government action,
+                internet/hosting outages, etc.).
               </li>
             </ul>
           </section>
 
-          {/* 13. Contact */}
+          {/* 18. Contact */}
           <section>
             <h2 className="font-display text-display-sm text-text-primary mb-3">
-              13. Contact Us
+              18. Contact Us
             </h2>
             <p>
               If you have questions about these Terms, reach out to us:
