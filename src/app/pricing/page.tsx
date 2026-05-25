@@ -1,12 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Icon } from "@iconify/react";
 import { PricingCards, type BillingInterval } from "@/components/payments/PricingCards";
 import { PaymentForm } from "@/components/payments/PaymentForm";
 import { useAuth } from "@/contexts/AuthContext";
+
+function FeatureContextBanner() {
+  const searchParams = useSearchParams();
+  const feature = searchParams.get("feature");
+  if (!feature) return null;
+  return (
+    <div className="max-w-3xl mx-auto mb-lg rounded-lg border border-orange/30 bg-orange/5 px-md py-md flex items-start gap-3">
+      <Icon icon="lucide:lock" className="text-orange flex-shrink-0 mt-0.5" width={18} height={18} />
+      <p className="text-body text-text-primary">
+        <span className="font-medium">{feature}</span> is available with the Pro plan.
+        Pick a billing option below to unlock all Pro features.
+      </p>
+    </div>
+  );
+}
 
 export default function PricingPage() {
   const router = useRouter();
@@ -40,6 +55,10 @@ export default function PricingPage() {
                 Pick the billing cycle that works best for your business. Cancel anytime.
               </p>
             </div>
+
+            <Suspense fallback={null}>
+              <FeatureContextBanner />
+            </Suspense>
 
             <PricingCards selected={selected} onSelect={setSelected} />
 

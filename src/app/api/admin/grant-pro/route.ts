@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
     plan: "pro",
     subscription_status: "active",
     billing_interval: "monthly",
-    current_period_start: now.toISOString(),
+    billing_cycle_start_date: now.toISOString(),
     current_period_end: periodEnd.toISOString(),
     trial_end_date: null,
   };
@@ -67,6 +67,7 @@ export async function POST(request: NextRequest) {
       .eq("user_id", userId);
 
     if (error) {
+      console.error("[admin/grant-pro] update failed", { userId, error });
       return NextResponse.json(
         { error: "Failed to update subscription" },
         { status: 500 }
@@ -78,6 +79,7 @@ export async function POST(request: NextRequest) {
       .insert(subscriptionData);
 
     if (error) {
+      console.error("[admin/grant-pro] insert failed", { userId, error });
       return NextResponse.json(
         { error: "Failed to create subscription" },
         { status: 500 }

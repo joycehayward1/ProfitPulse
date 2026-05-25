@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
+import Link from "next/link";
 
 interface PulseAssistantProps {
   message: string;
@@ -27,15 +28,6 @@ export function PulseAssistant({ message }: PulseAssistantProps) {
   function handleDismiss() {
     setDismissed(true);
     setOpen(false);
-  }
-
-  function handleToggle() {
-    if (dismissed) {
-      setDismissed(false);
-      setOpen(true);
-    } else {
-      setOpen(!open);
-    }
   }
 
   return (
@@ -75,11 +67,11 @@ export function PulseAssistant({ message }: PulseAssistantProps) {
         </div>
       )}
 
-      {/* Mascot Avatar */}
-      <button
-        onClick={handleToggle}
+      {/* Mascot Avatar — clicking Pulse opens the glossary */}
+      <Link
+        href="/glossary"
         className="relative group"
-        aria-label="Toggle Pulse assistant"
+        aria-label="Open the glossary"
       >
         {/* Pulse dot — only when bubble is closed */}
         {!open && (
@@ -96,7 +88,7 @@ export function PulseAssistant({ message }: PulseAssistantProps) {
             priority
           />
         </div>
-      </button>
+      </Link>
 
       <style jsx>{`
         @keyframes bubbleIn {

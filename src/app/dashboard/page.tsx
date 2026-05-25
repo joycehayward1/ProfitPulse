@@ -615,7 +615,7 @@ export default function DashboardPage() {
             />
 
             {/* Runway Card */}
-            <LockedFeature locked={trialMode} className="rounded-xl">
+            <LockedFeature locked={trialMode} feature="Runway" className="rounded-xl">
               <MetricCard
                 label="Runway"
                 value={formatRunway(assessment.cash_on_hand, assessment.monthly_expenses)}

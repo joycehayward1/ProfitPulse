@@ -103,7 +103,7 @@ describe("DataPage", () => {
       expect(screen.getByText("Cash in the bank right now")).toBeInTheDocument();
       expect(screen.getByText("Total sales this month")).toBeInTheDocument();
       expect(screen.getByText("Total expenses this month")).toBeInTheDocument();
-      expect(screen.getByText("Money customers owe you")).toBeInTheDocument();
+      expect(screen.getByText("Money customers owe you (accounts receivable)")).toBeInTheDocument();
     });
 
     it("renders period selector with current month", () => {

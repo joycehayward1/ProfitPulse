@@ -20,9 +20,7 @@ jest.mock("next/image", () => ({
 
 // Mock InsForge client
 const mockSignUp = jest.fn();
-const mockProfileUpdate = jest.fn(() => ({
-  eq: jest.fn().mockResolvedValue({ data: null, error: null }),
-}));
+const mockProfileUpsert = jest.fn().mockResolvedValue({ data: null, error: null });
 jest.mock("@/lib/insforge", () => ({
   getInsForgeClient: () => ({
     auth: {
@@ -30,7 +28,7 @@ jest.mock("@/lib/insforge", () => ({
     },
     database: {
       from: jest.fn(() => ({
-        update: mockProfileUpdate,
+        upsert: mockProfileUpsert,
       })),
     },
   }),
@@ -62,12 +60,14 @@ describe("SignUpPage", () => {
     const options = Array.from(select.querySelectorAll("option"));
     const values = options.map((o) => o.value);
 
-    expect(values).toContain("Engineering");
-    expect(values).toContain("Medical Services");
-    expect(values).toContain("Dental");
-    expect(values).toContain("Construction");
-    expect(values).toContain("Churches");
-    expect(values).toContain("Schools");
+    expect(values).toContain("Professional Services");
+    expect(values).toContain("Financial Services & Accounting");
+    expect(values).toContain("Healthcare & Wellness");
+    expect(values).toContain("Coaching, Consulting & Speaking");
+    expect(values).toContain("Construction & Trades");
+    expect(values).toContain("Retail & E-Commerce");
+    expect(values).toContain("Nonprofit & Faith-Based Organizations");
+    expect(values).toContain("Real Estate & Property Services");
     expect(values).toContain("Other");
   });
 
@@ -142,7 +142,7 @@ describe("SignUpPage", () => {
       target: { value: "Test Corp" },
     });
     fireEvent.change(screen.getByLabelText(/^industry/i), {
-      target: { value: "Engineering" },
+      target: { value: "Professional Services" },
     });
     fireEvent.change(screen.getByLabelText(/^password/i), {
       target: { value: "password123" },
@@ -180,7 +180,7 @@ describe("SignUpPage", () => {
       target: { value: "Test Corp" },
     });
     fireEvent.change(screen.getByLabelText(/^industry/i), {
-      target: { value: "Engineering" },
+      target: { value: "Professional Services" },
     });
     fireEvent.change(screen.getByLabelText(/^password/i), {
       target: { value: "password123" },
@@ -211,7 +211,7 @@ describe("SignUpPage", () => {
       target: { value: "Test Corp" },
     });
     fireEvent.change(screen.getByLabelText(/^industry/i), {
-      target: { value: "Engineering" },
+      target: { value: "Professional Services" },
     });
     fireEvent.change(screen.getByLabelText(/^password/i), {
       target: { value: "password123" },
@@ -245,7 +245,7 @@ describe("SignUpPage", () => {
       target: { value: "Test Corp" },
     });
     fireEvent.change(screen.getByLabelText(/^industry/i), {
-      target: { value: "Engineering" },
+      target: { value: "Professional Services" },
     });
     fireEvent.change(screen.getByLabelText(/^password/i), {
       target: { value: "password123" },

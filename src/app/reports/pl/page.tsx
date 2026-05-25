@@ -437,7 +437,7 @@ export default function PLPage() {
         </div>
 
         {/* P&L Summary Table */}
-        <LockedFeature locked={trialMode} className="rounded-xl">
+        <LockedFeature locked={trialMode} feature="P&L report" className="rounded-xl">
         <div className="bg-surface rounded-xl border border-border-light shadow-card overflow-hidden">
           <div className="px-lg py-md border-b border-border">
             <h2 className="text-[20px] font-semibold text-text-primary">

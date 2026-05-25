@@ -210,7 +210,7 @@ export function AppLayout({ children, pulseMessage }: AppLayoutProps) {
               Profile
             </Link>
             <Link
-              href="/settings#billing"
+              href="/billing"
               className="flex items-center gap-2.5 px-3 py-2 text-[13px] text-text-secondary hover:text-text-primary hover:bg-surface-inset transition-colors"
               onClick={() => {
                 setUserMenuOpen(false);

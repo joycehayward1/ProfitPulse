@@ -1,9 +1,14 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Button, Card } from "@/components/ui";
+import {
+  GLOSSARY_CATEGORIES,
+  GLOSSARY_TERMS,
+  type GlossaryCategory,
+} from "@/lib/glossary";
 
 /* ══════════════════════════════════════════════════════════════════
    DATA
@@ -122,7 +127,7 @@ const scenarios = [
     ),
   },
   {
-    title: "How Long Is My Runway?",
+    title: "How Long Will My Cash Last?",
     description: "See how many months of cash you have left at your current burn rate.",
     icon: (
       <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true">
@@ -257,6 +262,287 @@ function ChevronIcon({ open }: { open: boolean }) {
     >
       <path d="M5 8l5 5 5-5" stroke="#6B6560" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   BOUNCING MASCOT (DVD-style)
+   ══════════════════════════════════════════════════════════════════ */
+
+function BouncingMascot({ onOpenGlossary, paused }: { onOpenGlossary: () => void; paused: boolean }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const hoverRef = useRef(false);
+  const pausedRef = useRef(paused);
+  const [showHint, setShowHint] = useState(true);
+
+  useEffect(() => {
+    pausedRef.current = paused;
+  }, [paused]);
+
+  useEffect(() => {
+    const t = setTimeout(() => setShowHint(false), 6000);
+    return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    const size = 160;
+    let x = Math.random() * (window.innerWidth - size);
+    let y = Math.max(140, Math.random() * (window.innerHeight - size));
+    let vx = 1.6 * (Math.random() > 0.5 ? 1 : -1);
+    let vy = 1.3 * (Math.random() > 0.5 ? 1 : -1);
+    let raf = 0;
+
+    const tick = () => {
+      if (!hoverRef.current && !pausedRef.current) {
+        const w = window.innerWidth - size;
+        const h = window.innerHeight - size;
+        x += vx;
+        y += vy;
+        if (x <= 0) { x = 0; vx = -vx; }
+        if (x >= w) { x = w; vx = -vx; }
+        if (y <= 0) { y = 0; vy = -vy; }
+        if (y >= h) { y = h; vy = -vy; }
+      }
+      const scale = hoverRef.current ? 1.08 : 1;
+      el.style.transform = `translate(${x}px, ${y}px) scale(${scale}) scaleX(${vx < 0 ? -1 : 1})`;
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  return (
+    <div
+      ref={ref}
+      className="fixed top-0 left-0 z-40 cursor-pointer group"
+      style={{ willChange: "transform", transition: "filter 0.2s" }}
+      onMouseEnter={() => { hoverRef.current = true; }}
+      onMouseLeave={() => { hoverRef.current = false; }}
+      onClick={() => { setShowHint(false); onOpenGlossary(); }}
+      role="button"
+      aria-label="Open glossary"
+    >
+      <Image
+        src="/profit-pulse-mascot2 copy.png"
+        alt=""
+        width={160}
+        height={160}
+        className="drop-shadow-2xl select-none group-hover:drop-shadow-[0_0_28px_rgba(230,81,0,0.55)] transition-all"
+        priority
+      />
+      {showHint && (
+        <div
+          className="absolute left-1/2 -translate-x-1/2 -top-9 bg-[#2D2A26] text-white text-[12px] font-body px-3 py-1.5 rounded-full whitespace-nowrap shadow-lg pointer-events-none"
+          style={{ animation: "mascotHintBob 1.4s ease-in-out infinite" }}
+        >
+          Click me!
+          <span className="absolute left-1/2 -translate-x-1/2 -bottom-1 w-2 h-2 bg-[#2D2A26] rotate-45" />
+        </div>
+      )}
+      <style jsx>{`
+        @keyframes mascotHintBob {
+          0%, 100% { transform: translate(-50%, 0); }
+          50% { transform: translate(-50%, -4px); }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   GLOSSARY MODAL
+   ══════════════════════════════════════════════════════════════════ */
+
+type FilterCategory = GlossaryCategory | "All";
+
+function GlossaryModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [search, setSearch] = useState("");
+  const [activeCategory, setActiveCategory] = useState<FilterCategory>("All");
+
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [open, onClose]);
+
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase().trim();
+    return GLOSSARY_TERMS.filter((t) => {
+      const matchesCategory = activeCategory === "All" || t.category === activeCategory;
+      const matchesSearch =
+        !q ||
+        t.term.toLowerCase().includes(q) ||
+        t.definition.toLowerCase().includes(q) ||
+        t.example.toLowerCase().includes(q);
+      return matchesCategory && matchesSearch;
+    });
+  }, [search, activeCategory]);
+
+  const grouped = useMemo(() => {
+    const groups: { category: (typeof GLOSSARY_CATEGORIES)[number]; terms: typeof GLOSSARY_TERMS }[] = [];
+    for (const cat of GLOSSARY_CATEGORIES) {
+      const terms = filtered.filter((t) => t.category === cat.id);
+      if (terms.length > 0) groups.push({ category: cat, terms });
+    }
+    return groups;
+  }, [filtered]);
+
+  const pills: { id: FilterCategory; label: string }[] = [
+    { id: "All", label: "All" },
+    ...GLOSSARY_CATEGORIES.map((c) => ({ id: c.id as FilterCategory, label: c.label })),
+  ];
+
+  if (!open) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center px-4 py-8"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Glossary"
+    >
+      <div
+        className="absolute inset-0 bg-[#2D2A26]/70 backdrop-blur-sm"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+
+      <div
+        className="relative w-full max-w-3xl max-h-[88vh] bg-surface rounded-2xl shadow-elevated border border-[#F0EDE8] overflow-hidden flex flex-col"
+        style={{ animation: "glossaryPop 0.25s ease-out" }}
+      >
+        {/* Header */}
+        <div className="relative px-md md:px-lg pt-md pb-sm border-b border-[#F0EDE8] bg-gradient-to-br from-[#FFF8F5] to-surface">
+          <div className="flex items-start gap-md">
+            <div className="hidden sm:block flex-shrink-0 -mt-1">
+              <Image
+                src="/profit-pulse-mascot2 copy.png"
+                alt=""
+                width={64}
+                height={64}
+                className="drop-shadow"
+              />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-body text-small uppercase tracking-[0.2em] text-[#E65100] mb-1">
+                Plain-English Glossary
+              </p>
+              <h2 className="font-display text-[24px] md:text-[28px] text-text-primary leading-tight">
+                Every number, explained.
+              </h2>
+              <p className="font-body text-small text-text-secondary mt-1">
+                Definitions for every metric you&rsquo;ll see in ProfitPulse.
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className="flex-shrink-0 w-9 h-9 rounded-full hover:bg-[#F0EDE8] flex items-center justify-center transition-colors"
+              aria-label="Close glossary"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M6 6l12 12M18 6L6 18" stroke="#2D2A26" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Search */}
+          <div className="mt-md relative">
+            <svg
+              width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted"
+            >
+              <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
+              <path d="M20 20l-3.5-3.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search a term, definition, or example..."
+              className="w-full h-10 pl-10 pr-3 rounded-lg border border-[#E8E4DF] bg-white text-body text-text-primary placeholder:text-text-muted focus:border-[#E65100] focus:ring-2 focus:ring-[#E65100]/15 focus:outline-none transition-colors"
+            />
+          </div>
+
+          {/* Pills */}
+          <div className="mt-sm flex flex-wrap gap-2">
+            {pills.map((p) => {
+              const active = activeCategory === p.id;
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => setActiveCategory(p.id)}
+                  className={`px-3 py-1 rounded-full text-small font-body font-medium transition-colors ${
+                    active
+                      ? "bg-[#E65100] text-white"
+                      : "bg-white text-text-secondary border border-[#E8E4DF] hover:border-[#E65100]/40"
+                  }`}
+                >
+                  {p.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="overflow-y-auto px-md md:px-lg py-md space-y-md flex-1">
+          {grouped.length === 0 && (
+            <p className="text-center font-body text-body text-text-muted py-lg">
+              No terms match that search.
+            </p>
+          )}
+          {grouped.map(({ category, terms }) => (
+            <div key={category.id}>
+              <div className="mb-sm">
+                <h3 className="font-display text-h3 text-text-primary">{category.label}</h3>
+                <p className="font-body text-small text-text-muted">{category.description}</p>
+              </div>
+              <div className="space-y-2">
+                {terms.map((t) => (
+                  <details
+                    key={t.slug}
+                    className="group rounded-lg border border-[#F0EDE8] bg-white open:border-[#E65100]/30 open:shadow-soft transition-colors"
+                  >
+                    <summary className="flex items-center justify-between gap-3 px-md py-3 cursor-pointer list-none">
+                      <span className="font-body font-semibold text-text-primary">{t.term}</span>
+                      <svg
+                        width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true"
+                        className="flex-shrink-0 text-text-muted transition-transform group-open:rotate-180"
+                      >
+                        <path d="M5 8l5 5 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </summary>
+                    <div className="px-md pb-md pt-1 space-y-2 font-body text-body text-text-secondary leading-relaxed">
+                      <p>{t.definition}</p>
+                      <p className="text-small text-text-muted">
+                        <span className="font-semibold text-text-primary">Example:</span> {t.example}
+                      </p>
+                    </div>
+                  </details>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <style jsx>{`
+          @keyframes glossaryPop {
+            from { opacity: 0; transform: translateY(8px) scale(0.98); }
+            to   { opacity: 1; transform: translateY(0)    scale(1); }
+          }
+        `}</style>
+      </div>
+    </div>
   );
 }
 
@@ -404,6 +690,7 @@ export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [isAnnual, setIsAnnual] = useState(false);
+  const [glossaryOpen, setGlossaryOpen] = useState(false);
   const router = useRouter();
 
   const navLinks = [
@@ -416,6 +703,8 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-background">
+      <BouncingMascot onOpenGlossary={() => setGlossaryOpen(true)} paused={glossaryOpen} />
+      <GlossaryModal open={glossaryOpen} onClose={() => setGlossaryOpen(false)} />
       {/* ================================================================
           1. HEADER (sticky)
           ================================================================ */}
@@ -784,7 +1073,7 @@ export default function LandingPage() {
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 rounded-full bg-[#43A047]" />
                       <p className="font-body text-body text-text-primary font-medium">
-                        Runway stays above 6 months after the hire.
+                        Positive Cash Availability stays above 6 months after the hire.
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -1162,12 +1451,12 @@ export default function LandingPage() {
               </p>
               <ul className="space-y-sm">
                 <li>
-                  <a href="/privacy" className="font-body text-body text-white/40 hover:text-white/70 transition-colors">
+                  <a href="/privacy" className="font-body text-body font-bold text-white underline underline-offset-4 decoration-2 hover:text-white/80 transition-colors">
                     Privacy Policy
                   </a>
                 </li>
                 <li>
-                  <a href="/terms" className="font-body text-body text-white/40 hover:text-white/70 transition-colors">
+                  <a href="/terms" className="font-body text-body font-bold text-white underline underline-offset-4 decoration-2 hover:text-white/80 transition-colors">
                     Terms of Service
                   </a>
                 </li>

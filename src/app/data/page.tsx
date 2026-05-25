@@ -1503,7 +1503,7 @@ function DataContent() {
                     />
 
                     <CurrencyInput
-                      label="Money customers owe you"
+                      label="Money customers owe you (accounts receivable)"
                       value={formData.receivables}
                       onChange={(value) =>
                         setFormData({ ...formData, receivables: value })

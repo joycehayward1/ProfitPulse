@@ -17,14 +17,14 @@ export interface PricingPlan {
 export const PRICING_PLANS: PricingPlan[] = [
   {
     id: "monthly",
-    name: "Monthly",
+    name: "Pro Monthly",
     priceLabel: "$59.99",
     priceSub: "/month",
     billedNote: "Billed monthly. Cancel anytime.",
   },
   {
     id: "annual",
-    name: "Annual",
+    name: "Pro Annual",
     priceLabel: "$49.99",
     priceSub: "/month",
     billedNote: "Billed $599.88/year upfront.",

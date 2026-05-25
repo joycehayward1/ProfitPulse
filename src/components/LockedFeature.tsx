@@ -14,6 +14,8 @@ interface LockedFeatureProps {
   className?: string;
   /** When true, content is fully visible (no blur) but clicking still navigates to upgrade. */
   visibleWhenLocked?: boolean;
+  /** Name of the feature being gated, surfaced as context on the pricing page. */
+  feature?: string;
 }
 
 /**
@@ -29,14 +31,19 @@ export function LockedFeature({
   label = "Upgrade to Pro",
   className = "",
   visibleWhenLocked = false,
+  feature,
 }: LockedFeatureProps) {
   if (!locked) {
     return <>{children}</>;
   }
 
+  const pricingHref = feature
+    ? `/pricing?feature=${encodeURIComponent(feature)}`
+    : "/pricing";
+
   if (visibleWhenLocked) {
     return (
-      <Link href="/pricing" className={`block ${className}`} aria-label={label}>
+      <Link href={pricingHref} className={`block ${className}`} aria-label={label}>
         {children}
       </Link>
     );
@@ -54,7 +61,7 @@ export function LockedFeature({
 
       {/* Lock overlay */}
       <Link
-        href="/pricing"
+        href={pricingHref}
         className={[
           "absolute inset-0 z-10",
           "flex flex-col items-center justify-center gap-2",

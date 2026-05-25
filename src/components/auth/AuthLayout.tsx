@@ -10,6 +10,23 @@ interface AuthLayoutProps {
   footerText: string;
   footerLinkText: string;
   footerLinkHref: string;
+  backHref?: string;
+  backLabel?: string;
+}
+
+function BackLink({ href, label, tone }: { href: string; label: string; tone: "dark" | "light" }) {
+  const color = tone === "dark" ? "text-text-secondary hover:text-text-primary" : "text-text-secondary hover:text-text-primary";
+  return (
+    <Link
+      href={href}
+      className={`inline-flex items-center gap-1.5 font-body text-small ${color} transition-colors mb-sm`}
+    >
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+      {label}
+    </Link>
+  );
 }
 
 export function AuthLayout({
@@ -19,6 +36,8 @@ export function AuthLayout({
   footerText,
   footerLinkText,
   footerLinkHref,
+  backHref,
+  backLabel = "Back",
 }: AuthLayoutProps) {
   return (
     <div className="min-h-screen flex">
@@ -33,6 +52,7 @@ export function AuthLayout({
 
         {/* Content */}
         <div className="relative z-10">
+          {backHref && <BackLink href={backHref} label={backLabel} tone="light" />}
           <Link href="/">
             <Image
               src="/full-logo.png"
@@ -75,6 +95,7 @@ export function AuthLayout({
       <div className="flex-1 flex flex-col min-h-screen bg-background">
         {/* Mobile header */}
         <div className="lg:hidden px-md py-sm border-b border-[#F0EDE8]">
+          {backHref && <BackLink href={backHref} label={backLabel} tone="dark" />}
           <Link href="/">
             <Image
               src="/full-logo.png"

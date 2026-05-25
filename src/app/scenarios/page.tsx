@@ -107,11 +107,19 @@ export default function ScenariosPage() {
         {/* Header */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-2">
           <button
-            onClick={() => router.push('/dashboard')}
+            onClick={() => {
+              // Return to wherever the user came from. Fall back to the
+              // dashboard when there's no in-app history (e.g. direct link).
+              if (typeof window !== 'undefined' && window.history.length > 1) {
+                router.back();
+              } else {
+                router.push('/dashboard');
+              }
+            }}
             className="flex items-center gap-2 text-[#8B8B8B] hover:text-[#111111] transition-colors mb-6"
           >
             <Icon icon="ph:arrow-left-bold" className="w-4 h-4" />
-            <span className="text-[13px]">Back to Dashboard</span>
+            <span className="text-[13px]">Back</span>
           </button>
 
           <h1 className="text-[28px] font-bold text-[#111111] mb-1">
@@ -129,7 +137,7 @@ export default function ScenariosPage() {
             {scenarioTypes.map((scenario) => {
               const isLocked = trialMode && !TRIAL_FREE_SCENARIOS.has(scenario.id);
               return (
-                <LockedFeature key={scenario.id} locked={isLocked} visibleWhenLocked className="rounded-xl">
+                <LockedFeature key={scenario.id} locked={isLocked} visibleWhenLocked feature={`${scenario.title} scenario`} className="rounded-xl">
                   <button
                     onClick={() => router.push(`/scenarios/${scenario.id}`)}
                     className="group w-full bg-white rounded-xl p-6 shadow-[0_1px_3px_rgba(0,0,0,0.04)] border border-[#F0F0F2] hover:shadow-[0_4px_12px_rgba(0,0,0,0.08)] hover:border-[#E4E4E7] transition-all text-left"
@@ -156,6 +164,12 @@ export default function ScenariosPage() {
                           <p className="text-[13px] text-[#4B4B4B]">
                             {scenario.description}
                           </p>
+                          {isLocked && (
+                            <p className="mt-2 inline-flex items-center gap-1 text-[12px] font-medium text-[#E65100]">
+                              <Icon icon="lucide:lock" className="w-3 h-3" />
+                              Available with Pro
+                            </p>
+                          )}
                         </div>
                       </div>
 

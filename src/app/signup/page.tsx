@@ -4,16 +4,7 @@ import { useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { Button, Input } from "@/components/ui";
-
-const INDUSTRIES = [
-  "Engineering",
-  "Medical Services",
-  "Dental",
-  "Construction",
-  "Churches",
-  "Schools",
-  "Other",
-] as const;
+import { INDUSTRIES } from "@/lib/industries";
 
 interface FormErrors {
   fullName?: string;
@@ -116,12 +107,17 @@ export default function SignUpPage() {
         return;
       }
 
-      // After signup, update profile with business info
+      // After signup, persist business info on the profile row.
+      // profiles has UNIQUE(user_id) and the row may not exist yet, so upsert.
       if (data?.user) {
-        await client.database.from("profiles").update({
-          business_name: businessName,
-          industry: industry,
-        }).eq("id", data.user.id);
+        await client.database.from("profiles").upsert(
+          {
+            user_id: data.user.id,
+            business_name: businessName,
+            industry: industry,
+          },
+          { onConflict: "user_id" },
+        );
 
         // Start the user's 7-day trial (creates subscriptions row)
         try {
@@ -213,6 +209,8 @@ export default function SignUpPage() {
       footerText="Already have an account?"
       footerLinkText="Log in"
       footerLinkHref="/login"
+      backHref="/"
+      backLabel="Back to home"
     >
       <form onSubmit={handleSubmit} noValidate className="space-y-sm">
         {errors.general && (

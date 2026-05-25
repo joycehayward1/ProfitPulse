@@ -8,6 +8,7 @@ import { Button as _Button } from "@/components/ui/Button";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/Toast";
+import { INDUSTRIES } from "@/lib/industries";
 
 type SettingsTab = "profile" | "business" | "integrations" | "notifications" | "billing" | "account";
 
@@ -700,15 +701,11 @@ function SettingsContent() {
                       className="w-full h-10 px-3 rounded-lg border border-[#E4E4E7] bg-white text-[14px] text-[#111111] focus:border-[#E65100] focus:ring-2 focus:ring-[#E65100]/15 focus:outline-none transition-colors"
                     >
                       <option value="">Select industry</option>
-                      <option value="consulting">Consulting</option>
-                      <option value="creative">Creative Services</option>
-                      <option value="education">Education & Training</option>
-                      <option value="health">Health & Wellness</option>
-                      <option value="legal">Legal Services</option>
-                      <option value="marketing">Marketing & Advertising</option>
-                      <option value="real-estate">Real Estate</option>
-                      <option value="technology">Technology</option>
-                      <option value="other">Other</option>
+                      {INDUSTRIES.map((ind) => (
+                        <option key={ind} value={ind}>
+                          {ind}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>

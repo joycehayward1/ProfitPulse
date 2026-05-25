@@ -18,16 +18,21 @@ export default function GlossaryPage() {
   const [activeCategory, setActiveCategory] = useState<FilterCategory>("All");
 
   const filtered = useMemo(() => {
-    const q = search.toLowerCase().trim();
+    // Normalize so hyphens/punctuation don't block matches:
+    // "Break-Even Point" and "break even" both become "break even point".
+    const normalize = (s: string) =>
+      s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+
+    const tokens = normalize(search).split(" ").filter(Boolean);
+
     return GLOSSARY_TERMS.filter((t) => {
       const matchesCategory =
         activeCategory === "All" || t.category === activeCategory;
-      const matchesSearch =
-        !q ||
-        t.term.toLowerCase().includes(q) ||
-        t.definition.toLowerCase().includes(q) ||
-        t.example.toLowerCase().includes(q);
-      return matchesCategory && matchesSearch;
+      if (!matchesCategory) return false;
+      if (tokens.length === 0) return true;
+
+      const haystack = `${normalize(t.term)} ${normalize(t.definition)} ${normalize(t.example)}`;
+      return tokens.every((tok) => haystack.includes(tok));
     });
   }, [search, activeCategory]);
 
