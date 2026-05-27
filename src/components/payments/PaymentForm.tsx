@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import { useAcceptJs } from "react-acceptjs";
 import { Icon } from "@iconify/react";
 import type { BillingInterval } from "./PricingCards";
+import { getAnetEnvironment } from "@/lib/anet-env";
 
 interface PaymentFormProps {
   billingInterval: BillingInterval;
@@ -44,7 +45,7 @@ export function PaymentForm({
   onBack,
 }: PaymentFormProps) {
   const { dispatchData, loading: scriptLoading, error: scriptError } = useAcceptJs({
-    environment: "SANDBOX",
+    environment: getAnetEnvironment(),
     authData: {
       apiLoginID: process.env.NEXT_PUBLIC_ANET_API_LOGIN_ID ?? "",
       clientKey: process.env.NEXT_PUBLIC_ANET_CLIENT_KEY ?? "",

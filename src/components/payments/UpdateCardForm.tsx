@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useAcceptJs } from "react-acceptjs";
 import { Icon } from "@iconify/react";
+import { getAnetEnvironment } from "@/lib/anet-env";
 
 interface UpdateCardFormProps {
   userId: string;
@@ -24,7 +25,7 @@ export function UpdateCardForm({
   onCancel,
 }: UpdateCardFormProps) {
   const { dispatchData, loading: scriptLoading, error: scriptError } = useAcceptJs({
-    environment: "SANDBOX",
+    environment: getAnetEnvironment(),
     authData: {
       apiLoginID: process.env.NEXT_PUBLIC_ANET_API_LOGIN_ID ?? "",
       clientKey: process.env.NEXT_PUBLIC_ANET_CLIENT_KEY ?? "",
