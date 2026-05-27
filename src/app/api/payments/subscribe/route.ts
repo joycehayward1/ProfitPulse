@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@insforge/sdk";
 import {
-  createCustomerProfileWithPayment,
+  ensureCustomerProfileWithPayment,
   createCustomerPaymentProfile,
   chargeCustomerProfile,
   createARBSubscription,
@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
 
     if (scenario === "A-fresh") {
       // ─── Scenario A: Fresh signup ────────────────────────────────────────
-      const profile = await createCustomerProfileWithPayment({
+      const profile = await ensureCustomerProfileWithPayment({
         merchantCustomerId: body.userId,
         email: body.customer?.email,
         description: `ProfitPulse user ${body.userId}`,

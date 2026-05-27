@@ -320,6 +320,99 @@ export async function createCustomerProfileWithPayment(
   };
 }
 
+function isAnetDuplicateError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  const anetErr = err as AnetError;
+  return (
+    anetErr.code === "E00039" ||
+    /duplicate record with id/i.test(err.message)
+  );
+}
+
+function extractDuplicateRecordId(err: unknown): string | null {
+  if (!(err instanceof Error)) return null;
+  const match = err.message.match(/duplicate record with id (\d+)/i);
+  return match?.[1] ?? null;
+}
+
+interface StoredPaymentProfile {
+  customerPaymentProfileId: string;
+  defaultPaymentProfile?: boolean;
+}
+
+interface GetCustomerProfileResponse {
+  profile: {
+    customerProfileId: string;
+    paymentProfiles?: StoredPaymentProfile | StoredPaymentProfile[];
+  };
+  messages: AnetMessages;
+}
+
+export async function getCustomerProfile(customerProfileId: string): Promise<{
+  customerProfileId: string;
+  paymentProfileIds: string[];
+  defaultPaymentProfileId: string | null;
+}> {
+  const payload = {
+    getCustomerProfileRequest: {
+      merchantAuthentication: merchantAuth(),
+      customerProfileId,
+    },
+  };
+
+  const result = await callAnet<GetCustomerProfileResponse>(payload);
+  assertOk(result, "getCustomerProfile");
+
+  const raw = result.profile.paymentProfiles;
+  const profiles = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  const paymentProfileIds = profiles
+    .map((p) => p.customerPaymentProfileId)
+    .filter(Boolean);
+  const defaultProfile =
+    profiles.find((p) => p.defaultPaymentProfile) ?? profiles[0];
+
+  return {
+    customerProfileId: result.profile.customerProfileId,
+    paymentProfileIds,
+    defaultPaymentProfileId: defaultProfile?.customerPaymentProfileId ?? null,
+  };
+}
+
+/**
+ * Create a vaulted customer + card, or reuse an existing ANet profile left
+ * over from a prior failed subscribe attempt (same merchantCustomerId).
+ */
+export async function ensureCustomerProfileWithPayment(
+  args: CreateCustomerProfileWithPaymentArgs
+): Promise<CreateCustomerProfileFromTransactionResult> {
+  try {
+    return await createCustomerProfileWithPayment(args);
+  } catch (err) {
+    if (!isAnetDuplicateError(err)) throw err;
+
+    const customerProfileId = extractDuplicateRecordId(err);
+    if (!customerProfileId) throw err;
+
+    let customerPaymentProfileId: string | undefined;
+    try {
+      const added = await createCustomerPaymentProfile({
+        customerProfileId,
+        nonce: args.nonce,
+        billTo: args.billTo,
+      });
+      customerPaymentProfileId = added.customerPaymentProfileId;
+    } catch (paymentErr) {
+      if (!isAnetDuplicateError(paymentErr)) throw paymentErr;
+      const existing = await getCustomerProfile(customerProfileId);
+      customerPaymentProfileId =
+        existing.defaultPaymentProfileId ?? existing.paymentProfileIds[0];
+      if (!customerPaymentProfileId) throw paymentErr;
+    }
+
+    return { customerProfileId, customerPaymentProfileId };
+  }
+}
+
 // ─── 3. ARBCreateSubscriptionRequest ─────────────────────────────────────────
 
 export interface CreateARBSubscriptionArgs {
