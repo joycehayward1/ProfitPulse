@@ -263,31 +263,42 @@ export interface CreateCustomerProfileWithPaymentArgs {
 export async function createCustomerProfileWithPayment(
   args: CreateCustomerProfileWithPaymentArgs
 ): Promise<CreateCustomerProfileFromTransactionResult> {
+  const paymentProfile: Record<string, unknown> = {
+    customerType: "individual",
+  };
+  if (
+    args.billTo &&
+    (args.billTo.firstName || args.billTo.lastName || args.billTo.zip)
+  ) {
+    paymentProfile.billTo = {
+      ...(args.billTo.firstName && { firstName: args.billTo.firstName }),
+      ...(args.billTo.lastName && { lastName: args.billTo.lastName }),
+      ...(args.billTo.zip && { zip: args.billTo.zip }),
+    };
+  }
+  paymentProfile.payment = {
+    opaqueData: {
+      dataDescriptor: args.nonce.dataDescriptor,
+      dataValue: args.nonce.dataValue,
+    },
+  };
+
+  // ANet XSD requires profile child order: merchantCustomerId → description → email → paymentProfiles
+  const profile: Record<string, unknown> = {
+    merchantCustomerId: toAnetMerchantCustomerId(args.merchantCustomerId),
+  };
+  if (args.description) {
+    profile.description = args.description;
+  }
+  if (args.email) {
+    profile.email = args.email;
+  }
+  profile.paymentProfiles = paymentProfile;
+
   const payload = {
     createCustomerProfileRequest: {
       merchantAuthentication: merchantAuth(),
-      profile: {
-        merchantCustomerId: toAnetMerchantCustomerId(args.merchantCustomerId),
-        ...(args.email && { email: args.email }),
-        ...(args.description && { description: args.description }),
-        paymentProfiles: {
-          customerType: "individual",
-          ...(args.billTo &&
-            (args.billTo.firstName || args.billTo.lastName || args.billTo.zip) && {
-              billTo: {
-                ...(args.billTo.firstName && { firstName: args.billTo.firstName }),
-                ...(args.billTo.lastName && { lastName: args.billTo.lastName }),
-                ...(args.billTo.zip && { zip: args.billTo.zip }),
-              },
-            }),
-          payment: {
-            opaqueData: {
-              dataDescriptor: args.nonce.dataDescriptor,
-              dataValue: args.nonce.dataValue,
-            },
-          },
-        },
-      },
+      profile,
       // First period is charged immediately after vaulting.
       validationMode: "none",
     },
