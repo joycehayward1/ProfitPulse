@@ -378,6 +378,18 @@ export async function getCustomerProfile(customerProfileId: string): Promise<{
   };
 }
 
+function isInvalidOtsTokenError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  return /invalid ots token/i.test(err.message);
+}
+
+function pickPaymentProfileId(profile: {
+  defaultPaymentProfileId: string | null;
+  paymentProfileIds: string[];
+}): string | null {
+  return profile.defaultPaymentProfileId ?? profile.paymentProfileIds[0] ?? null;
+}
+
 /**
  * Create a vaulted customer + card, or reuse an existing ANet profile left
  * over from a prior failed subscribe attempt (same merchantCustomerId).
@@ -393,23 +405,36 @@ export async function ensureCustomerProfileWithPayment(
     const customerProfileId = extractDuplicateRecordId(err);
     if (!customerProfileId) throw err;
 
-    let customerPaymentProfileId: string | undefined;
+    const existing = await getCustomerProfile(customerProfileId);
+    const storedPaymentProfileId = pickPaymentProfileId(existing);
+    if (storedPaymentProfileId) {
+      // Card already vaulted from a prior attempt — reuse it (nonce is single-use).
+      return {
+        customerProfileId,
+        customerPaymentProfileId: storedPaymentProfileId,
+      };
+    }
+
     try {
       const added = await createCustomerPaymentProfile({
         customerProfileId,
         nonce: args.nonce,
         billTo: args.billTo,
       });
-      customerPaymentProfileId = added.customerPaymentProfileId;
+      return {
+        customerProfileId,
+        customerPaymentProfileId: added.customerPaymentProfileId,
+      };
     } catch (paymentErr) {
-      if (!isAnetDuplicateError(paymentErr)) throw paymentErr;
-      const existing = await getCustomerProfile(customerProfileId);
-      customerPaymentProfileId =
-        existing.defaultPaymentProfileId ?? existing.paymentProfileIds[0];
-      if (!customerPaymentProfileId) throw paymentErr;
+      if (isAnetDuplicateError(paymentErr) || isInvalidOtsTokenError(paymentErr)) {
+        const refreshed = await getCustomerProfile(customerProfileId);
+        const paymentProfileId = pickPaymentProfileId(refreshed);
+        if (paymentProfileId) {
+          return { customerProfileId, customerPaymentProfileId: paymentProfileId };
+        }
+      }
+      throw paymentErr;
     }
-
-    return { customerProfileId, customerPaymentProfileId };
   }
 }
 
