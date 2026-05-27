@@ -377,6 +377,7 @@ export async function getCustomerProfile(customerProfileId: string): Promise<{
   customerProfileId: string;
   merchantCustomerId: string | null;
   email: string | null;
+  description: string | null;
   paymentProfileIds: string[];
   defaultPaymentProfileId: string | null;
 }> {
@@ -402,6 +403,7 @@ export async function getCustomerProfile(customerProfileId: string): Promise<{
     customerProfileId: result.profile.customerProfileId,
     merchantCustomerId: result.profile.merchantCustomerId ?? null,
     email: result.profile.email ?? null,
+    description: result.profile.description ?? null,
     paymentProfileIds,
     defaultPaymentProfileId: defaultProfile?.customerPaymentProfileId ?? null,
   };
@@ -409,7 +411,8 @@ export async function getCustomerProfile(customerProfileId: string): Promise<{
 
 async function findCustomerProfileIdByMerchantCustomerId(
   merchantCustomerId: string,
-  email?: string
+  email?: string,
+  userId?: string
 ): Promise<string | null> {
   const payload = {
     getCustomerProfileIdsRequest: {
@@ -433,6 +436,9 @@ async function findCustomerProfileIdByMerchantCustomerId(
     ) {
       return customerProfileId;
     }
+    if (userId && profile.description?.includes(userId)) {
+      return customerProfileId;
+    }
   }
 
   return null;
@@ -447,12 +453,13 @@ async function vaultPaymentProfileOnCustomer(
       customerProfileId,
       nonce: args.nonce,
       billTo: args.billTo,
+      validationMode: "none",
     });
     return added.customerPaymentProfileId;
   } catch (err) {
     if (isAnetDuplicateError(err)) {
       const existing = await getCustomerProfile(customerProfileId);
-      const paymentProfileId = pickPaymentProfileId(existing);
+      const paymentProfileId = pickNewestPaymentProfileId(existing);
       if (paymentProfileId) return paymentProfileId;
     }
     if (isInvalidOtsTokenError(err)) {
@@ -469,11 +476,14 @@ function isInvalidOtsTokenError(err: unknown): boolean {
   return /invalid ots token/i.test(err.message);
 }
 
-function pickPaymentProfileId(profile: {
+function pickNewestPaymentProfileId(profile: {
   defaultPaymentProfileId: string | null;
   paymentProfileIds: string[];
 }): string | null {
-  return profile.defaultPaymentProfileId ?? profile.paymentProfileIds[0] ?? null;
+  if (profile.paymentProfileIds.length > 0) {
+    return profile.paymentProfileIds[profile.paymentProfileIds.length - 1] ?? null;
+  }
+  return profile.defaultPaymentProfileId;
 }
 
 /**
@@ -486,7 +496,8 @@ export async function ensureCustomerProfileWithPayment(
   const merchantCustomerId = toAnetMerchantCustomerId(args.merchantCustomerId);
   const existingProfileId = await findCustomerProfileIdByMerchantCustomerId(
     merchantCustomerId,
-    args.email
+    args.email,
+    args.merchantCustomerId
   );
 
   if (existingProfileId) {
@@ -506,20 +517,9 @@ export async function ensureCustomerProfileWithPayment(
     const duplicateProfileId = extractDuplicateRecordId(err);
     if (!isAnetDuplicateError(err) || !duplicateProfileId) throw err;
 
-    // createCustomerProfileWithPayment consumes the nonce even on duplicate —
-    // vault the card on the next submit; for now use any card already on file.
-    const existing = await getCustomerProfile(duplicateProfileId);
-    const customerPaymentProfileId = pickPaymentProfileId(existing);
-    if (!customerPaymentProfileId) {
-      throw new Error(
-        "[createCustomerProfileWithPayment] Customer profile already exists. Please click Pay again."
-      );
-    }
-
-    return {
-      customerProfileId: duplicateProfileId,
-      customerPaymentProfileId,
-    };
+    throw new Error(
+      `[createCustomerProfileWithPayment] Customer profile ${duplicateProfileId} already exists. Click Pay once more to save your card.`
+    );
   }
 }
 
@@ -655,12 +655,15 @@ export async function chargeCustomerProfile(
   if (!tx || tx.responseCode !== "1") {
     const fromErrors = tx?.errors?.error?.[0];
     const fromMessages = tx?.messages?.message?.[0];
+    const reason =
+      fromErrors?.errorText ?? fromMessages?.description ?? "Transaction declined";
+    const code = fromErrors?.errorCode ?? fromMessages?.code;
     const err: AnetError = new Error(
-      `[chargeCustomerProfile] ${
-        fromErrors?.errorText ?? fromMessages?.description ?? "Transaction declined"
-      }`
+      `[chargeCustomerProfile] ${reason}${
+        tx?.responseCode ? ` (response ${tx.responseCode})` : ""
+      }${code ? ` [${code}]` : ""}`
     );
-    err.code = fromErrors?.errorCode ?? fromMessages?.code;
+    err.code = code;
     throw err;
   }
 
@@ -688,6 +691,8 @@ export interface CreateCustomerPaymentProfileArgs {
     lastName?: string;
     zip?: string;
   };
+  /** Skip live validation when charging immediately after vaulting. */
+  validationMode?: "none" | "liveMode" | "testMode";
 }
 
 /**
@@ -716,7 +721,7 @@ export async function createCustomerPaymentProfile(
           },
         },
       },
-      validationMode: "liveMode",
+      validationMode: args.validationMode ?? "liveMode",
     },
   };
 
