@@ -321,6 +321,17 @@ export async function createCustomerProfileWithPayment(
   };
 }
 
+function extractDuplicateRecordId(err: unknown): string | null {
+  if (!(err instanceof Error)) return null;
+  const match = err.message.match(/duplicate record with id (\d+)/i);
+  return match?.[1] ?? null;
+}
+
+function merchantCustomerIdsMatch(stored: string | null, expected: string): boolean {
+  if (!stored) return false;
+  return toAnetMerchantCustomerId(stored) === toAnetMerchantCustomerId(expected);
+}
+
 function isAnetDuplicateError(err: unknown): boolean {
   if (!(err instanceof Error)) return false;
   const anetErr = err as AnetError;
@@ -395,7 +406,7 @@ async function findCustomerProfileIdByMerchantCustomerId(
 
   for (const customerProfileId of (result.ids ?? []).slice(0, 100)) {
     const profile = await getCustomerProfile(customerProfileId);
-    if (profile.merchantCustomerId === merchantCustomerId) {
+    if (merchantCustomerIdsMatch(profile.merchantCustomerId, merchantCustomerId)) {
       return customerProfileId;
     }
   }
@@ -463,7 +474,21 @@ export async function ensureCustomerProfileWithPayment(
     };
   }
 
-  return createCustomerProfileWithPayment(args);
+  try {
+    return await createCustomerProfileWithPayment(args);
+  } catch (err) {
+    const duplicateProfileId = extractDuplicateRecordId(err);
+    if (!isAnetDuplicateError(err) || !duplicateProfileId) throw err;
+
+    const customerPaymentProfileId = await vaultPaymentProfileOnCustomer(
+      duplicateProfileId,
+      { nonce: args.nonce, billTo: args.billTo }
+    );
+    return {
+      customerProfileId: duplicateProfileId,
+      customerPaymentProfileId,
+    };
+  }
 }
 
 // ─── 3. ARBCreateSubscriptionRequest ─────────────────────────────────────────
