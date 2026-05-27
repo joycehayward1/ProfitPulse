@@ -267,7 +267,7 @@ export async function createCustomerProfileWithPayment(
     createCustomerProfileRequest: {
       merchantAuthentication: merchantAuth(),
       profile: {
-        merchantCustomerId: args.merchantCustomerId,
+        merchantCustomerId: toAnetMerchantCustomerId(args.merchantCustomerId),
         ...(args.email && { email: args.email }),
         ...(args.description && { description: args.description }),
         paymentProfiles: {
@@ -699,6 +699,11 @@ export async function getARBSubscription(
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/** Authorize.net merchantCustomerId max length is 20. */
+export function toAnetMerchantCustomerId(id: string): string {
+  return id.replace(/-/g, "").slice(0, 20);
+}
 
 export function getPlanAmount(billingInterval: BillingInterval): number {
   return billingInterval === "monthly" ? 59.99 : 599.88;
