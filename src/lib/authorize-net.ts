@@ -16,6 +16,7 @@
  */
 
 import type { BillingInterval } from "@/components/payments/PricingCards";
+import { getPlanAmount } from "@/lib/plan-amounts";
 
 const SANDBOX_URL = "https://apitest.authorize.net/xml/v1/request.api";
 const PRODUCTION_URL = "https://api.authorize.net/xml/v1/request.api";
@@ -460,7 +461,7 @@ export interface CreateARBSubscriptionResult {
 export async function createARBSubscription(
   args: CreateARBSubscriptionArgs
 ): Promise<CreateARBSubscriptionResult> {
-  const amount = args.billingInterval === "monthly" ? 59.99 : 599.88;
+  const amount = getPlanAmount(args.billingInterval);
   const interval =
     args.billingInterval === "monthly"
       ? { length: "1", unit: "months" }
@@ -887,9 +888,7 @@ export function toAnetMerchantCustomerId(id: string): string {
   return id.replace(/-/g, "").slice(0, 20);
 }
 
-export function getPlanAmount(billingInterval: BillingInterval): number {
-  return billingInterval === "monthly" ? 59.99 : 599.88;
-}
+export { getPlanAmount } from "@/lib/plan-amounts";
 
 /**
  * Returns the date when the current paid period ends (and when ARB should

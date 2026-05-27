@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import { useAcceptJs } from "react-acceptjs";
 import { Icon } from "@iconify/react";
 import type { BillingInterval } from "./PricingCards";
+import { formatPlanAmount } from "@/lib/plan-amounts";
 import { getAnetEnvironment } from "@/lib/anet-env";
 
 interface PaymentFormProps {
@@ -23,8 +24,8 @@ interface PaymentFormProps {
 }
 
 const AMOUNTS: Record<BillingInterval, string> = {
-  monthly: "$59.99",
-  annual: "$599.88",
+  monthly: formatPlanAmount("monthly"),
+  annual: formatPlanAmount("annual"),
 };
 
 /**
