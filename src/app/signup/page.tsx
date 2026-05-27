@@ -350,7 +350,12 @@ export default function SignUpPage() {
         </div>
 
         <p className="text-small text-text-muted text-center">
-          By signing up, you agree to our <a href="/terms" className="text-orange hover:underline">Terms of Service</a> and <a href="/privacy" className="text-orange hover:underline">Privacy Policy</a>.
+          By signing up, you agree to our{" "}
+          <a href="/terms" className="text-orange hover:underline">Terms of Service</a>{" "}
+          (including our{" "}
+          <a href="/terms#eula" className="text-orange hover:underline">End User License Agreement</a>
+          ) and{" "}
+          <a href="/privacy" className="text-orange hover:underline">Privacy Policy</a>.
         </p>
       </form>
     </AuthLayout>

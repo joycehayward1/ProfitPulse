@@ -31,7 +31,7 @@ export default function TermsOfService() {
       {/* Content */}
       <main className="max-w-3xl mx-auto px-6 py-12 pb-20">
         <h1 className="font-display text-display text-text-primary mb-2">
-          Terms of Service
+          Terms of Service &amp; End User License Agreement
         </h1>
         <p className="text-body text-text-muted mb-10">
           Last updated: May 2026
@@ -41,14 +41,16 @@ export default function TermsOfService() {
           {/* Introduction */}
           <section>
             <p>
-              Welcome to ProfitPulse. These Terms of Service (&quot;Terms&quot;) govern your
-              use of the ProfitPulse platform at myprofitpulse.app (&quot;Service&quot;),
-              operated by Fusion 4 Business (&quot;Company,&quot; &quot;we,&quot; &quot;us,&quot; or &quot;our&quot;), a
-              company registered in Bermuda.
+              Welcome to ProfitPulse. These Terms of Service (&quot;Terms&quot;) and End User
+              License Agreement (&quot;EULA&quot;) govern your use of the ProfitPulse platform at
+              myprofitpulse.app (&quot;Service&quot; or &quot;Application&quot;), operated by Fusion 4
+              Business (&quot;Company,&quot; &quot;we,&quot; &quot;us,&quot; or &quot;our&quot;), a company registered in
+              Bermuda.
             </p>
             <p className="mt-3">
-              By creating an account or using ProfitPulse, you agree to these Terms. If
-              you don&apos;t agree, please don&apos;t use the Service.
+              By creating an account, connecting QuickBooks, or using ProfitPulse, you
+              agree to these Terms and the EULA below. If you don&apos;t agree, please
+              don&apos;t use the Service.
             </p>
             <p className="mt-3">
               We&apos;ve tried to write these in plain English. If anything is unclear,
@@ -60,6 +62,203 @@ export default function TermsOfService() {
                 hello@myprofitpulse.app
               </a>
               .
+            </p>
+          </section>
+
+          {/* End User License Agreement (EULA) */}
+          <section id="eula">
+            <h2 className="font-display text-display-sm text-text-primary mb-3">
+              End User License Agreement (EULA)
+            </h2>
+            <p>
+              This End User License Agreement is a legally binding agreement between you
+              (&quot;User,&quot; &quot;you,&quot; or &quot;your&quot;) and Fusion 4 Business for your use of the
+              ProfitPulse software application, including any QuickBooks Online integration
+              features (collectively, the &quot;Application&quot;). By installing, accessing,
+              registering for, or using the Application, you acknowledge that you have read,
+              understood, and agree to be bound by this EULA and our{" "}
+              <Link href="/privacy" className="text-orange hover:underline">
+                Privacy Policy
+              </Link>
+              .
+            </p>
+
+            <h3 className="font-display text-body font-semibold text-text-primary mt-6 mb-2">
+              A. License Grant
+            </h3>
+            <p>
+              The Application is licensed, not sold. Subject to your compliance with these
+              Terms and payment of applicable subscription fees, Fusion 4 Business grants you
+              a personal, limited, non-exclusive, non-transferable, revocable license to
+              access and use the Application solely for your internal business operations
+              during your active subscription period. This license does not permit you to
+              sublicense, resell, rent, lease, or distribute the Application to third
+              parties.
+            </p>
+
+            <h3 className="font-display text-body font-semibold text-text-primary mt-6 mb-2">
+              B. Restrictions
+            </h3>
+            <p>You may not, and may not permit others to:</p>
+            <ul className="list-disc pl-6 mt-3 space-y-2">
+              <li>
+                Copy, modify, adapt, translate, reverse-engineer, decompile, or disassemble
+                any portion of the Application except as permitted by applicable law
+              </li>
+              <li>
+                Use the Application to build a competing product or service, or to access
+                the Application through unauthorized automated means
+              </li>
+              <li>
+                Remove, alter, or obscure any proprietary notices on or within the
+                Application
+              </li>
+              <li>
+                Use Intuit, QuickBooks, or other third-party trademarks in a way that
+                suggests endorsement, affiliation, or sponsorship by those parties
+              </li>
+            </ul>
+
+            <h3 className="font-display text-body font-semibold text-text-primary mt-6 mb-2">
+              C. QuickBooks Online Integration and Data Authorization
+            </h3>
+            <p>
+              If you choose to connect ProfitPulse to QuickBooks Online, you authorize
+              Fusion 4 Business to access, retrieve, store, process, and display accounting
+              and financial data from your connected QuickBooks company on your behalf,
+              solely to provide the Application&apos;s features (such as dashboards, insights,
+              and reporting). This authorization is granted through Intuit&apos;s OAuth 2.0
+              consent flow and is limited to the scopes you approve at connection time
+              (currently the QuickBooks Online Accounting scope).
+            </p>
+            <p className="mt-3">
+              You acknowledge that Intuit or its service providers may transfer data
+              between QuickBooks Online and ProfitPulse to enable this integration. You
+              represent that you have the authority to connect the QuickBooks company and
+              to grant this access on behalf of that business.
+            </p>
+            <p className="mt-3">
+              <strong className="text-text-primary">Revoking access.</strong> You may
+              disconnect QuickBooks at any time from your ProfitPulse Settings page, which
+              stops future data syncs and removes stored OAuth tokens from our systems. You
+              may also revoke ProfitPulse&apos;s access from your Intuit account or QuickBooks
+              App Center settings. Disconnecting may limit or disable features that depend
+              on QuickBooks data. Data previously imported into ProfitPulse remains in your
+              account until you delete it or close your account.
+            </p>
+            <p className="mt-3">
+              For details on how we collect, use, store, and protect QuickBooks data, see
+              our{" "}
+              <Link href="/privacy" className="text-orange hover:underline">
+                Privacy Policy
+              </Link>
+              .
+            </p>
+
+            <h3 className="font-display text-body font-semibold text-text-primary mt-6 mb-2">
+              D. Third-Party Services (Including Intuit)
+            </h3>
+            <p>
+              The Application may integrate with third-party services such as QuickBooks
+              Online (provided by Intuit Inc.), payment processors, and hosting providers.
+              Your use of those services is governed by the third party&apos;s own terms and
+              privacy policies, including{" "}
+              <a
+                href="https://www.intuit.com/legal/terms/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-orange hover:underline"
+              >
+                Intuit&apos;s Terms of Service
+              </a>{" "}
+              and{" "}
+              <a
+                href="https://www.intuit.com/privacy/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-orange hover:underline"
+              >
+                Intuit&apos;s Privacy Statement
+              </a>
+              . You agree to comply with all applicable third-party terms when using the
+              Application.
+            </p>
+            <p className="mt-3">
+              <strong className="text-text-primary">
+                ProfitPulse is an independent application and is not affiliated with,
+                sponsored by, or endorsed by Intuit Inc.
+              </strong>{" "}
+              QuickBooks and Intuit are registered trademarks of Intuit Inc. Fusion 4
+              Business is solely responsible for the Application and its support.
+            </p>
+
+            <h3 className="font-display text-body font-semibold text-text-primary mt-6 mb-2">
+              E. Support and Maintenance
+            </h3>
+            <p>
+              Support and maintenance for the Application are provided exclusively by Fusion
+              4 Business, not by Intuit. For assistance, contact us at{" "}
+              <a
+                href="mailto:hello@myprofitpulse.app"
+                className="text-orange hover:underline"
+              >
+                hello@myprofitpulse.app
+              </a>
+              . We do not guarantee uninterrupted availability of the Application or any
+              third-party integration.
+            </p>
+
+            <h3 className="font-display text-body font-semibold text-text-primary mt-6 mb-2">
+              F. Disclaimer of Warranties
+            </h3>
+            <p>
+              THE APPLICATION IS PROVIDED &quot;AS IS&quot; AND &quot;AS AVAILABLE&quot; WITHOUT WARRANTIES
+              OF ANY KIND, WHETHER EXPRESS OR IMPLIED, INCLUDING IMPLIED WARRANTIES OF
+              MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT. WE DO
+              NOT WARRANT THAT THE APPLICATION OR QUICKBOOKS INTEGRATION WILL BE ERROR-FREE,
+              UNINTERRUPTED, OR ACCURATE. INTUIT MAKES NO WARRANTIES REGARDING THE
+              APPLICATION AND IS NOT RESPONSIBLE FOR ITS PERFORMANCE.
+            </p>
+
+            <h3 className="font-display text-body font-semibold text-text-primary mt-6 mb-2">
+              G. Limitation of Liability
+            </h3>
+            <p>
+              TO THE MAXIMUM EXTENT PERMITTED BY LAW, FUSION 4 BUSINESS SHALL NOT BE LIABLE
+              FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES,
+              OR FOR ANY LOSS OF PROFITS, REVENUE, DATA, OR BUSINESS OPPORTUNITIES, ARISING
+              FROM YOUR USE OF OR INABILITY TO USE THE APPLICATION — INCLUDING ISSUES
+              RELATED TO QUICKBOOKS CONNECTIVITY, DATA SYNC, OR THIRD-PARTY OUTAGES. OUR
+              TOTAL LIABILITY FOR ANY CLAIM ARISING FROM THIS EULA OR THE APPLICATION SHALL
+              NOT EXCEED THE AMOUNT YOU PAID US IN THE TWELVE (12) MONTHS PRECEDING THE
+              CLAIM.
+            </p>
+            <p className="mt-3">
+              You acknowledge that Intuit Inc. and its affiliates are third-party
+              beneficiaries of the disclaimers and limitations in this EULA and may enforce
+              these provisions directly against you.
+            </p>
+
+            <h3 className="font-display text-body font-semibold text-text-primary mt-6 mb-2">
+              H. Term and Termination
+            </h3>
+            <p>
+              This EULA takes effect when you first access or use the Application and
+              continues until your subscription ends or we terminate your access. We may
+              suspend or terminate your license if you breach these Terms, fail to pay
+              applicable fees, or use the Application in a manner that could harm us, other
+              users, or third parties. Upon termination, you must stop using the Application
+              and we may revoke your QuickBooks connection tokens.
+            </p>
+
+            <h3 className="font-display text-body font-semibold text-text-primary mt-6 mb-2">
+              I. Updates to This EULA
+            </h3>
+            <p>
+              We may update this EULA from time to time. Material changes will be posted on
+              this page with an updated &quot;Last updated&quot; date and, where appropriate,
+              communicated by email. Your continued use of the Application after changes
+              become effective constitutes acceptance of the revised EULA.
             </p>
           </section>
 
@@ -247,27 +446,19 @@ export default function TermsOfService() {
               7. QuickBooks / Intuit Integration
             </h2>
             <p>
-              ProfitPulse offers an optional integration with QuickBooks Online. If you
-              choose to connect your QuickBooks account, you authorize ProfitPulse to
-              access financial data from your QuickBooks account on your behalf to power
-              your dashboard and insights.
+              ProfitPulse offers an optional integration with QuickBooks Online. The legal
+              terms governing that integration — including your data authorization, right to
+              disconnect, third-party disclaimers, and Intuit third-party beneficiary
+              provisions — are set out in the{" "}
+              <a href="#eula" className="text-orange hover:underline">
+                End User License Agreement (EULA)
+              </a>{" "}
+              above.
             </p>
             <p className="mt-3">
-              You can disconnect the integration at any time from your Settings page.
-              Disconnection stops future data syncs immediately. Data previously imported
-              into ProfitPulse remains in your dashboard until you delete it.
-            </p>
-            <p className="mt-3">
-              Your use of QuickBooks Online itself is governed by{" "}
-              <a
-                href="https://www.intuit.com/legal/terms/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-orange hover:underline"
-              >
-                Intuit&apos;s own Terms of Service
-              </a>
-              . ProfitPulse is not affiliated with or endorsed by Intuit.
+              In summary: connecting QuickBooks allows ProfitPulse to sync accounting data
+              to power your dashboard. You can disconnect at any time from Settings or from
+              your Intuit account. ProfitPulse is not affiliated with or endorsed by Intuit.
             </p>
           </section>
 
@@ -470,8 +661,8 @@ export default function TermsOfService() {
             <ul className="list-disc pl-6 space-y-2">
               <li>
                 <strong className="text-text-primary">Entire Agreement.</strong> These
-                Terms, together with our Privacy Policy, constitute the entire agreement
-                between you and Fusion 4 Business regarding ProfitPulse.
+                Terms and EULA, together with our Privacy Policy, constitute the entire
+                agreement between you and Fusion 4 Business regarding ProfitPulse.
               </li>
               <li>
                 <strong className="text-text-primary">Severability.</strong> If any

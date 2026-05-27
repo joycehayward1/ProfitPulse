@@ -72,13 +72,13 @@ export function AuthLayout({
           <div className="flex items-center gap-4">
             <Image
               src="/avatar-jessica.jpg"
-              alt="Jessica M."
+              alt="Angela"
               width={200}
               height={200}
               className="w-16 h-16 rounded-full object-cover shadow-md"
             />
             <div>
-              <p className="text-body font-medium text-text-primary">Jessica M.</p>
+              <p className="text-body font-medium text-text-primary">Angela</p>
               <p className="text-small text-text-muted">Dental Practice Owner</p>
             </div>
           </div>
