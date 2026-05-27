@@ -350,19 +350,33 @@ interface GetCustomerProfileResponse {
   profile: {
     customerProfileId: string;
     merchantCustomerId?: string;
+    email?: string;
+    description?: string;
     paymentProfiles?: StoredPaymentProfile | StoredPaymentProfile[];
   };
   messages: AnetMessages;
 }
 
 interface GetCustomerProfileIdsResponse {
-  ids?: string[];
+  ids?: string[] | { numericString?: string | string[] };
   messages: AnetMessages;
+}
+
+function parseCustomerProfileIds(
+  result: GetCustomerProfileIdsResponse
+): string[] {
+  const raw = result.ids;
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw.map(String);
+  const numeric = raw.numericString;
+  if (!numeric) return [];
+  return (Array.isArray(numeric) ? numeric : [numeric]).map(String);
 }
 
 export async function getCustomerProfile(customerProfileId: string): Promise<{
   customerProfileId: string;
   merchantCustomerId: string | null;
+  email: string | null;
   paymentProfileIds: string[];
   defaultPaymentProfileId: string | null;
 }> {
@@ -387,13 +401,15 @@ export async function getCustomerProfile(customerProfileId: string): Promise<{
   return {
     customerProfileId: result.profile.customerProfileId,
     merchantCustomerId: result.profile.merchantCustomerId ?? null,
+    email: result.profile.email ?? null,
     paymentProfileIds,
     defaultPaymentProfileId: defaultProfile?.customerPaymentProfileId ?? null,
   };
 }
 
 async function findCustomerProfileIdByMerchantCustomerId(
-  merchantCustomerId: string
+  merchantCustomerId: string,
+  email?: string
 ): Promise<string | null> {
   const payload = {
     getCustomerProfileIdsRequest: {
@@ -404,9 +420,17 @@ async function findCustomerProfileIdByMerchantCustomerId(
   const result = await callAnet<GetCustomerProfileIdsResponse>(payload);
   assertOk(result, "getCustomerProfileIds");
 
-  for (const customerProfileId of (result.ids ?? []).slice(0, 100)) {
+  const normalizedEmail = email?.trim().toLowerCase();
+
+  for (const customerProfileId of parseCustomerProfileIds(result).slice(0, 100)) {
     const profile = await getCustomerProfile(customerProfileId);
     if (merchantCustomerIdsMatch(profile.merchantCustomerId, merchantCustomerId)) {
+      return customerProfileId;
+    }
+    if (
+      normalizedEmail &&
+      profile.email?.trim().toLowerCase() === normalizedEmail
+    ) {
       return customerProfileId;
     }
   }
@@ -460,8 +484,10 @@ export async function ensureCustomerProfileWithPayment(
   args: CreateCustomerProfileWithPaymentArgs
 ): Promise<CreateCustomerProfileFromTransactionResult> {
   const merchantCustomerId = toAnetMerchantCustomerId(args.merchantCustomerId);
-  const existingProfileId =
-    await findCustomerProfileIdByMerchantCustomerId(merchantCustomerId);
+  const existingProfileId = await findCustomerProfileIdByMerchantCustomerId(
+    merchantCustomerId,
+    args.email
+  );
 
   if (existingProfileId) {
     const customerPaymentProfileId = await vaultPaymentProfileOnCustomer(
@@ -480,10 +506,16 @@ export async function ensureCustomerProfileWithPayment(
     const duplicateProfileId = extractDuplicateRecordId(err);
     if (!isAnetDuplicateError(err) || !duplicateProfileId) throw err;
 
-    const customerPaymentProfileId = await vaultPaymentProfileOnCustomer(
-      duplicateProfileId,
-      { nonce: args.nonce, billTo: args.billTo }
-    );
+    // createCustomerProfileWithPayment consumes the nonce even on duplicate —
+    // vault the card on the next submit; for now use any card already on file.
+    const existing = await getCustomerProfile(duplicateProfileId);
+    const customerPaymentProfileId = pickPaymentProfileId(existing);
+    if (!customerPaymentProfileId) {
+      throw new Error(
+        "[createCustomerProfileWithPayment] Customer profile already exists. Please click Pay again."
+      );
+    }
+
     return {
       customerProfileId: duplicateProfileId,
       customerPaymentProfileId,
