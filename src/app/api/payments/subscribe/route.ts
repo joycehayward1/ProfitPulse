@@ -3,6 +3,7 @@ import { createClient } from "@insforge/sdk";
 import {
   ensureCustomerProfileWithPayment,
   createCustomerPaymentProfile,
+  chargeCustomerProfileWithCardFallback,
   chargeCustomerProfile,
   createARBSubscription,
   getPlanAmount,
@@ -129,14 +130,21 @@ export async function POST(request: NextRequest) {
       customerProfileId = profile.customerProfileId;
       customerPaymentProfileId = profile.customerPaymentProfileId;
 
-      const txn = await chargeCustomerProfile({
+      const charge = await chargeCustomerProfileWithCardFallback({
         amount,
         customerProfileId,
         customerPaymentProfileId,
+        nonce: body.nonce!,
+        billTo: {
+          firstName: body.customer?.firstName,
+          lastName: body.customer?.lastName,
+          zip: body.customer?.zip,
+        },
         description: `ProfitPulse Pro — ${body.billingInterval} (first period)`,
         email: body.customer?.email,
       });
-      transactionId = txn.transId;
+      transactionId = charge.transId;
+      customerPaymentProfileId = charge.customerPaymentProfileId;
     } else {
       // ─── Scenarios B + C: Resubscribe with existing customer profile ─────
       customerProfileId = existingSub!.anet_customer_profile_id as string;

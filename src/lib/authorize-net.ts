@@ -568,11 +568,14 @@ export async function chargeCustomerProfile(
 
   const tx = result.transactionResponse;
   if (!tx || tx.responseCode !== "1") {
-    const first = tx?.errors?.error?.[0];
+    const fromErrors = tx?.errors?.error?.[0];
+    const fromMessages = tx?.messages?.message?.[0];
     const err: AnetError = new Error(
-      `[chargeCustomerProfile] ${first?.errorText ?? "Transaction declined"}`
+      `[chargeCustomerProfile] ${
+        fromErrors?.errorText ?? fromMessages?.description ?? "Transaction declined"
+      }`
     );
-    err.code = first?.errorCode;
+    err.code = fromErrors?.errorCode ?? fromMessages?.code;
     throw err;
   }
 
@@ -580,6 +583,56 @@ export async function chargeCustomerProfile(
     transId: tx.transId,
     authCode: tx.messages?.message?.[0]?.code,
   };
+}
+
+function isChargeDeclinedError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  return err.message.startsWith("[chargeCustomerProfile]");
+}
+
+export interface ChargeWithCardFallbackArgs extends ChargeCustomerProfileArgs {
+  nonce: {
+    dataDescriptor: string;
+    dataValue: string;
+  };
+  billTo?: CreateCustomerPaymentProfileArgs["billTo"];
+}
+
+/**
+ * Charge a vaulted card; if declined (e.g. stale test-mode profile in live
+ * mode), vault the fresh Accept.js nonce and retry once.
+ */
+export async function chargeCustomerProfileWithCardFallback(
+  args: ChargeWithCardFallbackArgs
+): Promise<CreateTransactionResult & { customerPaymentProfileId: string }> {
+  try {
+    const txn = await chargeCustomerProfile(args);
+    return {
+      ...txn,
+      customerPaymentProfileId: args.customerPaymentProfileId,
+    };
+  } catch (err) {
+    if (!isChargeDeclinedError(err)) throw err;
+
+    const added = await createCustomerPaymentProfile({
+      customerProfileId: args.customerProfileId,
+      nonce: args.nonce,
+      billTo: args.billTo,
+    });
+
+    const txn = await chargeCustomerProfile({
+      amount: args.amount,
+      customerProfileId: args.customerProfileId,
+      customerPaymentProfileId: added.customerPaymentProfileId,
+      description: args.description,
+      email: args.email,
+    });
+
+    return {
+      ...txn,
+      customerPaymentProfileId: added.customerPaymentProfileId,
+    };
+  }
 }
 
 // ─── 6. createCustomerPaymentProfileRequest ─────────────────────────────────
