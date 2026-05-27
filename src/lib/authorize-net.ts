@@ -203,6 +203,14 @@ export interface CreateCustomerProfileFromTransactionResult {
 export async function createCustomerProfileFromTransaction(
   transId: string
 ): Promise<CreateCustomerProfileFromTransactionResult> {
+  if (!transId || transId === "0") {
+    throw new Error(
+      "[createCustomerProfileFromTransaction] Invalid transaction ID. " +
+        "Production Test Mode returns transId 0 — vault the card via " +
+        "createCustomerProfileWithPayment instead, or turn Test Mode off."
+    );
+  }
+
   const payload = {
     createCustomerProfileFromTransactionRequest: {
       merchantAuthentication: merchantAuth(),
@@ -217,6 +225,81 @@ export async function createCustomerProfileFromTransaction(
   if (!result.customerProfileId || !paymentProfileId) {
     throw new Error(
       "[createCustomerProfileFromTransaction] Missing profile IDs in response"
+    );
+  }
+
+  return {
+    customerProfileId: result.customerProfileId,
+    customerPaymentProfileId: paymentProfileId,
+  };
+}
+
+interface CreateCustomerProfileResponse {
+  customerProfileId: string;
+  customerPaymentProfileIdList: string[];
+  messages: AnetMessages;
+}
+
+export interface CreateCustomerProfileWithPaymentArgs {
+  merchantCustomerId: string;
+  email?: string;
+  description?: string;
+  nonce: {
+    dataDescriptor: string;
+    dataValue: string;
+  };
+  billTo?: {
+    firstName?: string;
+    lastName?: string;
+    zip?: string;
+  };
+}
+
+/**
+ * Vault a card from an Accept.js nonce without needing a settled transaction ID.
+ * Used for fresh signups — avoids createCustomerProfileFromTransaction, which
+ * fails when the merchant account is in Test Mode (transId 0).
+ */
+export async function createCustomerProfileWithPayment(
+  args: CreateCustomerProfileWithPaymentArgs
+): Promise<CreateCustomerProfileFromTransactionResult> {
+  const payload = {
+    createCustomerProfileRequest: {
+      merchantAuthentication: merchantAuth(),
+      profile: {
+        merchantCustomerId: args.merchantCustomerId,
+        ...(args.email && { email: args.email }),
+        ...(args.description && { description: args.description }),
+        paymentProfiles: {
+          customerType: "individual",
+          ...(args.billTo &&
+            (args.billTo.firstName || args.billTo.lastName || args.billTo.zip) && {
+              billTo: {
+                ...(args.billTo.firstName && { firstName: args.billTo.firstName }),
+                ...(args.billTo.lastName && { lastName: args.billTo.lastName }),
+                ...(args.billTo.zip && { zip: args.billTo.zip }),
+              },
+            }),
+          payment: {
+            opaqueData: {
+              dataDescriptor: args.nonce.dataDescriptor,
+              dataValue: args.nonce.dataValue,
+            },
+          },
+        },
+      },
+      // First period is charged immediately after vaulting.
+      validationMode: "none",
+    },
+  };
+
+  const result = await callAnet<CreateCustomerProfileResponse>(payload);
+  assertOk(result, "createCustomerProfileWithPayment");
+
+  const paymentProfileId = result.customerPaymentProfileIdList?.[0];
+  if (!result.customerProfileId || !paymentProfileId) {
+    throw new Error(
+      "[createCustomerProfileWithPayment] Missing profile IDs in response"
     );
   }
 

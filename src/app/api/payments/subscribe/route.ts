@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@insforge/sdk";
 import {
-  createTransaction,
-  createCustomerProfileFromTransaction,
+  createCustomerProfileWithPayment,
   createCustomerPaymentProfile,
   chargeCustomerProfile,
   createARBSubscription,
@@ -37,8 +36,8 @@ interface SubscribeRequestBody {
  * Handles three scenarios from PAYMENTS_PLAN.md:
  *
  *   Scenario A — Fresh signup (Flow 2, no existing customer profile):
- *     1. createTransaction(nonce)
- *     2. createCustomerProfileFromTransaction
+ *     1. createCustomerProfileWithPayment(nonce) — vault card
+ *     2. chargeCustomerProfile — first period
  *     3. createARBSubscription
  *
  *   Scenario B — Resubscribe with same card (Flow 7, useExistingCard=true):
@@ -116,17 +115,28 @@ export async function POST(request: NextRequest) {
 
     if (scenario === "A-fresh") {
       // ─── Scenario A: Fresh signup ────────────────────────────────────────
-      const txn = await createTransaction({
-        amount,
+      const profile = await createCustomerProfileWithPayment({
+        merchantCustomerId: body.userId,
+        email: body.customer?.email,
+        description: `ProfitPulse user ${body.userId}`,
         nonce: body.nonce!,
-        customer: body.customer,
-        description: `ProfitPulse Pro — ${body.billingInterval} (first period)`,
+        billTo: {
+          firstName: body.customer?.firstName,
+          lastName: body.customer?.lastName,
+          zip: body.customer?.zip,
+        },
       });
-      transactionId = txn.transId;
-
-      const profile = await createCustomerProfileFromTransaction(txn.transId);
       customerProfileId = profile.customerProfileId;
       customerPaymentProfileId = profile.customerPaymentProfileId;
+
+      const txn = await chargeCustomerProfile({
+        amount,
+        customerProfileId,
+        customerPaymentProfileId,
+        description: `ProfitPulse Pro — ${body.billingInterval} (first period)`,
+        email: body.customer?.email,
+      });
+      transactionId = txn.transId;
     } else {
       // ─── Scenarios B + C: Resubscribe with existing customer profile ─────
       customerProfileId = existingSub!.anet_customer_profile_id as string;
