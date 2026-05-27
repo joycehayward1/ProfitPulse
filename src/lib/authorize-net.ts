@@ -330,12 +330,6 @@ function isAnetDuplicateError(err: unknown): boolean {
   );
 }
 
-function extractDuplicateRecordId(err: unknown): string | null {
-  if (!(err instanceof Error)) return null;
-  const match = err.message.match(/duplicate record with id (\d+)/i);
-  return match?.[1] ?? null;
-}
-
 interface StoredPaymentProfile {
   customerPaymentProfileId: string;
   defaultPaymentProfile?: boolean;
@@ -344,13 +338,20 @@ interface StoredPaymentProfile {
 interface GetCustomerProfileResponse {
   profile: {
     customerProfileId: string;
+    merchantCustomerId?: string;
     paymentProfiles?: StoredPaymentProfile | StoredPaymentProfile[];
   };
   messages: AnetMessages;
 }
 
+interface GetCustomerProfileIdsResponse {
+  ids?: string[];
+  messages: AnetMessages;
+}
+
 export async function getCustomerProfile(customerProfileId: string): Promise<{
   customerProfileId: string;
+  merchantCustomerId: string | null;
   paymentProfileIds: string[];
   defaultPaymentProfileId: string | null;
 }> {
@@ -374,9 +375,58 @@ export async function getCustomerProfile(customerProfileId: string): Promise<{
 
   return {
     customerProfileId: result.profile.customerProfileId,
+    merchantCustomerId: result.profile.merchantCustomerId ?? null,
     paymentProfileIds,
     defaultPaymentProfileId: defaultProfile?.customerPaymentProfileId ?? null,
   };
+}
+
+async function findCustomerProfileIdByMerchantCustomerId(
+  merchantCustomerId: string
+): Promise<string | null> {
+  const payload = {
+    getCustomerProfileIdsRequest: {
+      merchantAuthentication: merchantAuth(),
+    },
+  };
+
+  const result = await callAnet<GetCustomerProfileIdsResponse>(payload);
+  assertOk(result, "getCustomerProfileIds");
+
+  for (const customerProfileId of (result.ids ?? []).slice(0, 100)) {
+    const profile = await getCustomerProfile(customerProfileId);
+    if (profile.merchantCustomerId === merchantCustomerId) {
+      return customerProfileId;
+    }
+  }
+
+  return null;
+}
+
+async function vaultPaymentProfileOnCustomer(
+  customerProfileId: string,
+  args: Pick<CreateCustomerProfileWithPaymentArgs, "nonce" | "billTo">
+): Promise<string> {
+  try {
+    const added = await createCustomerPaymentProfile({
+      customerProfileId,
+      nonce: args.nonce,
+      billTo: args.billTo,
+    });
+    return added.customerPaymentProfileId;
+  } catch (err) {
+    if (isAnetDuplicateError(err)) {
+      const existing = await getCustomerProfile(customerProfileId);
+      const paymentProfileId = pickPaymentProfileId(existing);
+      if (paymentProfileId) return paymentProfileId;
+    }
+    if (isInvalidOtsTokenError(err)) {
+      throw new Error(
+        "[createCustomerPaymentProfile] Payment session expired. Please click Pay again."
+      );
+    }
+    throw err;
+  }
 }
 
 function isInvalidOtsTokenError(err: unknown): boolean {
@@ -392,51 +442,28 @@ function pickPaymentProfileId(profile: {
 }
 
 /**
- * Create a vaulted customer + card, or reuse an existing ANet profile left
- * over from a prior failed subscribe attempt (same merchantCustomerId).
+ * Create a vaulted customer + card, or attach a new card to an existing ANet
+ * profile from a prior failed subscribe attempt (same merchantCustomerId).
  */
 export async function ensureCustomerProfileWithPayment(
   args: CreateCustomerProfileWithPaymentArgs
 ): Promise<CreateCustomerProfileFromTransactionResult> {
-  try {
-    return await createCustomerProfileWithPayment(args);
-  } catch (err) {
-    if (!isAnetDuplicateError(err)) throw err;
+  const merchantCustomerId = toAnetMerchantCustomerId(args.merchantCustomerId);
+  const existingProfileId =
+    await findCustomerProfileIdByMerchantCustomerId(merchantCustomerId);
 
-    const customerProfileId = extractDuplicateRecordId(err);
-    if (!customerProfileId) throw err;
-
-    const existing = await getCustomerProfile(customerProfileId);
-    const storedPaymentProfileId = pickPaymentProfileId(existing);
-    if (storedPaymentProfileId) {
-      // Card already vaulted from a prior attempt — reuse it (nonce is single-use).
-      return {
-        customerProfileId,
-        customerPaymentProfileId: storedPaymentProfileId,
-      };
-    }
-
-    try {
-      const added = await createCustomerPaymentProfile({
-        customerProfileId,
-        nonce: args.nonce,
-        billTo: args.billTo,
-      });
-      return {
-        customerProfileId,
-        customerPaymentProfileId: added.customerPaymentProfileId,
-      };
-    } catch (paymentErr) {
-      if (isAnetDuplicateError(paymentErr) || isInvalidOtsTokenError(paymentErr)) {
-        const refreshed = await getCustomerProfile(customerProfileId);
-        const paymentProfileId = pickPaymentProfileId(refreshed);
-        if (paymentProfileId) {
-          return { customerProfileId, customerPaymentProfileId: paymentProfileId };
-        }
-      }
-      throw paymentErr;
-    }
+  if (existingProfileId) {
+    const customerPaymentProfileId = await vaultPaymentProfileOnCustomer(
+      existingProfileId,
+      { nonce: args.nonce, billTo: args.billTo }
+    );
+    return {
+      customerProfileId: existingProfileId,
+      customerPaymentProfileId,
+    };
   }
+
+  return createCustomerProfileWithPayment(args);
 }
 
 // ─── 3. ARBCreateSubscriptionRequest ─────────────────────────────────────────
@@ -584,56 +611,6 @@ export async function chargeCustomerProfile(
     transId: tx.transId,
     authCode: tx.messages?.message?.[0]?.code,
   };
-}
-
-function isChargeDeclinedError(err: unknown): boolean {
-  if (!(err instanceof Error)) return false;
-  return err.message.startsWith("[chargeCustomerProfile]");
-}
-
-export interface ChargeWithCardFallbackArgs extends ChargeCustomerProfileArgs {
-  nonce: {
-    dataDescriptor: string;
-    dataValue: string;
-  };
-  billTo?: CreateCustomerPaymentProfileArgs["billTo"];
-}
-
-/**
- * Charge a vaulted card; if declined (e.g. stale test-mode profile in live
- * mode), vault the fresh Accept.js nonce and retry once.
- */
-export async function chargeCustomerProfileWithCardFallback(
-  args: ChargeWithCardFallbackArgs
-): Promise<CreateTransactionResult & { customerPaymentProfileId: string }> {
-  try {
-    const txn = await chargeCustomerProfile(args);
-    return {
-      ...txn,
-      customerPaymentProfileId: args.customerPaymentProfileId,
-    };
-  } catch (err) {
-    if (!isChargeDeclinedError(err)) throw err;
-
-    const added = await createCustomerPaymentProfile({
-      customerProfileId: args.customerProfileId,
-      nonce: args.nonce,
-      billTo: args.billTo,
-    });
-
-    const txn = await chargeCustomerProfile({
-      amount: args.amount,
-      customerProfileId: args.customerProfileId,
-      customerPaymentProfileId: added.customerPaymentProfileId,
-      description: args.description,
-      email: args.email,
-    });
-
-    return {
-      ...txn,
-      customerPaymentProfileId: added.customerPaymentProfileId,
-    };
-  }
 }
 
 // ─── 6. createCustomerPaymentProfileRequest ─────────────────────────────────
