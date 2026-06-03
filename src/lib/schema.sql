@@ -49,6 +49,8 @@ CREATE TABLE IF NOT EXISTS subscriptions (
   last_payment_amount NUMERIC(12, 2),
   last_payment_status TEXT CHECK (last_payment_status IN ('success', 'failed')),
 
+  pricing_promo TEXT CHECK (pricing_promo IS NULL OR pricing_promo IN ('launch')),
+
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE(user_id)

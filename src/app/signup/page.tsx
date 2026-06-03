@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, FormEvent } from "react";
-import { useRouter } from "next/navigation";
+import { useState, FormEvent, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { Button, Input } from "@/components/ui";
 import { INDUSTRIES } from "@/lib/industries";
@@ -60,7 +60,17 @@ function validateForm(fields: {
 }
 
 export default function SignUpPage() {
+  return (
+    <Suspense fallback={null}>
+      <SignUpPageContent />
+    </Suspense>
+  );
+}
+
+function SignUpPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const nextPath = searchParams.get("next");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -134,11 +144,9 @@ export default function SignUpPage() {
 
       // Check if email verification is required
       if (data?.requireEmailVerification) {
-        // Redirect to verification page
         router.push(`/verify-email?email=${encodeURIComponent(email)}`);
       } else {
-        // User is signed in, go to dashboard
-        router.push("/dashboard");
+        router.push(nextPath && nextPath.startsWith("/") ? nextPath : "/dashboard");
       }
     } catch {
       setErrors({

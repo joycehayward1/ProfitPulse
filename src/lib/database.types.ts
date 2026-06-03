@@ -71,6 +71,9 @@ export interface Subscription {
   last_payment_amount: number | null;
   last_payment_status: "success" | "failed" | null;
 
+  /** Locked-in promo rate for renewals (e.g. launch day pricing). */
+  pricing_promo: "launch" | null;
+
   created_at: string;
   updated_at: string;
 }

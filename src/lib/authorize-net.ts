@@ -532,6 +532,8 @@ export interface CreateARBSubscriptionArgs {
   /** Date the FIRST recurring charge should run (first period already paid). */
   nextBillingDate: Date;
   customerEmail?: string;
+  /** Override recurring amount (e.g. launch promo pricing). */
+  amount?: number;
 }
 
 export interface CreateARBSubscriptionResult {
@@ -545,7 +547,7 @@ export interface CreateARBSubscriptionResult {
 export async function createARBSubscription(
   args: CreateARBSubscriptionArgs
 ): Promise<CreateARBSubscriptionResult> {
-  const amount = getPlanAmount(args.billingInterval);
+  const amount = args.amount ?? getPlanAmount(args.billingInterval);
   const interval =
     args.billingInterval === "monthly"
       ? { length: "1", unit: "months" }
@@ -609,12 +611,20 @@ export async function cancelARBSubscription(subscriptionId: string): Promise<voi
 
 // ─── 5. chargeCustomerProfile (createTransaction with profile) ───────────────
 
+/** Authorize.net invoiceNumber max length is 20 characters. */
+export function anetInvoiceNumber(prefix = "PP"): string {
+  const suffix = Date.now().toString(36).slice(-10);
+  return `${prefix}${suffix}`.slice(0, 20);
+}
+
 export interface ChargeCustomerProfileArgs {
   amount: number;
   customerProfileId: string;
   customerPaymentProfileId: string;
   description?: string;
   email?: string;
+  /** Unique per charge — helps Authorize.net avoid duplicate-transaction declines. */
+  invoiceNumber?: string;
 }
 
 /**
@@ -637,6 +647,16 @@ export async function chargeCustomerProfile(
             paymentProfileId: args.customerPaymentProfileId,
           },
         },
+        ...(args.description || args.invoiceNumber
+          ? {
+              order: {
+                ...(args.invoiceNumber && {
+                  invoiceNumber: args.invoiceNumber.slice(0, 20),
+                }),
+                ...(args.description && { description: args.description.slice(0, 255) }),
+              },
+            }
+          : {}),
         ...(args.email && { customer: { email: args.email } }),
         transactionSettings: {
           setting: [{ settingName: "emailCustomer", settingValue: "true" }],

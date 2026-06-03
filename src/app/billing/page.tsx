@@ -10,6 +10,7 @@ import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/Toast";
 import { UpdateCardForm } from "@/components/payments/UpdateCardForm";
+import { formatPlanAmount } from "@/lib/plan-amounts";
 import { getInsForgeClient } from "@/lib/insforge";
 import type { PaymentRecord } from "@/lib/database.types";
 
@@ -420,7 +421,8 @@ export default function BillingPage() {
           </div>
           {switchTarget === "annual" ? (
             <p className="text-body text-text-secondary mb-lg">
-              You&apos;ll be charged <strong className="text-text-primary">$599.88</strong>{" "}
+              You&apos;ll be charged{" "}
+              <strong className="text-text-primary">{formatPlanAmount("annual")}</strong>{" "}
               right now for the next year of Pro access. Your monthly plan will be
               canceled immediately.
             </p>
@@ -430,7 +432,8 @@ export default function BillingPage() {
               <strong className="text-text-primary">
                 {formatDate(subscription?.current_period_end)}
               </strong>
-              , then switch to monthly billing at $59.99/month. No charge today.
+              , then switch to monthly billing at {formatPlanAmount("monthly")}/month. No
+              charge today.
             </p>
           )}
           <div className="flex gap-sm justify-end">

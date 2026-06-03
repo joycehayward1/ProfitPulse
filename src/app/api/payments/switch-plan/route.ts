@@ -5,7 +5,10 @@ import {
   chargeCustomerProfile,
   createARBSubscription,
   computePeriodEnd,
+  getCustomerProfile,
+  anetInvoiceNumber,
 } from "@/lib/authorize-net";
+import { getPlanAmount, isLiveTestPricing } from "@/lib/plan-amounts";
 import type { BillingInterval } from "@/components/payments/PricingCards";
 
 /**
@@ -47,6 +50,7 @@ interface SubscriptionRow {
   anet_payment_profile_id: string | null;
   anet_subscription_id: string | null;
   current_period_end: string | null;
+  pricing_promo?: "launch" | null;
 }
 
 export async function POST(request: NextRequest) {
@@ -124,6 +128,7 @@ export async function POST(request: NextRequest) {
       customerProfileId,
       customerPaymentProfileId,
       currentPeriodEnd: current.current_period_end ? new Date(current.current_period_end) : undefined,
+      pricingPromo: current.pricing_promo ?? null,
     });
   }
 
@@ -157,15 +162,36 @@ interface SwitchArgs {
   customerPaymentProfileId: string;
 }
 
-async function handleMonthlyToAnnual(args: SwitchArgs & { currentPeriodEnd?: Date }): Promise<NextResponse> {
-  const { client, userId, oldSubscriptionId, customerProfileId, customerPaymentProfileId, currentPeriodEnd } =
+async function resolvePaymentProfileId(
+  customerProfileId: string,
+  storedPaymentProfileId: string
+): Promise<string> {
+  const profile = await getCustomerProfile(customerProfileId);
+  if (profile.paymentProfileIds.includes(storedPaymentProfileId)) {
+    return storedPaymentProfileId;
+  }
+  const fallback =
+    profile.defaultPaymentProfileId ??
+    profile.paymentProfileIds[profile.paymentProfileIds.length - 1];
+  if (!fallback) {
+    throw new Error("No valid payment profile found on file. Update your card and try again.");
+  }
+  console.warn(
+    `[switch-plan] stored payment profile ${storedPaymentProfileId} not found; using ${fallback}`
+  );
+  return fallback;
+}
+
+async function handleMonthlyToAnnual(args: SwitchArgs & { currentPeriodEnd?: Date; pricingPromo?: "launch" | null }): Promise<NextResponse> {
+  const { client, userId, oldSubscriptionId, customerProfileId, customerPaymentProfileId, currentPeriodEnd, pricingPromo } =
     args;
-  const ANNUAL_AMOUNT = 599.88;
-  const MONTHLY_AMOUNT = 59.99;
+  const promo = pricingPromo === "launch" ? "launch" : "standard";
+  const ANNUAL_AMOUNT = getPlanAmount("annual", promo);
+  const MONTHLY_AMOUNT = getPlanAmount("monthly", promo);
 
   // Calculate proration credit for unused days of current monthly period
   let credit = 0;
-  if (currentPeriodEnd) {
+  if (!isLiveTestPricing() && currentPeriodEnd) {
     const now = new Date();
     const periodEndDate = new Date(currentPeriodEnd);
     const daysRemaining = Math.max(0, Math.ceil((periodEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
@@ -173,62 +199,59 @@ async function handleMonthlyToAnnual(args: SwitchArgs & { currentPeriodEnd?: Dat
     credit = Math.round((MONTHLY_AMOUNT * (daysRemaining / daysInMonth)) * 100) / 100;
   }
 
-  const chargeAmount = Math.round((ANNUAL_AMOUNT - credit) * 100) / 100;
+  const chargeAmount = isLiveTestPricing()
+    ? ANNUAL_AMOUNT
+    : Math.max(0.01, Math.round((ANNUAL_AMOUNT - credit) * 100) / 100);
   console.log(`[switch-plan] Annual upgrade: $${ANNUAL_AMOUNT} - $${credit} credit = $${chargeAmount}`);
 
-  // Step 1: Cancel current monthly ARB
+  let paymentProfileId: string;
   try {
-    await cancelARBSubscription(oldSubscriptionId);
+    paymentProfileId = await resolvePaymentProfileId(
+      customerProfileId,
+      customerPaymentProfileId
+    );
   } catch (err) {
-    console.error("[switch-plan] cancel failed:", err);
     return NextResponse.json(
-      { error: "Failed to cancel current subscription" },
+      { error: err instanceof Error ? err.message : "Payment profile not found" },
       { status: 400 }
     );
   }
 
-  // Step 2: Charge prorated amount via stored Customer Profile
+  // Step 1: Charge first (same order as subscribe/resubscribe — monthly ARB still active)
   let chargeResult;
   try {
     chargeResult = await chargeCustomerProfile({
       amount: chargeAmount,
       customerProfileId,
-      customerPaymentProfileId,
+      customerPaymentProfileId: paymentProfileId,
       description: `ProfitPulse Pro — upgrade to annual ($${credit} credit applied)`,
+      invoiceNumber: anetInvoiceNumber("SW"),
     });
   } catch (err) {
-    // ROLLBACK: re-create the monthly ARB
-    console.error("[switch-plan] annual charge failed, rolling back:", err);
-    const now = new Date();
-    const monthlyPeriodEnd = computePeriodEnd("monthly", now);
-    try {
-      const rollback = await createARBSubscription({
-        billingInterval: "monthly",
-        customerProfileId,
-        customerPaymentProfileId,
-        nextBillingDate: monthlyPeriodEnd,
-      });
-      await client.database
-        .from("subscriptions")
-        .update({
-          anet_subscription_id: rollback.subscriptionId,
-          updated_at: now.toISOString(),
-        })
-        .eq("user_id", userId);
-      console.log(
-        `[switch-plan] rollback created new monthly ARB ${rollback.subscriptionId}`
-      );
-    } catch (rollbackErr) {
-      console.error("[switch-plan] CRITICAL rollback failure:", rollbackErr);
-    }
+    console.error("[switch-plan] annual charge failed:", err);
     return NextResponse.json(
       {
         error:
           err instanceof Error
             ? err.message
-            : "Annual charge failed. Your monthly plan is still active.",
+            : "Annual charge failed. Your monthly plan is unchanged.",
       },
       { status: 400 }
+    );
+  }
+
+  // Step 2: Cancel current monthly ARB
+  try {
+    await cancelARBSubscription(oldSubscriptionId);
+  } catch (err) {
+    console.error("[switch-plan] cancel failed after charge:", err);
+    return NextResponse.json(
+      {
+        error:
+          "Annual charge succeeded but we could not cancel your monthly plan. Contact support — do not retry.",
+        transactionId: chargeResult.transId,
+      },
+      { status: 500 }
     );
   }
 
@@ -240,8 +263,9 @@ async function handleMonthlyToAnnual(args: SwitchArgs & { currentPeriodEnd?: Dat
     const arb = await createARBSubscription({
       billingInterval: "annual",
       customerProfileId,
-      customerPaymentProfileId,
+      customerPaymentProfileId: paymentProfileId,
       nextBillingDate: annualPeriodEnd,
+      amount: ANNUAL_AMOUNT,
     });
     newArbId = arb.subscriptionId;
   } catch (err) {
@@ -262,6 +286,7 @@ async function handleMonthlyToAnnual(args: SwitchArgs & { currentPeriodEnd?: Dat
     .update({
       billing_interval: "annual",
       anet_subscription_id: newArbId,
+      anet_payment_profile_id: paymentProfileId,
       billing_cycle_start_date: now.toISOString(),
       current_period_end: annualPeriodEnd.toISOString(),
       next_billing_date: annualPeriodEnd.toISOString(),

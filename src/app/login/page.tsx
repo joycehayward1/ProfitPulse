@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, FormEvent } from "react";
-import { useRouter } from "next/navigation";
+import { useState, FormEvent, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { Button, Input } from "@/components/ui";
@@ -14,7 +14,17 @@ interface FormErrors {
 }
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginPageContent />
+    </Suspense>
+  );
+}
+
+function LoginPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const nextPath = searchParams.get("next");
   const { refreshUser } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -79,8 +89,7 @@ export default function LoginPage() {
       console.log("Login successful, refreshing user...");
       // Refresh user state before redirecting
       await refreshUser();
-      console.log("User refreshed, redirecting to dashboard...");
-      router.push("/dashboard");
+      router.push(nextPath && nextPath.startsWith("/") ? nextPath : "/dashboard");
     } catch (err) {
       console.error("Login exception:", err);
       setErrors({

@@ -1,61 +1,63 @@
 "use client";
 
 import { Icon } from "@iconify/react";
-import { formatPlanAmount, isLiveTestPricing } from "@/lib/plan-amounts";
-
-export type BillingInterval = "monthly" | "annual";
-
-export interface PricingPlan {
-  id: BillingInterval;
-  name: string;
-  priceLabel: string;
-  priceSub: string;
-  billedNote: string;
-  highlight?: boolean;
-  savingsLabel?: string;
-}
-
-export const PRICING_PLANS: PricingPlan[] = [
-  {
-    id: "monthly",
-    name: "Pro Monthly",
-    priceLabel: isLiveTestPricing() ? formatPlanAmount("monthly") : "$59.99",
-    priceSub: "/month",
-    billedNote: "Billed monthly. Cancel anytime.",
-  },
-  {
-    id: "annual",
-    name: "Pro Annual",
-    priceLabel: isLiveTestPricing() ? formatPlanAmount("annual") : "$49.99",
-    priceSub: "/month",
-    billedNote: `Billed ${formatPlanAmount("annual")}/year upfront.`,
-    highlight: true,
-    savingsLabel: isLiveTestPricing() ? undefined : "Save $120",
-  },
-];
+import type { BillingInterval } from "./PricingCards";
+import {
+  formatPlanAmount,
+  formatDisplayMonthlyRate,
+  isLiveTestPricing,
+} from "@/lib/plan-amounts";
 
 const FEATURES = [
-  "All financial metrics & graphs",
+  "Your financial health score",
+  "Dashboard you actually understand",
   "All 4 scenario calculators",
-  "CSV / spreadsheet upload",
-  "Weekly scorecard emails",
-  "AI insights & proactive alerts",
-  "Priority email support",
+  "Enter data manually or upload CSV",
+  "Weekly scorecard in your inbox",
+  "Email support",
 ];
 
-interface PricingCardsProps {
+interface LaunchPricingCardsProps {
   selected: BillingInterval | null;
   onSelect: (interval: BillingInterval) => void;
 }
 
-/**
- * Two-card plan picker: Monthly vs Annual.
- * Stateless — parent controls `selected` and `onSelect`.
- */
-export function PricingCards({ selected, onSelect }: PricingCardsProps) {
+export function LaunchPricingCards({ selected, onSelect }: LaunchPricingCardsProps) {
+  const plans: {
+    id: BillingInterval;
+    name: string;
+    priceLabel: string;
+    priceSub: string;
+    billedNote: string;
+    badge: string;
+    highlight?: boolean;
+  }[] = [
+    {
+      id: "monthly",
+      name: "Launch Monthly",
+      priceLabel: formatDisplayMonthlyRate("monthly", "launch"),
+      priceSub: "/month",
+      billedNote: isLiveTestPricing()
+        ? `Live test charge: ${formatPlanAmount("monthly", "launch")}/mo`
+        : "20% off standard — locked in forever",
+      badge: "20% off",
+    },
+    {
+      id: "annual",
+      name: "Launch Annual",
+      priceLabel: formatDisplayMonthlyRate("annual", "launch"),
+      priceSub: "/month",
+      billedNote: isLiveTestPricing()
+        ? `Live test charge: ${formatPlanAmount("annual", "launch")}/yr`
+        : `${formatPlanAmount("annual", "launch")}/year — 30% off, locked in`,
+      badge: "30% off",
+      highlight: true,
+    },
+  ];
+
   return (
     <div className="grid gap-md md:grid-cols-2 max-w-3xl mx-auto">
-      {PRICING_PLANS.map((plan) => {
+      {plans.map((plan) => {
         const isSelected = selected === plan.id;
         return (
           <button
@@ -71,19 +73,14 @@ export function PricingCards({ selected, onSelect }: PricingCardsProps) {
             ].join(" ")}
             aria-pressed={isSelected}
           >
-            {plan.savingsLabel && (
-              <div className="absolute -top-3 right-md">
-                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-success text-white text-small font-semibold shadow-sm">
-                  <Icon icon="lucide:sparkles" width={14} height={14} />
-                  {plan.savingsLabel}
-                </span>
-              </div>
-            )}
+            <div className="absolute -top-3 right-md">
+              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-success text-white text-small font-semibold shadow-sm">
+                {plan.badge}
+              </span>
+            </div>
 
             <div className="flex items-start justify-between mb-sm">
-              <h3 className="font-display text-h3 text-text-primary">
-                {plan.name}
-              </h3>
+              <h3 className="font-display text-h3 text-text-primary">{plan.name}</h3>
               {isSelected && (
                 <div className="w-6 h-6 rounded-full bg-orange flex items-center justify-center flex-shrink-0">
                   <Icon icon="lucide:check" className="text-white" width={16} height={16} />
@@ -95,9 +92,7 @@ export function PricingCards({ selected, onSelect }: PricingCardsProps) {
               <span className="font-display text-[42px] leading-none text-text-primary tracking-tight">
                 {plan.priceLabel}
               </span>
-              <span className="text-body text-text-secondary ml-1">
-                {plan.priceSub}
-              </span>
+              <span className="text-body text-text-secondary ml-1">{plan.priceSub}</span>
             </div>
 
             <p className="text-small text-text-muted mb-md">{plan.billedNote}</p>

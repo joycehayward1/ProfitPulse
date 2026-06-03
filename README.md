@@ -17,8 +17,8 @@ Surrounding all of this:
 - **Reports**: balance sheet, cash flow, and P&L views generated from connected data.
 - **Data entry**: manual forms, CSV / Excel upload, or QuickBooks Online sync.
 - **Alerts & weekly summaries**: threshold-based notifications and a Monday-morning email recap, sent via Resend.
-- **Billing**: tiered subscriptions ($49 / $99 / $199 per month) processed through Authorize.net, which works for the product's Bermuda-based merchant of record. (Stripe was deliberately not used.)
-- **Admin panel**: user management, stats, and tier overrides for the operator.
+- **Billing**: Pro subscription ($59.99/mo or $599.88/yr) plus a **launch pricing** path ($47.99/mo or $419.92/yr locked forever) — all via Authorize.net (Stripe was deliberately not used).
+- **Admin panel**: user management, stats, and operator overrides.
 
 ## How it's built
 
@@ -31,8 +31,8 @@ External services are kept narrow and load-bearing:
 | Database, auth, storage, AI gateway | InsForge |
 | Payments & recurring billing | Authorize.net (ARB) |
 | Accounting sync | QuickBooks Online (OAuth2) |
-| Transactional + scheduled email | Resend |
-| AI model behind the gateway | Google Gemini |
+| Transactional + scheduled email | Resend (`contact.myprofitpulse.app`) |
+| AI model behind the gateway | ChatGPT (`openai/gpt-4o-mini` via InsForge) |
 | Spreadsheet parsing | Papa Parse (CSV), SheetJS (Excel) |
 
 Two cron jobs run on Vercel: `weekly-summary` every Monday at 09:00 UTC, and `arb-reconcile` daily at 10:00 UTC to reconcile Authorize.net's recurring billing state with our subscription records.
@@ -69,7 +69,7 @@ src/
 │   ├── chat/                 AI chat interface
 │   ├── glossary/             Financial term reference
 │   ├── showcase/             Internal design system reference
-│   ├── pricing/, terms/, privacy/
+│   ├── pricing/, launch/, terms/, privacy/
 │   └── api/
 │       ├── auth/             Email change, account deletion, session helpers
 │       ├── payments/         Authorize.net subscribe / cancel / switch-plan / update-card
@@ -141,6 +141,8 @@ TOKEN_ENCRYPTION_KEY=...               # 32-byte hex, encrypts stored OAuth toke
 
 ### Resend (email)
 
+Transactional email sends from **`hello@contact.myprofitpulse.app`** (domain `contact.myprofitpulse.app`). Replies route to `hello@myprofitpulse.app`.
+
 ```env
 RESEND_API_KEY=re_...
 ```
@@ -168,13 +170,23 @@ Every table has RLS scoped to `auth.uid() = user_id` (directly, or through `busi
 
 ## Workflows
 
-**Branching**: `main` is production. `develop` is the integration branch. `staging` is the current working branch. Feature work happens on branches off `develop` and merges back via PR.
+**Branching:** `main` is production — Vercel deploys Production from this branch. Use `staging` for integration testing before merging to `main`. Older branches (`develop`, feature branches) may exist but `main` is the source of truth for what's live.
 
-**Commits**: conventional prefixes — `feat:`, `fix:`, `docs:`, `test:`, `refactor:`.
+**Commits:** conventional prefixes — `feat:`, `fix:`, `docs:`, `test:`, `refactor:`.
 
-**Tests**: `npm test` runs Jest + React Testing Library. Tests live in `__tests__/` folders next to the code they cover.
+**Tests:** `npm test` runs Jest + React Testing Library. Tests live in `__tests__/` folders next to the code they cover.
 
-**Lint / types**: `npm run lint` (ESLint, Next.js config) and TypeScript strict mode.
+**Lint / types:** `npm run lint` (ESLint, Next.js config) and TypeScript strict mode.
+
+## Documentation
+
+| Doc | Purpose |
+|-----|---------|
+| [docs/PRODUCT_REFERENCE_GUIDE.md](docs/PRODUCT_REFERENCE_GUIDE.md) | Full platform reference — stack, accounts, pricing, QBO, roadmap |
+| [docs/HANDOFF.md](docs/HANDOFF.md) | Quick notes for the next developer |
+| [docs/PRODUCTION_CHECKLIST.md](docs/PRODUCTION_CHECKLIST.md) | Launch / env cutover checklist |
+| [docs/quickbooks-integration.md](docs/quickbooks-integration.md) | QuickBooks OAuth deep dive |
+| [ROADMAP.md](ROADMAP.md) | v2 and v3 product direction |
 
 ## Deployment
 
@@ -186,13 +198,15 @@ Authorize.net needs a publicly reachable webhook URL pointing at `/api/webhooks/
 
 ## Where to look first
 
-If you're new to this codebase, start in this order:
+If you're new to this codebase:
 
-1. `src/lib/healthScore.ts` — the scoring formula. Understand this and you understand the product.
-2. `src/app/dashboard/page.tsx` — the page everything else feeds into.
-3. `src/app/api/extract-financials/route.ts` — the AI pipeline that turns spreadsheets into structured records.
-4. `src/app/scenarios/*` — the calculators. Each is self-contained.
-5. `tasks/prd-profitpulse.md` — the original PRD with all 31 user stories. Use it as a reference, not a roadmap; the implementation has diverged in places.
+1. [docs/PRODUCT_REFERENCE_GUIDE.md](docs/PRODUCT_REFERENCE_GUIDE.md) — read this first
+2. [docs/HANDOFF.md](docs/HANDOFF.md) — operational quirks and deploy notes
+3. `src/lib/healthScore.ts` — the scoring formula
+4. `src/app/dashboard/page.tsx` — the page everything else feeds into
+5. `src/lib/plan-amounts.ts` — standard vs launch pricing
+6. `src/lib/authorize-net.ts` — payment / ARB integration
+7. `src/app/api/extract-financials/route.ts` — AI spreadsheet extraction
 
 ## License
 
