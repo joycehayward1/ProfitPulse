@@ -66,9 +66,9 @@ Run pending SQL in InsForge before deploying code that depends on new columns:
 1. Merge PR to `main`
 2. Confirm Vercel Production build succeeds
 3. If env vars changed (especially `NEXT_PUBLIC_*`), trigger redeploy
-4. Smoke-test: signup, `/launch` checkout, billing cancel, QuickBooks connect (if touched)
+4. Smoke-test: signup, `/launch` checkout, billing cancel
 
-Full cutover reference: [PRODUCTION_CHECKLIST.md](./PRODUCTION_CHECKLIST.md)
+Full cutover reference: [PRODUCTION_CHECKLIST.md](./PRODUCTION_CHECKLIST.md) (QuickBooks is out of scope — see [quickbooks-integration.md](./quickbooks-integration.md) when enabling)
 
 ---
 

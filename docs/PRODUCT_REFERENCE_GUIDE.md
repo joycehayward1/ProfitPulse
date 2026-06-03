@@ -273,7 +273,7 @@ DNS: SPF, DKIM, and DMARC for `contact.myprofitpulse.app` must stay verified in 
 RESEND_API_KEY=re_...
 ```
 
-See `docs/PRODUCTION_CHECKLIST.md` §7 for domain verification steps.
+See `docs/PRODUCTION_CHECKLIST.md` §6 for domain verification steps.
 
 ---
 

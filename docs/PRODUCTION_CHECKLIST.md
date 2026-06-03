@@ -4,6 +4,10 @@ Single source of truth for everything that needs to change when ProfitPulse
 moves from sandbox/preview to production. Walk this top-to-bottom on launch
 day — nothing here is optional.
 
+**Out of scope for this checklist:** QuickBooks / Intuit. The integration is
+not part of the current production launch. When you enable it later, use
+`docs/quickbooks-integration.md` instead.
+
 Each item has its source file or external system noted so you can jump
 straight to where the change lives.
 
@@ -77,15 +81,7 @@ Before announcing launch:
 - [ ] Run any pending migrations in `src/lib/migrations/`
 - [ ] Verify RLS policies are enabled
 
-## 6. QuickBooks / Intuit
-
-- [ ] Create production Intuit app at https://developer.intuit.com (separate from sandbox app)
-- [ ] `INTUIT_CLIENT_ID` → production client ID (Vercel, Production)
-- [ ] `INTUIT_CLIENT_SECRET` → production client secret (Vercel, Production)
-- [ ] `INTUIT_REDIRECT_URI` → `https://<production-domain>/api/callback/quickbooks`
-- [ ] Register that redirect URI in the Intuit production app settings
-
-## 7. Email (Resend)
+## 6. Email (Resend)
 
 - [ ] Verify sending domain (e.g. `contact.myprofitpulse.app`) in Resend dashboard
 - [ ] Add SPF, DKIM, DMARC DNS records
@@ -93,17 +89,16 @@ Before announcing launch:
 - [ ] Update `FROM_EMAIL` in `src/lib/resend.ts` if domain changes
 - [ ] Send a test weekly summary + notification to verify deliverability
 
-## 8. Secrets rotation
+## 7. Secrets rotation
 
 Anything that was ever committed, shared, or used in development should be
 rotated before launch:
 
-- [ ] `TOKEN_ENCRYPTION_KEY` → new 32-byte hex (Vercel, Production)
-  - ⚠️ If there are existing encrypted tokens (QuickBooks) in production DB,
-    they'll be unreadable after rotation. Either rotate BEFORE first user, or
-    re-encrypt existing rows during rotation.
+- [ ] `INSFORGE_API_KEY` → new production key if the dev key was ever exposed
+- [ ] `RESEND_API_KEY` → new production key if the dev key was ever exposed
+- [ ] Authorize.net transaction key → regenerate in live merchant dashboard if exposed
 
-## 9. Environment variable audit
+## 8. Environment variable audit
 
 Go to Vercel → Settings → Environment Variables and verify **every** var
 below has a Production-scoped value and it is NOT pointing at sandbox:
@@ -114,10 +109,6 @@ below has a Production-scoped value and it is NOT pointing at sandbox:
 | `NEXT_PUBLIC_INSFORGE_URL` | Production InsForge URL |
 | `NEXT_PUBLIC_INSFORGE_ANON_KEY` | Production anon key |
 | `INSFORGE_API_KEY` | Production API key |
-| `INTUIT_CLIENT_ID` | Production Intuit |
-| `INTUIT_CLIENT_SECRET` | Production Intuit |
-| `INTUIT_REDIRECT_URI` | Production domain |
-| `TOKEN_ENCRYPTION_KEY` | Rotated |
 | `RESEND_API_KEY` | Production Resend |
 | `ANET_API_LOGIN_ID` | Live merchant |
 | `ANET_TRANSACTION_KEY` | Live merchant |
@@ -126,7 +117,7 @@ below has a Production-scoped value and it is NOT pointing at sandbox:
 | `NEXT_PUBLIC_ANET_CLIENT_KEY` | Live merchant |
 | `NEXT_PUBLIC_ANET_ENVIRONMENT` | `PRODUCTION` |
 
-## 10. Code audit
+## 9. Code audit
 
 - [ ] No `console.log` of sensitive data (card fields, tokens, raw webhooks)
 - [ ] No `TODO` or `XXX` comments blocking launch (grep the repo)
@@ -134,14 +125,14 @@ below has a Production-scoped value and it is NOT pointing at sandbox:
 - [ ] No hardcoded localhost URLs
 - [ ] Error boundaries in place on payment flow pages
 
-## 11. Legal / UX
+## 10. Legal / UX
 
 - [ ] Terms of Service URL live and linked from signup
 - [ ] Privacy Policy URL live and linked from signup
 - [ ] Refund / cancellation policy documented in settings page
 - [ ] Billing contact email answered by a real person
 
-## 12. Monitoring
+## 11. Monitoring
 
 - [ ] Vercel function logs accessible
 - [ ] Error tracking wired up (Sentry or similar) — optional but recommended
@@ -155,4 +146,4 @@ below has a Production-scoped value and it is NOT pointing at sandbox:
 If you find yourself uncertain whether a change needs to happen, ask: "Is
 this still pointing at sandbox, test data, or localhost?" If yes, fix it.
 
-Last updated: 2026-04-07
+Last updated: 2026-05-26
