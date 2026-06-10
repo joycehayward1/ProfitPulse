@@ -45,8 +45,8 @@ const scenarioTypes = [
   },
   {
     id: "runway",
-    title: "Cash Runway",
-    description: "Check how long your cash will last",
+    title: "Cash Runway & Shortfall Recovery",
+    description: "Check how long your cash will last and plan how to catch up after a missed target",
     icon: "ph:timer-bold",
     color: "#7B1FA2",
   },

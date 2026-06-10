@@ -199,6 +199,12 @@ export interface FinancialSnapshot {
   bs_detail: Record<string, number> | null;
   cf_detail: Record<string, number> | null;
   prior_month_date: string | null;
+  /** Manual-entry fields (003_manual_entry_fields.sql) */
+  accounts_receivable: number | null;
+  inventory_value: number | null;
+  ytd_revenue: number | null;
+  ytd_expenses: number | null;
+  expense_breakdown: Record<string, number> | null;
   created_at: string;
 }
 

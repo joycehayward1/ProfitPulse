@@ -46,6 +46,9 @@ jest.mock("papaparse", () => ({
 describe("DataPage", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // The data page persists in-progress drafts to localStorage — clear
+    // between tests so one test's typing doesn't leak into the next.
+    window.localStorage.clear();
   });
 
   describe("Page Structure", () => {

@@ -49,36 +49,14 @@ export default function RunwayPage() {
       if (!user) return;
 
       try {
-        const { getInsForgeClient } = await import("@/lib/insforge");
-        const client = getInsForgeClient();
+        const { loadFinancialDefaults } = await import("@/lib/financial-defaults");
+        const defaults = await loadFinancialDefaults(user.id);
 
-        const { data, error } = await client.database
-          .from('financial_snapshots')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single();
-
-        if (data) {
-          setCurrentCash((data.current_assets ?? 0).toString());
-          setMonthlyBurn((data.total_expenses ?? 0).toString());
-          return;
+        if (defaults.latestCash) {
+          setCurrentCash(defaults.latestCash.toString());
         }
-
-        const { data: assessment } = await client.database
-          .from('health_assessments')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single();
-
-        if (assessment) {
-          setCurrentCash((assessment.cash_on_hand || 0).toString());
-          setMonthlyBurn((assessment.monthly_expenses || 0).toString());
-        } else if (error) {
-          throw error;
+        if (defaults.latestMonthlyExpenses) {
+          setMonthlyBurn(defaults.latestMonthlyExpenses.toString());
         }
       } catch (error) {
         console.error('Error loading financial data:', error);
@@ -264,10 +242,11 @@ export default function RunwayPage() {
           </button>
 
           <h1 className="text-[28px] font-bold text-[#111111] mb-1">
-            Cash Runway & Recovery
+            Cash Runway & Shortfall Recovery
           </h1>
           <p className="text-[14px] text-[#4B4B4B]">
-            Check how long your cash will last and plan recovery from missed targets.
+            Check how long your cash will last, then use Shortfall Recovery below to
+            plan how to catch up after a missed revenue target.
           </p>
         </div>
 
@@ -307,6 +286,9 @@ export default function RunwayPage() {
                         placeholder="50,000"
                       />
                     </div>
+                    <p className="text-[12px] text-[#8B8B8B] mt-1">
+                      Pulled from the cash on your balance sheet — type over it any time
+                    </p>
                   </div>
 
                   <div>
@@ -491,7 +473,9 @@ export default function RunwayPage() {
                       placeholder="3"
                     />
                     <p className="text-[12px] text-[#8B8B8B] mt-1">
-                      Time frame to catch up
+                      Your call — choose how many months you want to give yourself
+                      to catch up, and we&apos;ll show the extra revenue you need
+                      each month. A shorter window means a bigger monthly push.
                     </p>
                   </div>
 

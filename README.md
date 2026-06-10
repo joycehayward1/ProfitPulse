@@ -17,7 +17,7 @@ Surrounding all of this:
 - **Reports**: balance sheet, cash flow, and P&L views generated from connected data.
 - **Data entry**: manual forms, CSV / Excel upload, or QuickBooks Online sync.
 - **Alerts & weekly summaries**: threshold-based notifications and a Monday-morning email recap, sent via Resend.
-- **Billing**: Pro subscription ($59.99/mo or $599.88/yr) plus a **launch pricing** path ($47.99/mo or $419.92/yr locked forever) — all via Authorize.net (Stripe was deliberately not used).
+- **Billing**: Pro subscription ($59.99/mo or $599.88/yr) via Authorize.net (Stripe was deliberately not used). A retired launch-pricing promo ($47.99/mo or $419.92/yr) is still honored on renewals for subscribers who bought during launch.
 - **Admin panel**: user management, stats, and operator overrides.
 
 ## How it's built
@@ -204,7 +204,7 @@ If you're new to this codebase:
 2. [docs/HANDOFF.md](docs/HANDOFF.md) — operational quirks and deploy notes
 3. `src/lib/healthScore.ts` — the scoring formula
 4. `src/app/dashboard/page.tsx` — the page everything else feeds into
-5. `src/lib/plan-amounts.ts` — standard vs launch pricing
+5. `src/lib/plan-amounts.ts` — plan pricing (incl. retired launch promo honored on renewals)
 6. `src/lib/authorize-net.ts` — payment / ARB integration
 7. `src/app/api/extract-financials/route.ts` — AI spreadsheet extraction
 

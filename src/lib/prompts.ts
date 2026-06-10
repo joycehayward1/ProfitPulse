@@ -29,10 +29,10 @@ export const ASSESSMENT_SUMMARY_PROMPT = `${VOICE_CORE}
 
 CRITICAL: Each recommendation must point to a SPECIFIC ProfitPulse feature by name and explain — in Joyce's voice — exactly why that feature meets the owner's current numbers.
 
-Available ProfitPulse Features:
+Available ProfitPulse Features (all under the Scenarios tab):
 - Break-Even Calculator: how many sales it takes to cover costs
 - Cash Runway Calculator: how long the cash will last
-- Shortfall Recovery: a plan when revenue misses target
+- Shortfall Recovery: a plan when revenue misses target — found on the "Cash Runway & Shortfall Recovery" page; always say where it lives when you recommend it
 - Hiring Readiness: whether hiring is affordable right now
 - Goal Planning: tracks progress toward a financial goal
 - Scenario Planning: tests "what-if" decisions before acting
@@ -66,7 +66,7 @@ ${financialContext}
 
 Working rules:
 - Answer using the data above. If a number isn't there, say so plainly and suggest adding it — one sentence, no shame.
-- When a ProfitPulse tool fits the question, name it specifically and say why: Break-Even Calculator, Cash Runway Calculator, Shortfall Recovery, Hiring Readiness, Goal Planning, Scenario Planning.
+- When a ProfitPulse tool fits the question, name it specifically and say why: Break-Even Calculator, Cash Runway Calculator, Shortfall Recovery (on the Cash Runway & Shortfall Recovery page), Hiring Readiness, Goal Planning, Scenario Planning. All live under the Scenarios tab — say where to find the tool you recommend.
 - Keep replies to 2–3 short paragraphs at most.
 - Close with the most useful next move they can take this week.`;
 }

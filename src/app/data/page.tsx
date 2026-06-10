@@ -175,6 +175,42 @@ interface AISnapshotData {
 
 type UploadStep = "idle" | "reading" | "processing" | "confirm" | "saving";
 
+/**
+ * In-progress work is mirrored to localStorage so navigating away (e.g. to
+ * the Glossary) and coming back doesn't wipe what the user was entering.
+ * Drafts are per-user and expire after 24 hours.
+ */
+const DRAFT_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
+function getDraftKey(userId: string) {
+  return `pp-data-draft-v1:${userId}`;
+}
+
+interface DataEntryDraft {
+  savedAt: number;
+  formData: FormData;
+  expenseBreakdown: ExpenseBreakdown;
+  showExpenseBreakdown: boolean;
+  /** Present when the user was mid-way through a spreadsheet upload. */
+  parsedSnapshots?: AISnapshotData[];
+  activeSnapshotIndex?: number;
+}
+
+function readDraft(userId: string): DataEntryDraft | null {
+  try {
+    const raw = window.localStorage.getItem(getDraftKey(userId));
+    if (!raw) return null;
+    const draft = JSON.parse(raw) as DataEntryDraft;
+    if (!draft.savedAt || Date.now() - draft.savedAt > DRAFT_MAX_AGE_MS) {
+      window.localStorage.removeItem(getDraftKey(userId));
+      return null;
+    }
+    return draft;
+  } catch {
+    return null;
+  }
+}
+
 interface SnapshotField {
   key: keyof AISnapshotData;
   label: string;
@@ -404,14 +440,14 @@ function DataContent() {
       cash: row.current_assets ?? 0,
       revenue: row.total_income ?? 0,
       expenses: row.total_expenses ?? 0,
-      receivables: 0,
+      receivables: row.accounts_receivable ?? 0,
       payables: row.current_liabilities ?? 0,
-      ytdRevenue: 0,
-      ytdExpenses: 0,
-      inventoryValue: 0,
+      ytdRevenue: row.ytd_revenue ?? 0,
+      ytdExpenses: row.ytd_expenses ?? 0,
+      inventoryValue: row.inventory_value ?? 0,
       createdAt: row.created_at,
       dataSource: row.data_source || "manual",
-      expenseBreakdown: null,
+      expenseBreakdown: row.expense_breakdown ?? null,
     };
   }
 
@@ -586,6 +622,58 @@ function DataContent() {
     }
   }
 
+  // ── Draft persistence ──────────────────────────────────────────────
+  // Restore any in-progress draft first so navigating to the Glossary (or
+  // anywhere else) and coming back doesn't lose what the user was typing.
+  // Keyed on the stable user id (not the user object) so the effects don't
+  // re-fire on every render.
+  const userId = user?.id ?? null;
+  const formDirtyRef = useRef(false);
+  const draftRestoredRef = useRef(false);
+
+  useEffect(() => {
+    if (!userId || draftRestoredRef.current) return;
+    const draft = readDraft(userId);
+    if (!draft) return;
+    setFormData(draft.formData);
+    setExpenseBreakdown(draft.expenseBreakdown);
+    setShowExpenseBreakdown(draft.showExpenseBreakdown);
+    if (draft.parsedSnapshots && draft.parsedSnapshots.length > 0) {
+      setParsedSnapshots(draft.parsedSnapshots);
+      setActiveSnapshotIndex(draft.activeSnapshotIndex ?? 0);
+      setUploadStep("confirm");
+    }
+    formDirtyRef.current = true;
+    draftRestoredRef.current = true;
+  }, [userId]);
+
+  // Mirror in-progress work to localStorage once the user has touched the page.
+  useEffect(() => {
+    if (!userId || !formDirtyRef.current) return;
+    const draft: DataEntryDraft = {
+      savedAt: Date.now(),
+      formData,
+      expenseBreakdown,
+      showExpenseBreakdown,
+      ...(uploadStep === "confirm" && parsedSnapshots.length > 0
+        ? { parsedSnapshots, activeSnapshotIndex }
+        : {}),
+    };
+    try {
+      window.localStorage.setItem(getDraftKey(userId), JSON.stringify(draft));
+    } catch {
+      // Storage unavailable — the draft backup is best-effort.
+    }
+  }, [
+    userId,
+    formData,
+    expenseBreakdown,
+    showExpenseBreakdown,
+    uploadStep,
+    parsedSnapshots,
+    activeSnapshotIndex,
+  ]);
+
   // Load financial data history
   useEffect(() => {
     if (!user) {
@@ -594,7 +682,9 @@ function DataContent() {
     }
 
     setLoadingHistory(true);
-    void refreshHistory(true)
+    // Don't prefill over a restored draft — the user's in-progress
+    // numbers take priority over the latest saved entry.
+    void refreshHistory(!draftRestoredRef.current)
       .catch((error) => {
         console.error("Error loading history:", error);
       })
@@ -700,16 +790,16 @@ function DataContent() {
       const cashValue = parseFloat(formData.cash.replace(/,/g, ""));
       const revenueValue = parseFloat(formData.revenue.replace(/,/g, ""));
       const expensesValue = parseFloat(formData.expenses.replace(/,/g, ""));
-      const _receivablesValue = parseFloat(formData.receivables.replace(/,/g, ""));
+      const receivablesValue = parseFloat(formData.receivables.replace(/,/g, "")) || 0;
       const payablesValue = parseFloat(formData.payables.replace(/,/g, "")) || 0;
-      const _ytdRevenueValue = parseFloat(formData.ytdRevenue.replace(/,/g, "")) || 0;
-      const _ytdExpensesValue = parseFloat(formData.ytdExpenses.replace(/,/g, "")) || 0;
-      const _inventoryValue = parseFloat(formData.inventoryValue.replace(/,/g, "")) || 0;
-      const _rentValue = parseFloat(expenseBreakdown.rent.replace(/,/g, "")) || 0;
-      const _payrollValue = parseFloat(expenseBreakdown.payroll.replace(/,/g, "")) || 0;
-      const _suppliesValue = parseFloat(expenseBreakdown.supplies.replace(/,/g, "")) || 0;
-      const _marketingValue = parseFloat(expenseBreakdown.marketing.replace(/,/g, "")) || 0;
-      const _otherValue = parseFloat(expenseBreakdown.other.replace(/,/g, "")) || 0;
+      const ytdRevenueValue = parseFloat(formData.ytdRevenue.replace(/,/g, "")) || 0;
+      const ytdExpensesValue = parseFloat(formData.ytdExpenses.replace(/,/g, "")) || 0;
+      const inventoryValue = parseFloat(formData.inventoryValue.replace(/,/g, "")) || 0;
+      const rentValue = parseFloat(expenseBreakdown.rent.replace(/,/g, "")) || 0;
+      const payrollValue = parseFloat(expenseBreakdown.payroll.replace(/,/g, "")) || 0;
+      const suppliesValue = parseFloat(expenseBreakdown.supplies.replace(/,/g, "")) || 0;
+      const marketingValue = parseFloat(expenseBreakdown.marketing.replace(/,/g, "")) || 0;
+      const otherValue = parseFloat(expenseBreakdown.other.replace(/,/g, "")) || 0;
       const periodDateValue = normalizePeriodDate(formData.period);
 
       if (!periodDateValue) {
@@ -717,18 +807,53 @@ function DataContent() {
         return;
       }
 
-      const { error } = await client.database
+      const hasBreakdown =
+        rentValue > 0 || payrollValue > 0 || suppliesValue > 0 ||
+        marketingValue > 0 || otherValue > 0;
+
+      const snapshotRow = {
+        user_id: user.id,
+        period_date: periodDateValue,
+        data_source: "manual",
+        total_income: revenueValue,
+        total_expenses: expensesValue,
+        net_profit: revenueValue - expensesValue,
+        current_assets: cashValue,
+        current_liabilities: payablesValue,
+        accounts_receivable: receivablesValue,
+        inventory_value: inventoryValue,
+        ytd_revenue: ytdRevenueValue,
+        ytd_expenses: ytdExpensesValue,
+        expense_breakdown: hasBreakdown
+          ? {
+              rent: rentValue,
+              payroll: payrollValue,
+              supplies: suppliesValue,
+              marketing: marketingValue,
+              other: otherValue,
+            }
+          : null,
+      };
+
+      let { error } = await client.database
         .from("financial_snapshots")
-        .upsert([{
-          user_id: user.id,
-          period_date: periodDateValue,
-          data_source: "manual",
-          total_income: revenueValue,
-          total_expenses: expensesValue,
-          net_profit: revenueValue - expensesValue,
-          current_assets: cashValue,
-          current_liabilities: payablesValue,
-        }], { onConflict: "user_id,period_date" });
+        .upsert([snapshotRow], { onConflict: "user_id,period_date" });
+
+      if (error) {
+        // The auth token may have gone stale during a long editing session.
+        // Re-check the session (which refreshes it) and retry once.
+        const { data: sessionData } = await client.auth.getCurrentSession();
+        if (!sessionData?.session?.accessToken) {
+          showToast(
+            "error",
+            "Your session expired. Please log in again — your entries are kept on this device and will still be here."
+          );
+          return;
+        }
+        ({ error } = await client.database
+          .from("financial_snapshots")
+          .upsert([snapshotRow], { onConflict: "user_id,period_date" }));
+      }
 
       if (error) {
         console.error("Error saving financial data:", error);
@@ -744,7 +869,10 @@ function DataContent() {
 
       showToast("success", "Financial data saved successfully");
       setLoadingHistory(true);
-      await refreshHistory(true);
+      // Refresh the history list but keep the form showing what was just
+      // entered — re-prefilling from the latest row can swap in a different
+      // month and look like the save was lost.
+      await refreshHistory(false);
       setLoadingHistory(false);
     } catch (error) {
       showToast("error", "Failed to save data. Please try again.");
@@ -1014,6 +1142,9 @@ function DataContent() {
       setParsedSnapshots(parsedArray);
       setActiveSnapshotIndex(0);
       setUploadStep("confirm");
+      // Extracted data counts as in-progress work — back it up so a side
+      // trip to the Glossary doesn't force a re-upload.
+      formDirtyRef.current = true;
     } catch (error) {
       console.error("AI extraction failed:", error);
       setUploadError(
@@ -1073,9 +1204,19 @@ function DataContent() {
         };
       });
 
-      const { error } = await client.database
+      let { error } = await client.database
         .from("financial_snapshots")
         .upsert(snapshotRows, { onConflict: "user_id,period_date" });
+
+      if (error) {
+        // Stale auth token after a long review session — refresh and retry once.
+        const { data: sessionData } = await client.auth.getCurrentSession();
+        if (sessionData?.session?.accessToken) {
+          ({ error } = await client.database
+            .from("financial_snapshots")
+            .upsert(snapshotRows, { onConflict: "user_id,period_date" }));
+        }
+      }
 
       if (error) {
         const dbError = error as DatabaseErrorLike;
@@ -1454,7 +1595,13 @@ function DataContent() {
                 </div>
               ) : (
                 <div className="bg-white rounded-xl border border-[#F0F0F2] shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)] p-6">
-                <form onSubmit={handleSubmit} className="space-y-6">
+                <form
+                  onSubmit={handleSubmit}
+                  onChangeCapture={() => {
+                    formDirtyRef.current = true;
+                  }}
+                  className="space-y-6"
+                >
                   {/* Period Selector */}
                   <div>
                     <label

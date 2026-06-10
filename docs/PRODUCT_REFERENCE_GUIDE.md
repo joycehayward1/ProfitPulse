@@ -27,7 +27,7 @@ Core capabilities shipped in v1:
 | **Reports** | P&L, cash flow, balance sheet |
 | **Data entry** | Manual forms, CSV/Excel upload (AI extraction), QuickBooks sync |
 | **Billing** | Pro subscription via Authorize.net (trial + paid paths) |
-| **Launch offer** | Discounted “launch pricing” path locked in forever for early buyers |
+| **Launch offer (retired)** | Early-buyer discount, removed June 2026; existing launch subscribers keep their locked rate |
 | **Admin** | User stats, trial extension, Pro grants (operator-only) |
 | **Legal** | Terms + EULA (QuickBooks-ready) and Privacy Policy |
 
@@ -171,9 +171,8 @@ Detailed flow docs: `docs/payments-architecture.md`, `docs/PAYMENTS_PLAN.md`, `d
 | Path | Monthly | Annual | Notes |
 |------|---------|--------|-------|
 | **Standard** (`/signup` → trial, then `/pricing`) | $59.99/mo | $599.88/yr (~$49.99/mo) | 7-day free trial, no card at signup |
-| **Launch** (`/launch` from landing page) | $47.99/mo | $419.92/yr (~$35/mo) | 20% / 30% off **locked forever** via `pricing_promo: launch` |
 
-Launch customers skip the trial path — they pay at checkout and go straight to active Pro.
+The **launch offer was retired in June 2026** — `/launch` now redirects to the landing page. Existing launch subscribers keep `pricing_promo: launch` and renew at their locked rate ($47.99/mo or $419.92/yr); the discount logic survives in `src/lib/plan-amounts.ts` for their renewals and plan switches only.
 
 ### Payment API routes
 
@@ -297,12 +296,11 @@ Landing → Get Started → /signup → 7-day trial → Dashboard
          → Upgrade → /pricing → Pay → Active Pro
 ```
 
-### B. Launch pricing (Joyce’s launch offer)
+### B. Launch pricing (retired June 2026)
 
-```
-Landing → Claim Launch Pricing → /launch → pick monthly/annual
-         → create account (if needed) → Pay → Active Pro at locked launch rate
-```
+The launch-day checkout flow was removed; `/launch` redirects to the landing
+page pricing section. Existing launch subscribers continue renewing at their
+locked rate via `pricing_promo: launch`.
 
 ### C. QuickBooks user
 
@@ -401,7 +399,7 @@ From `docs/pricing-strategy.md`:
 | Main app home | `src/app/dashboard/page.tsx` |
 | AI spreadsheet extraction | `src/app/api/extract-financials/route.ts` |
 | Payments / ARB | `src/lib/authorize-net.ts`, `src/app/api/payments/*` |
-| Launch pricing logic | `src/lib/plan-amounts.ts`, `src/app/launch/page.tsx` |
+| Legacy launch pricing logic (renewals only) | `src/lib/plan-amounts.ts`, `src/app/api/payments/switch-plan/route.ts` |
 | QuickBooks OAuth | `src/lib/quickbooks.ts`, `src/app/api/callback/quickbooks/route.ts` |
 | Feature gating (trial vs Pro) | `src/lib/feature-gate.ts` |
 | Design tokens | `tailwind.config.ts`, `/showcase` |

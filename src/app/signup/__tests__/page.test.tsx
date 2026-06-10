@@ -9,6 +9,7 @@ import SignUpPage from "../page";
 const mockPush = jest.fn();
 jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush }),
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 // Mock next/image

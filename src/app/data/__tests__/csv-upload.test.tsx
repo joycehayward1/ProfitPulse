@@ -36,6 +36,9 @@ jest.mock("@/lib/insforge", () => ({
 describe("Spreadsheet Upload", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // The data page persists in-progress drafts to localStorage — clear
+    // between tests so one test's state doesn't leak into the next.
+    window.localStorage.clear();
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: true,
       json: jest.fn().mockResolvedValue({

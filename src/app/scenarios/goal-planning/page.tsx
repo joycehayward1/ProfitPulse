@@ -48,38 +48,22 @@ export default function GoalPlanningPage() {
       if (!user) return;
 
       try {
-        const { getInsForgeClient } = await import("@/lib/insforge");
-        const client = getInsForgeClient();
+        const { loadFinancialDefaults } = await import("@/lib/financial-defaults");
+        const defaults = await loadFinancialDefaults(user.id);
 
-        const { data, error } = await client.database
-          .from('financial_snapshots')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single();
-
-        if (data) {
-          if (data.total_income) setCurrentMonthly(data.total_income.toString());
-          if (data.total_expenses) setCurrentMonthlyExpenses(data.total_expenses.toString());
-          return;
+        // Pre-fill from the data the user already gave us — average monthly
+        // figures and YTD totals. Everything stays editable.
+        if (defaults.avgMonthlyRevenue) {
+          setCurrentMonthly(defaults.avgMonthlyRevenue.toString());
         }
-
-        const { data: assessment } = await client.database
-          .from('health_assessments')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single();
-
-        if (assessment) {
-          if (assessment.monthly_revenue) setCurrentMonthly(assessment.monthly_revenue.toString());
-          if (assessment.monthly_expenses) setCurrentMonthlyExpenses(assessment.monthly_expenses.toString());
-          if (assessment.ytd_revenue) setYtdRevenue(assessment.ytd_revenue.toString());
-          if (assessment.ytd_expenses) setYtdExpenses(assessment.ytd_expenses.toString());
-        } else if (error) {
-          throw error;
+        if (defaults.avgMonthlyExpenses) {
+          setCurrentMonthlyExpenses(defaults.avgMonthlyExpenses.toString());
+        }
+        if (defaults.ytdRevenue) {
+          setYtdRevenue(Math.round(defaults.ytdRevenue).toString());
+        }
+        if (defaults.ytdExpenses) {
+          setYtdExpenses(Math.round(defaults.ytdExpenses).toString());
         }
       } catch (error) {
         console.error('Error loading financial data:', error);
@@ -313,7 +297,7 @@ export default function GoalPlanningPage() {
                     />
                   </div>
                   <p className="text-[12px] text-[#8B8B8B] mt-1">
-                    What you&apos;re bringing in each month now
+                    Auto-filled from your average monthly revenue when you have data — adjust if needed
                   </p>
                 </div>
 
@@ -335,7 +319,7 @@ export default function GoalPlanningPage() {
                     />
                   </div>
                   <p className="text-[12px] text-[#8B8B8B] mt-1">
-                    Your total monthly operating costs
+                    Auto-filled from your average monthly expenses when you have data — adjust if needed
                   </p>
                 </div>
 
@@ -357,7 +341,7 @@ export default function GoalPlanningPage() {
                     />
                   </div>
                   <p className="text-[12px] text-[#8B8B8B] mt-1">
-                    Total revenue earned so far this fiscal year
+                    Added up from the months you&apos;ve entered — adjust if needed
                   </p>
                 </div>
 
@@ -379,7 +363,7 @@ export default function GoalPlanningPage() {
                     />
                   </div>
                   <p className="text-[12px] text-[#8B8B8B] mt-1">
-                    Total expenses incurred so far this fiscal year
+                    Added up from the months you&apos;ve entered — adjust if needed
                   </p>
                 </div>
 

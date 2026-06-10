@@ -9,10 +9,6 @@ import {
   GLOSSARY_TERMS,
   type GlossaryCategory,
 } from "@/lib/glossary";
-import {
-  getDisplayMonthlyRate,
-  formatPlanAmount,
-} from "@/lib/plan-amounts";
 
 /* ══════════════════════════════════════════════════════════════════
    DATA
@@ -1269,95 +1265,44 @@ export default function LandingPage() {
                 )}
               </div>
 
-              <div className="grid gap-lg md:grid-cols-2 items-stretch">
-                {/* Standard — free trial signup */}
-                <Card
-                  variant="featured"
-                  className="flex flex-col relative shadow-medium border-l-[3px] border-l-orange ring-1 ring-[#E65100]/10"
-                >
-                  <div className="mb-md text-center">
-                    <h3 className="font-display text-h3 text-text-primary">ProfitPulse</h3>
-                    <div className="mt-xs flex items-baseline justify-center gap-1">
-                      <span className="font-display text-[48px] text-text-primary">
-                        ${isAnnual ? 49 : 59}
-                      </span>
-                      <span className="font-body text-body text-text-muted">/mo</span>
-                    </div>
-                    <p className="font-body text-small text-text-muted mt-1">
-                      {isAnnual ? 'Billed annually' : 'Billed monthly'}
-                    </p>
-                    <p className="font-body text-small text-orange font-semibold mt-2">
-                      7-day free trial included
-                    </p>
-                  </div>
-
-                  <ul className="space-y-[12px] mb-lg flex-1">
-                    {planFeatures.map((feature) => (
-                      <li key={feature} className="flex items-start gap-[8px] font-body text-body text-text-secondary">
-                        <CheckIcon />
-                        {feature}
-                      </li>
-                    ))}
-                  </ul>
-
-                  <Button
-                    variant="primary"
-                    fullWidth
-                    size="lg"
-                    onClick={() => router.push("/signup")}
-                  >
-                    Start Your Free Trial
-                  </Button>
-                </Card>
-
-                {/* Launch deal — direct to checkout */}
-                <Card
-                  className="flex flex-col relative shadow-medium border-l-[3px] border-l-[#2E7D32] ring-1 ring-[#2E7D32]/10"
-                >
-                  <div className="absolute -top-3 right-md">
-                    <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#2E7D32] text-white font-body text-small font-semibold shadow-sm">
-                      {isAnnual ? "30% off forever" : "20% off forever"}
+              <Card
+                variant="featured"
+                className="max-w-md mx-auto flex flex-col relative shadow-medium border-l-[3px] border-l-orange ring-1 ring-[#E65100]/10"
+              >
+                <div className="mb-md text-center">
+                  <h3 className="font-display text-h3 text-text-primary">ProfitPulse</h3>
+                  <div className="mt-xs flex items-baseline justify-center gap-1">
+                    <span className="font-display text-[48px] text-text-primary">
+                      ${isAnnual ? 49 : 59}
                     </span>
+                    <span className="font-body text-body text-text-muted">/mo</span>
                   </div>
+                  <p className="font-body text-small text-text-muted mt-1">
+                    {isAnnual ? 'Billed annually' : 'Billed monthly'}
+                  </p>
+                  <p className="font-body text-small text-orange font-semibold mt-2">
+                    7-day free trial included
+                  </p>
+                </div>
 
-                  <div className="mb-md text-center pt-sm">
-                    <h3 className="font-display text-h3 text-text-primary">Launch Pricing</h3>
-                    <div className="mt-xs flex items-baseline justify-center gap-1">
-                      <span className="font-display text-[48px] text-text-primary">
-                        ${Math.round(getDisplayMonthlyRate(isAnnual ? "annual" : "monthly", "launch"))}
-                      </span>
-                      <span className="font-body text-body text-text-muted">/mo</span>
-                    </div>
-                    <p className="font-body text-small text-text-muted mt-1">
-                      {isAnnual
-                        ? `${formatPlanAmount("annual", "launch")}/year billed upfront`
-                        : "Billed monthly — rate locked in"}
-                    </p>
-                    <p className="font-body text-small text-[#2E7D32] font-semibold mt-2">
-                      Launch day exclusive
-                    </p>
-                  </div>
+                <ul className="space-y-[12px] mb-lg flex-1">
+                  {planFeatures.map((feature) => (
+                    <li key={feature} className="flex items-start gap-[8px] font-body text-body text-text-secondary">
+                      <CheckIcon />
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
 
-                  <ul className="space-y-[12px] mb-lg flex-1">
-                    {planFeatures.map((feature) => (
-                      <li key={`launch-${feature}`} className="flex items-start gap-[8px] font-body text-body text-text-secondary">
-                        <CheckIcon />
-                        {feature}
-                      </li>
-                    ))}
-                  </ul>
-
-                  <Button
-                    variant="secondary"
-                    fullWidth
-                    size="lg"
-                    onClick={() => router.push("/launch")}
-                    className="border-[#2E7D32] text-[#2E7D32] hover:bg-[#2E7D32]/5"
-                  >
-                    Claim Launch Pricing
-                  </Button>
-                </Card>
-              </div>
+                <Button
+                  variant="primary"
+                  fullWidth
+                  size="lg"
+                  onClick={() => router.push("/signup")}
+                >
+                  Start Your Free Trial
+                </Button>
+              </Card>
             </div>
           </RevealSection>
 

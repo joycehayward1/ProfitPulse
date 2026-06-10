@@ -27,6 +27,9 @@ export default function BreakEvenPage() {
   const [pricePerUnit, setPricePerUnit] = useState("");
   const [variableCost, setVariableCost] = useState("");
   const [currentSales, setCurrentSales] = useState("");
+  // Latest monthly revenue — used to estimate current sales (in units) when
+  // the field is left blank, treating all income as sales.
+  const [monthlyRevenue, setMonthlyRevenue] = useState<number | null>(null);
 
   // Results
   const [result, setResult] = useState<BreakEvenResult | null>(null);
@@ -38,34 +41,14 @@ export default function BreakEvenPage() {
       if (!user) return;
 
       try {
-        const { getInsForgeClient } = await import("@/lib/insforge");
-        const client = getInsForgeClient();
+        const { loadFinancialDefaults } = await import("@/lib/financial-defaults");
+        const defaults = await loadFinancialDefaults(user.id);
 
-        const { data, error } = await client.database
-          .from('financial_snapshots')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single();
-
-        if (data) {
-          setFixedExpenses((data.total_expenses ?? 0).toString());
-          return;
+        if (defaults.latestMonthlyExpenses) {
+          setFixedExpenses(defaults.latestMonthlyExpenses.toString());
         }
-
-        const { data: assessment } = await client.database
-          .from('health_assessments')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single();
-
-        if (assessment) {
-          setFixedExpenses((assessment.monthly_expenses || 0).toString());
-        } else if (error) {
-          throw error;
+        if (defaults.latestMonthlyRevenue) {
+          setMonthlyRevenue(defaults.latestMonthlyRevenue);
         }
       } catch (error) {
         console.error('Error loading financial data:', error);
@@ -79,7 +62,14 @@ export default function BreakEvenPage() {
     const fixed = parseFloat(fixedExpenses);
     const price = parseFloat(pricePerUnit);
     const variable = parseFloat(variableCost);
-    const sales = parseFloat(currentSales) || 0;
+    let sales = parseFloat(currentSales) || 0;
+
+    // No sales count entered? Estimate it from monthly revenue — all income
+    // counts as sales — at the price the user just gave us.
+    if (!sales && monthlyRevenue && price > 0) {
+      sales = Math.round(monthlyRevenue / price);
+      setCurrentSales(sales.toString());
+    }
 
     if (!fixed || !price || !variable) {
       showToast('error', 'Please fill in all fields');
@@ -298,7 +288,8 @@ export default function BreakEvenPage() {
                     </span>
                   </div>
                   <p className="text-[12px] text-[#8B8B8B] mt-1">
-                    How many you&apos;re selling now (for comparison)
+                    How many you&apos;re selling now (for comparison). Leave blank
+                    and we&apos;ll estimate it from your monthly revenue.
                   </p>
                 </div>
 

@@ -36,9 +36,8 @@ Never commit secrets. Use Vercel → Environment Variables for Production.
 | Path | URL | Price |
 |------|-----|-------|
 | Standard (7-day trial) | `/signup` → `/pricing` | $59.99/mo or $599.88/yr |
-| Launch offer (locked discount) | `/launch` | $47.99/mo or $419.92/yr |
 
-Launch subscribers have `pricing_promo: launch` on their `subscriptions` row; ARB renewals use the discounted amount.
+The launch offer was retired in June 2026 — `/launch` now redirects to the landing page pricing section and new signups can no longer select it. Subscribers who bought during launch keep `pricing_promo: launch` on their `subscriptions` row, and ARB renewals/plan switches still honor their locked-in discount ($47.99/mo or $419.92/yr).
 
 ---
 
@@ -66,7 +65,7 @@ Run pending SQL in InsForge before deploying code that depends on new columns:
 1. Merge PR to `main`
 2. Confirm Vercel Production build succeeds
 3. If env vars changed (especially `NEXT_PUBLIC_*`), trigger redeploy
-4. Smoke-test: signup, `/launch` checkout, billing cancel
+4. Smoke-test: signup, `/pricing` checkout, billing cancel
 
 Full cutover reference: [PRODUCTION_CHECKLIST.md](./PRODUCTION_CHECKLIST.md) (QuickBooks is out of scope — see [quickbooks-integration.md](./quickbooks-integration.md) when enabling)
 
