@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@insforge/sdk";
+import { requireAdmin } from "@/lib/admin-auth";
 
 const MONTHLY_PRICE = 59.99;
 const ANNUAL_PRICE = 599.88;
@@ -8,24 +9,16 @@ const ANNUAL_PRICE = 599.88;
  * GET /api/admin/stats
  *
  * Returns dashboard statistics: total users, active subscribers,
- * trial users, gross receipts MTD, and calculated MRR.
+ * trial users, new signups (7d), gross receipts MTD, failed payments MTD,
+ * and calculated MRR.
  *
+ * Admin-only — identity verified via Bearer token (requireAdmin).
  * Subscriptions without a matching profile (orphan rows) are excluded
  * from user-counting metrics.
  */
 export async function GET(request: NextRequest) {
-  const email = request.nextUrl.searchParams.get("email");
-
-  if (!email) {
-    return NextResponse.json({ error: "email required" }, { status: 400 });
-  }
-
-  const adminEmails = (process.env.ADMIN_EMAILS || "")
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
-
-  if (!adminEmails.includes(email.toLowerCase())) {
+  const admin = await requireAdmin(request);
+  if (!admin) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
 
@@ -36,12 +29,19 @@ export async function GET(request: NextRequest) {
 
   const { data: profiles } = await client.database
     .from("profiles")
-    .select("user_id");
+    .select("user_id, created_at");
 
   const profileIds = new Set<string>(
     (profiles || []).map((p: { user_id: string }) => p.user_id)
   );
   const totalUsers = profileIds.size;
+
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  const newSignups7d = (profiles || []).filter(
+    (p: { created_at?: string }) =>
+      p.created_at && new Date(p.created_at) >= sevenDaysAgo
+  ).length;
 
   const { data: subscriptions } = await client.database
     .from("subscriptions")
@@ -49,6 +49,7 @@ export async function GET(request: NextRequest) {
 
   let activeSubscribers = 0;
   let trialUsers = 0;
+  let pastDue = 0;
   let mrr = 0;
 
   if (subscriptions) {
@@ -64,6 +65,8 @@ export async function GET(request: NextRequest) {
         }
       } else if (sub.subscription_status === "trial") {
         trialUsers++;
+      } else if (sub.subscription_status === "past_due") {
+        pastDue++;
       }
     }
   }
@@ -74,13 +77,17 @@ export async function GET(request: NextRequest) {
   const { data: payments } = await client.database
     .from("payment_records")
     .select("amount, status")
-    .gte("created_at", monthStart)
-    .eq("status", "success");
+    .gte("created_at", monthStart);
 
   let grossReceiptsMTD = 0;
+  let failedPaymentsMTD = 0;
   if (payments) {
     for (const p of payments) {
-      grossReceiptsMTD += parseFloat(p.amount) || 0;
+      if (p.status === "success") {
+        grossReceiptsMTD += parseFloat(p.amount) || 0;
+      } else if (p.status === "failed") {
+        failedPaymentsMTD++;
+      }
     }
   }
 
@@ -88,7 +95,10 @@ export async function GET(request: NextRequest) {
     totalUsers,
     activeSubscribers,
     trialUsers,
+    pastDue,
+    newSignups7d,
     grossReceiptsMTD,
+    failedPaymentsMTD,
     mrr,
     // Kept for backwards compatibility with any older client cache
     monthlyRevenue: grossReceiptsMTD,

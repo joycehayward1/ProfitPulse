@@ -1,24 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/admin-auth";
 
 /**
- * GET /api/admin/check?email=user@example.com
+ * GET /api/admin/check
  *
- * Returns { isAdmin: true/false } based on whether the email
- * is in the ADMIN_EMAILS environment variable (comma-separated list).
+ * Returns { isAdmin: true/false } for the authenticated user.
+ * Identity comes from the Bearer access token — never from query params.
  */
 export async function GET(request: NextRequest) {
-  const email = request.nextUrl.searchParams.get("email");
-
-  if (!email) {
-    return NextResponse.json({ isAdmin: false }, { status: 400 });
-  }
-
-  const adminEmails = (process.env.ADMIN_EMAILS || "")
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
-
-  const isAdmin = adminEmails.includes(email.toLowerCase());
-
-  return NextResponse.json({ isAdmin });
+  const admin = await requireAdmin(request);
+  return NextResponse.json({ isAdmin: admin !== null });
 }

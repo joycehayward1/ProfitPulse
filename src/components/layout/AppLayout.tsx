@@ -60,6 +60,11 @@ const navSections: NavSection[] = [
   },
 ];
 
+const adminNavSection: NavSection = {
+  title: "ADMIN",
+  items: [{ label: "Admin Panel", href: "/admin", icon: "ph:shield-check-bold" }],
+};
+
 const PULSE_MESSAGES: Record<string, string> = {
   "/reports/pl": "Honestly, this is my favorite page. It shows you exactly where your money went and what you kept. Let's take a look.",
   "/reports/cashflow": "This is all about the flow — money coming in, money going out. Don't worry, I'll help you make sense of it.",
@@ -89,6 +94,51 @@ export function AppLayout({ children, pulseMessage }: AppLayoutProps) {
   }, [user?.id]);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // Show the Admin section only for ADMIN_EMAILS users. Verified server-side
+  // via the session token; cached per-session to avoid refetching on every page.
+  useEffect(() => {
+    if (!user?.id) {
+      setIsAdmin(false);
+      return;
+    }
+
+    const cacheKey = `pp_is_admin_${user.id}`;
+    const cached = typeof window !== "undefined" ? sessionStorage.getItem(cacheKey) : null;
+    if (cached !== null) {
+      setIsAdmin(cached === "true");
+      return;
+    }
+
+    let cancelled = false;
+    async function checkAdmin() {
+      try {
+        const { getInsForgeClient } = await import("@/lib/insforge");
+        const client = getInsForgeClient();
+        const { data } = await client.auth.getCurrentSession();
+        if (!data?.session?.accessToken) return;
+
+        const res = await fetch("/api/admin/check", {
+          headers: { Authorization: `Bearer ${data.session.accessToken}` },
+        });
+        const result = await res.json();
+        if (!cancelled) {
+          const admin = result.isAdmin === true;
+          setIsAdmin(admin);
+          sessionStorage.setItem(cacheKey, String(admin));
+        }
+      } catch {
+        // Non-admins simply don't see the link; no error surface needed
+      }
+    }
+    checkAdmin();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
+
+  const visibleNavSections = isAdmin ? [...navSections, adminNavSection] : navSections;
 
   const userInitials = user?.name
     ? user.name
@@ -255,7 +305,7 @@ export function AppLayout({ children, pulseMessage }: AppLayoutProps) {
 
         {/* Navigation */}
         <div className="flex-1 overflow-y-auto pt-5 pb-2">
-          {navSections.map(renderNavSection)}
+          {visibleNavSections.map(renderNavSection)}
         </div>
 
         {/* User Profile */}
@@ -347,7 +397,7 @@ export function AppLayout({ children, pulseMessage }: AppLayoutProps) {
               </div>
 
               <div className="flex-1 pt-5 pb-2">
-                {navSections.map((section) => (
+                {visibleNavSections.map((section) => (
                   <div key={section.title} className="mb-5">
                     <h3 className="px-5 mb-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-text-muted">
                       {section.title}

@@ -1,38 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@insforge/sdk";
+import { requireAdmin } from "@/lib/admin-auth";
 
 /**
  * POST /api/admin/extend-trial
- * Body: { userId: string, email: string }
+ * Body: { userId: string }
  *
  * Extends a user's trial by 7 days from their current trial_end_date
  * (or from now if no trial exists).
- * Admin-only — checks ADMIN_EMAILS.
+ * Admin-only — identity verified via Bearer token (requireAdmin).
  */
 export async function POST(request: NextRequest) {
-  let body: { userId?: string; email?: string };
+  const admin = await requireAdmin(request);
+  if (!admin) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+  }
+
+  let body: { userId?: string };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { userId, email } = body;
+  const { userId } = body;
 
-  if (!userId || !email) {
-    return NextResponse.json(
-      { error: "userId and email required" },
-      { status: 400 }
-    );
-  }
-
-  const adminEmails = (process.env.ADMIN_EMAILS || "")
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
-
-  if (!adminEmails.includes(email.toLowerCase())) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+  if (!userId) {
+    return NextResponse.json({ error: "userId required" }, { status: 400 });
   }
 
   const client = createClient({

@@ -1,37 +1,39 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@insforge/sdk";
+import { requireAdmin } from "@/lib/admin-auth";
+
+export type GrantDuration = "1m" | "12m" | "lifetime";
 
 /**
  * POST /api/admin/grant-pro
- * Body: { userId: string, email: string }
+ * Body: { userId: string, duration?: "1m" | "12m" | "lifetime" }
  *
- * Grants a user an active monthly Pro subscription.
- * Admin-only — checks ADMIN_EMAILS.
+ * Grants a user an active Pro subscription for the chosen duration
+ * (default 1 month). Lifetime is stored as a period end 100 years out.
+ * Admin-only — identity verified via Bearer token (requireAdmin).
  */
 export async function POST(request: NextRequest) {
-  let body: { userId?: string; email?: string };
+  const admin = await requireAdmin(request);
+  if (!admin) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+  }
+
+  let body: { userId?: string; duration?: string };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { userId, email } = body;
+  const { userId } = body;
+  const duration = (body.duration || "1m") as GrantDuration;
 
-  if (!userId || !email) {
-    return NextResponse.json(
-      { error: "userId and email required" },
-      { status: 400 }
-    );
+  if (!userId) {
+    return NextResponse.json({ error: "userId required" }, { status: 400 });
   }
 
-  const adminEmails = (process.env.ADMIN_EMAILS || "")
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
-
-  if (!adminEmails.includes(email.toLowerCase())) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+  if (!["1m", "12m", "lifetime"].includes(duration)) {
+    return NextResponse.json({ error: "Invalid duration" }, { status: 400 });
   }
 
   const client = createClient({
@@ -48,13 +50,24 @@ export async function POST(request: NextRequest) {
 
   const now = new Date();
   const periodEnd = new Date(now);
-  periodEnd.setMonth(periodEnd.getMonth() + 1);
+  let billingInterval: string | null;
+
+  if (duration === "lifetime") {
+    periodEnd.setFullYear(periodEnd.getFullYear() + 100);
+    billingInterval = null;
+  } else if (duration === "12m") {
+    periodEnd.setFullYear(periodEnd.getFullYear() + 1);
+    billingInterval = "annual";
+  } else {
+    periodEnd.setMonth(periodEnd.getMonth() + 1);
+    billingInterval = "monthly";
+  }
 
   const subscriptionData = {
     user_id: userId,
     plan: "pro",
     subscription_status: "active",
-    billing_interval: "monthly",
+    billing_interval: billingInterval,
     billing_cycle_start_date: now.toISOString(),
     current_period_end: periodEnd.toISOString(),
     trial_end_date: null,

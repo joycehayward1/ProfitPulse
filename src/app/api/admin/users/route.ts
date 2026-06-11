@@ -1,25 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@insforge/sdk";
+import { requireAdmin } from "@/lib/admin-auth";
 
 /**
  * GET /api/admin/users
  *
  * Returns all users with their profile, subscription, and auth email.
- * Admin-only — checks ADMIN_EMAILS env var against the email query param.
+ * Admin-only — identity verified via Bearer token (requireAdmin).
  */
 export async function GET(request: NextRequest) {
-  const email = request.nextUrl.searchParams.get("email");
-
-  if (!email) {
-    return NextResponse.json({ error: "email required" }, { status: 400 });
-  }
-
-  const adminEmails = (process.env.ADMIN_EMAILS || "")
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
-
-  if (!adminEmails.includes(email.toLowerCase())) {
+  const admin = await requireAdmin(request);
+  if (!admin) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
 
@@ -114,6 +105,12 @@ export async function GET(request: NextRequest) {
       plan: sub?.subscription_status || "none",
       billing_interval: sub?.billing_interval || null,
       trial_end_date: sub?.trial_end_date || null,
+      next_billing_date: sub?.next_billing_date || null,
+      current_period_end: sub?.current_period_end || null,
+      pricing_promo: sub?.pricing_promo || null,
+      last_payment_date: sub?.last_payment_date || null,
+      last_payment_amount: sub?.last_payment_amount || null,
+      last_payment_status: sub?.last_payment_status || null,
       health_score: healthMap.get(userId) ?? null,
       data_periods: periodMap.get(userId) ?? 0,
       joined: profile.created_at || null,
