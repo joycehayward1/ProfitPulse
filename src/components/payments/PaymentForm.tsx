@@ -4,7 +4,7 @@ import { FormEvent, useState } from "react";
 import { useAcceptJs } from "react-acceptjs";
 import { Icon } from "@iconify/react";
 import type { BillingInterval } from "./PricingCards";
-import { formatPlanAmount } from "@/lib/plan-amounts";
+import { formatPlanAmount, type PricingPromo } from "@/lib/plan-amounts";
 import { getAnetEnvironment } from "@/lib/anet-env";
 
 interface PaymentFormProps {
@@ -13,6 +13,8 @@ interface PaymentFormProps {
   userId: string;
   /** User's email, used for receipts + AVS. */
   userEmail?: string;
+  /** Launch promo — discounted rate locked on renewals. */
+  promo?: PricingPromo;
   /** Callback after a successful subscription. */
   onSuccess?: (result: {
     transactionId: string;
@@ -37,6 +39,7 @@ export function PaymentForm({
   billingInterval,
   userId,
   userEmail,
+  promo = "standard",
   onSuccess,
   onBack,
 }: PaymentFormProps) {
@@ -57,7 +60,7 @@ export function PaymentForm({
 
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const payAmount = formatPlanAmount(billingInterval);
+  const payAmount = formatPlanAmount(billingInterval, promo);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -98,6 +101,7 @@ export function PaymentForm({
         body: JSON.stringify({
           userId,
           billingInterval,
+          ...(promo === "launch" && { promo: "launch" }),
           nonce: response.opaqueData,
           customer: {
             email: userEmail,

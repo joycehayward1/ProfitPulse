@@ -4,10 +4,9 @@ const MONTHLY_AMOUNT = 59.99;
 const ANNUAL_AMOUNT = 599.88;
 
 /**
- * "launch" is a retired promo — it can no longer be selected at signup.
- * It is kept only so existing subscribers with `pricing_promo = 'launch'`
- * continue to be billed at their locked-in discounted rate (renewals and
- * plan switches read the promo from the subscriptions row).
+ * "launch" — 20% off monthly / 30% off annual, locked in on every renewal.
+ * Sold only via /launch (not linked from the landing page). Subscribers
+ * keep the rate via `pricing_promo` on their subscriptions row.
  */
 export type PricingPromo = "standard" | "launch";
 

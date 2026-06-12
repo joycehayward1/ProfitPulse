@@ -9,10 +9,13 @@ import {
   computePeriodEnd,
 } from "@/lib/authorize-net";
 import type { BillingInterval } from "@/components/payments/PricingCards";
+import type { PricingPromo } from "@/lib/plan-amounts";
 
 interface SubscribeRequestBody {
   userId: string;
   billingInterval: BillingInterval;
+  /** Launch-day pricing — 20% off monthly / 30% off annual, locked on renewals. */
+  promo?: PricingPromo;
   /** New nonce from Accept.js. Optional only when user opts to reuse the
    *  card already on file (see `useExistingCard`). */
   nonce?: {
@@ -67,7 +70,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const amount = getPlanAmount(body.billingInterval);
+  const promo: PricingPromo = body.promo === "launch" ? "launch" : "standard";
+  const amount = getPlanAmount(body.billingInterval, promo);
   const client = createClient({
     baseUrl: process.env.NEXT_PUBLIC_INSFORGE_URL!,
     anonKey: process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY!,
@@ -198,7 +202,7 @@ export async function POST(request: NextRequest) {
       plan: "pro" as const,
       billing_interval: body.billingInterval,
       subscription_status: "active" as const,
-      pricing_promo: null,
+      pricing_promo: promo === "launch" ? ("launch" as const) : null,
       anet_customer_profile_id: customerProfileId,
       anet_payment_profile_id: customerPaymentProfileId,
       anet_subscription_id: arb.subscriptionId,
@@ -242,9 +246,9 @@ export async function POST(request: NextRequest) {
         amount,
         status: "success",
         billing_interval: body.billingInterval,
-        description: `ProfitPulse Pro ${body.billingInterval} — ${
-          isResubscribe ? "resubscribe" : "first period"
-        }`,
+        description: `ProfitPulse Pro ${body.billingInterval}${
+          promo === "launch" ? " (launch pricing)" : ""
+        } — ${isResubscribe ? "resubscribe" : "first period"}`,
       });
 
     if (paymentError) {
