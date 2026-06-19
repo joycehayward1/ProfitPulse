@@ -13,12 +13,12 @@ export async function POST(request: NextRequest) {
       from: FROM_EMAIL,
       replyTo: REPLY_TO_EMAIL,
       to: user.email,
-      subject: "ProfitPulse — Test Email",
+      subject: "MyProfitPulse — Test Email",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 24px;">
           <h2 style="color: #2D2A26; font-family: Georgia, serif;">It works!</h2>
-          <p style="color: #6B6560;">This is a test email from ProfitPulse. If you're reading this, Resend is connected and working correctly.</p>
-          <p style="color: #9A948E; font-size: 13px; margin-top: 24px;">— The ProfitPulse Team</p>
+          <p style="color: #6B6560;">This is a test email from MyProfitPulse. If you're reading this, Resend is connected and working correctly.</p>
+          <p style="color: #9A948E; font-size: 13px; margin-top: 24px;">— The MyProfitPulse Team</p>
         </div>
       `,
     });

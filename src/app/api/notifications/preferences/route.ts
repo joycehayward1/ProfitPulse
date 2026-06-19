@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
       from: FROM_EMAIL,
       replyTo: REPLY_TO_EMAIL,
       to: user.email,
-      subject: "ProfitPulse — Notification preferences updated",
+      subject: "MyProfitPulse — Notification preferences updated",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 24px;">
           <h2 style="color: #2D2A26; font-family: Georgia, serif;">Notification Preferences Updated</h2>
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
             <li>Weekly Summary: <strong>${prefs.weekly_summary ? "On" : "Off"}</strong></li>
             <li>Product Updates: <strong>${prefs.product_updates ? "On" : "Off"}</strong></li>
           </ul>
-          <p style="color: #9A948E; font-size: 13px; margin-top: 24px;">— The ProfitPulse Team</p>
+          <p style="color: #9A948E; font-size: 13px; margin-top: 24px;">— The MyProfitPulse Team</p>
         </div>
       `,
     });

@@ -17,7 +17,7 @@ const instrumentSerif = Instrument_Serif({
 });
 
 export const metadata: Metadata = {
-  title: "ProfitPulse - CEO Dashboard for Service-Based Businesses",
+  title: "MyProfitPulse - CEO Dashboard for Service-Based Businesses",
   description:
     "Finally understand your numbers—without the accounting degree. Financial clarity for service-based business owners.",
   icons: {

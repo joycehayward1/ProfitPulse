@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
         from: FROM_EMAIL,
         replyTo: REPLY_TO_EMAIL,
         to: pref.email,
-        subject: `ProfitPulse Weekly Summary — Health Score: ${assessment.health_score || 0}`,
+        subject: `MyProfitPulse Weekly Summary — Health Score: ${assessment.health_score || 0}`,
         html,
       });
 

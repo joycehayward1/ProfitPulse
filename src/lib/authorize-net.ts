@@ -1,5 +1,5 @@
 /**
- * Server-side Authorize.net helpers for ProfitPulse.
+ * Server-side Authorize.net helpers for MyProfitPulse.
  *
  * Wraps the three API methods used in Flow 2 (Subscribe):
  *   1. createTransactionRequest       — charge first period with Accept.js nonce
@@ -560,7 +560,7 @@ export async function createARBSubscription(
     ARBCreateSubscriptionRequest: {
       merchantAuthentication: merchantAuth(),
       subscription: {
-        name: `ProfitPulse Pro ${
+        name: `MyProfitPulse Pro ${
           args.billingInterval === "monthly" ? "Monthly" : "Annual"
         }`,
         paymentSchedule: {

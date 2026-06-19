@@ -18,7 +18,7 @@ export default function ChatPage() {
   const { showToast } = useToast();
   const [messages, setMessages] = useState<Message[]>([{
     role: "assistant",
-    content: "Hi! I'm your ProfitPulse AI assistant. Ask me anything about your financial data, business metrics, or what scenarios you should run. For example:\n\n• \"What's my current cash runway?\"\n• \"Should I hire someone right now?\"\n• \"How can I improve my profit margin?\"\n• \"What scenarios should I run this week?\"",
+    content: "Hi! I'm your MyProfitPulse AI assistant. Ask me anything about your financial data, business metrics, or what scenarios you should run. For example:\n\n• \"What's my current cash runway?\"\n• \"Should I hire someone right now?\"\n• \"How can I improve my profit margin?\"\n• \"What scenarios should I run this week?\"",
     timestamp: new Date(),
   }]);
   const [input, setInput] = useState("");

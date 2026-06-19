@@ -1,5 +1,5 @@
 /**
- * Feature gating logic for ProfitPulse subscriptions.
+ * Feature gating logic for MyProfitPulse subscriptions.
  * Returns the user's current access level based on their subscription state.
  *
  * Mirrors `getUserAccessLevel` from PAYMENTS_PLAN.md.

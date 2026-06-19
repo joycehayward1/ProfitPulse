@@ -232,7 +232,7 @@ async function processEvent(event: WebhookEvent): Promise<void> {
           amount,
           status: "success",
           billing_interval: billingInterval,
-          description: `ProfitPulse Pro ${billingInterval} — renewal (payNum ${details.payNum})`,
+          description: `MyProfitPulse Pro ${billingInterval} — renewal (payNum ${details.payNum})`,
         });
 
       if (paymentError) {

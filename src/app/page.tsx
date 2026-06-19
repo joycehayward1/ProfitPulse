@@ -185,7 +185,7 @@ const planFeatures = [
 const faqs = [
   {
     q: "Do I need accounting experience?",
-    a: "Not at all. ProfitPulse translates everything into plain English. If you can read a text message, you can understand your financial health.",
+    a: "Not at all. MyProfitPulse translates everything into plain English. If you can read a text message, you can understand your financial health.",
   },
   {
     q: "How does the Health Score work?",
@@ -441,7 +441,7 @@ function GlossaryModal({ open, onClose }: { open: boolean; onClose: () => void }
                 Every number, explained.
               </h2>
               <p className="font-body text-small text-text-secondary mt-1">
-                Definitions for every metric you&rsquo;ll see in ProfitPulse.
+                Definitions for every metric you&rsquo;ll see in MyProfitPulse.
               </p>
             </div>
             <button
@@ -711,8 +711,8 @@ export default function LandingPage() {
       <header className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-b from-[#2D2A26]/80 via-[#2D2A26]/40 to-transparent backdrop-blur-[2px]">
         <nav className="max-w-6xl mx-auto px-sm md:px-lg flex items-center justify-between h-[110px]">
           <Image
-            src="/full-logo.png"
-            alt="ProfitPulse"
+            src="/logoupdated-transparent61926.png"
+            alt="MyProfitPulse"
             width={900}
             height={200}
             className="h-[150px] md:h-[190px] w-auto"
@@ -822,7 +822,7 @@ export default function LandingPage() {
                 </em>
               </p>
               <p className="font-body text-[16px] md:text-[18px] leading-[1.7] text-white font-medium mb-lg">
-                ProfitPulse gives you a single health score and plain-English answers&mdash;so you stop guessing and start deciding.
+                MyProfitPulse gives you a single health score and plain-English answers&mdash;so you stop guessing and start deciding.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-sm">
@@ -865,7 +865,7 @@ export default function LandingPage() {
                 Built for Business Owners
               </p>
               <h2 className="font-display text-h2 md:text-[36px] text-text-primary mb-sm">
-                What ProfitPulse Does For You
+                What MyProfitPulse Does For You
               </h2>
               <p className="font-body text-body md:text-[16px] text-text-secondary max-w-lg mx-auto">
                 Not another accounting tool. A dashboard built for the person who <em>runs</em> the business.
@@ -1012,7 +1012,7 @@ export default function LandingPage() {
             <RevealSection delay={0}>
               <div className="h-full">
                 <p className="font-body text-small font-semibold text-text-muted uppercase tracking-wider mb-sm">
-                  Before ProfitPulse
+                  Before MyProfitPulse
                 </p>
                 <div className="bg-[#F5F3F0] rounded-lg p-md border border-[#E8E4DF] h-[calc(100%-28px)]">
                   <div className="space-y-3">
@@ -1060,7 +1060,7 @@ export default function LandingPage() {
             <RevealSection delay={200}>
               <div className="h-full">
                 <p className="font-body text-small font-semibold text-[#E65100] uppercase tracking-wider mb-sm">
-                  With ProfitPulse
+                  With MyProfitPulse
                 </p>
                 <div className="bg-surface rounded-lg p-md border-2 border-[#E65100]/20 shadow-soft h-[calc(100%-28px)]">
                   <div className="space-y-3">
@@ -1125,7 +1125,7 @@ export default function LandingPage() {
                   Before you commit to a $95K salary, see exactly how it impacts your cash flow, runway, and risk level.
                 </p>
                 <p className="font-body text-[16px] md:text-[18px] leading-[1.7] text-white/70 mb-lg">
-                  ProfitPulse runs the numbers in seconds&mdash;so you decide with data, not hope.
+                  MyProfitPulse runs the numbers in seconds&mdash;so you decide with data, not hope.
                 </p>
                 <Button size="lg" onClick={() => router.push("/signup")}>
                   Run Your Own Scenario
@@ -1270,7 +1270,7 @@ export default function LandingPage() {
                 className="max-w-md mx-auto flex flex-col relative shadow-medium border-l-[3px] border-l-orange ring-1 ring-[#E65100]/10"
               >
                 <div className="mb-md text-center">
-                  <h3 className="font-display text-h3 text-text-primary">ProfitPulse</h3>
+                  <h3 className="font-display text-h3 text-text-primary">MyProfitPulse</h3>
                   <div className="mt-xs flex items-baseline justify-center gap-1">
                     <span className="font-display text-[48px] text-text-primary">
                       ${isAnnual ? 49 : 59}
@@ -1468,14 +1468,14 @@ export default function LandingPage() {
           <div className="border-t border-white/10 pt-lg flex flex-col md:flex-row items-center justify-between gap-md">
             <div className="flex items-center gap-sm">
               <Image
-                src="/symbol-logo.png"
-                alt="ProfitPulse"
-                width={40}
-                height={40}
-                className="h-[120px] w-auto opacity-40"
+                src="/logoupdated-transparent61926.png"
+                alt="MyProfitPulse"
+                width={280}
+                height={77}
+                className="h-[56px] w-auto opacity-40"
               />
               <span className="font-body text-body text-white/30">
-                &copy; 2026 ProfitPulse. All rights reserved.
+                &copy; 2026 MyProfitPulse. All rights reserved.
               </span>
             </div>
             <p className="font-body text-body text-white/30">

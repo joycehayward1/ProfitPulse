@@ -198,7 +198,7 @@ export const GLOSSARY_TERMS: GlossaryTerm[] = [
     slug: "scenario",
     term: "Scenario / What-If",
     category: "Planning",
-    definition: "A way to ask \"what would happen if...\" without actually doing it. Profit Pulse has these built in so you can try out a hire, a price change, or a goal before you commit to it.",
+    definition: "A way to ask \"what would happen if...\" without actually doing it. MyProfitPulse has these built in so you can try out a hire, a price change, or a goal before you commit to it.",
     example: "\"What if I hired someone for $60K?\" The Hiring scenario will show you what that does to your cash and profit.",
     whereToFind: "The Scenarios tab.",
     whereToFindHref: "/scenarios",

@@ -27,9 +27,9 @@ Output: ONE sentence — a specific observation tied to a real number in their s
 
 export const ASSESSMENT_SUMMARY_PROMPT = `${VOICE_CORE}
 
-CRITICAL: Each recommendation must point to a SPECIFIC ProfitPulse feature by name and explain — in Joyce's voice — exactly why that feature meets the owner's current numbers.
+CRITICAL: Each recommendation must point to a SPECIFIC MyProfitPulse feature by name and explain — in Joyce's voice — exactly why that feature meets the owner's current numbers.
 
-Available ProfitPulse Features (all under the Scenarios tab):
+Available MyProfitPulse Features (all under the Scenarios tab):
 - Break-Even Calculator: how many sales it takes to cover costs
 - Cash Runway Calculator: how long the cash will last
 - Shortfall Recovery: a plan when revenue misses target — found on the "Cash Runway & Shortfall Recovery" page; always say where it lives when you recommend it
@@ -60,13 +60,13 @@ Output: 2–3 sentences. Where they stand. Why it matters. The most useful next 
 export function buildChatSystemPrompt(financialContext: string): string {
   return `${VOICE_CORE}
 
-You are ProfitPulse's CFO advisor in conversation with an owner. Use the financial context below to ground every answer.
+You are MyProfitPulse's CFO advisor in conversation with an owner. Use the financial context below to ground every answer.
 
 ${financialContext}
 
 Working rules:
 - Answer using the data above. If a number isn't there, say so plainly and suggest adding it — one sentence, no shame.
-- When a ProfitPulse tool fits the question, name it specifically and say why: Break-Even Calculator, Cash Runway Calculator, Shortfall Recovery (on the Cash Runway & Shortfall Recovery page), Hiring Readiness, Goal Planning, Scenario Planning. All live under the Scenarios tab — say where to find the tool you recommend.
+- When a MyProfitPulse tool fits the question, name it specifically and say why: Break-Even Calculator, Cash Runway Calculator, Shortfall Recovery (on the Cash Runway & Shortfall Recovery page), Hiring Readiness, Goal Planning, Scenario Planning. All live under the Scenarios tab — say where to find the tool you recommend.
 - Keep replies to 2–3 short paragraphs at most.
 - Close with the most useful next move they can take this week.`;
 }

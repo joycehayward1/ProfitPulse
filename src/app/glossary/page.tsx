@@ -66,7 +66,7 @@ export default function GlossaryPage() {
             Glossary
           </h1>
           <p className="text-body text-text-muted mt-1">
-            Plain-English definitions of every number in Profit Pulse.
+            Plain-English definitions of every number in MyProfitPulse.
           </p>
         </div>
 
@@ -157,7 +157,7 @@ export default function GlossaryPage() {
                       {term.whereToFind && (
                         <div className="flex items-center gap-1.5 text-body-sm text-text-muted">
                           <Icon icon="ph:map-pin" className="w-4 h-4 flex-shrink-0" />
-                          <span>Find it in Profit Pulse:</span>
+                          <span>Find it in MyProfitPulse:</span>
                           {term.whereToFindHref ? (
                             <Link
                               href={term.whereToFindHref}

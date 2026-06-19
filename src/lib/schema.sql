@@ -1,4 +1,4 @@
--- ProfitPulse Database Schema
+-- MyProfitPulse Database Schema
 -- Creates all tables with Row Level Security (RLS) policies
 -- Users can only access their own data
 

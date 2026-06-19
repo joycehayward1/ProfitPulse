@@ -48,7 +48,7 @@ export function buildWeeklySummaryEmail(data: WeeklySummaryData): string {
     <!-- Header -->
     <div style="text-align: center; margin-bottom: 24px;">
       <h1 style="font-family: Georgia, serif; color: #2D2A26; font-size: 22px; margin: 0;">
-        ProfitPulse Weekly Summary
+        MyProfitPulse Weekly Summary
       </h1>
       <p style="color: #9A948E; font-size: 13px; margin: 8px 0 0;">
         Hi ${data.userName}, here's your business snapshot for this week.

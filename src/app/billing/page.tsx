@@ -76,7 +76,7 @@ export default function BillingPage() {
   const priceLabel = interval === "annual" ? "$49.99" : "$59.99";
   const priceSub = interval === "annual" ? "/month (billed annually)" : "/month";
   const planName =
-    interval === "annual" ? "ProfitPulse Pro Annual" : "ProfitPulse Pro Monthly";
+    interval === "annual" ? "MyProfitPulse Pro Annual" : "MyProfitPulse Pro Monthly";
 
   const switchTarget = interval === "annual" ? "monthly" : "annual";
   const switchLabel =

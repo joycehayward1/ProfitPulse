@@ -31,7 +31,7 @@ describe("AppLayout", () => {
         id: "test-user",
         email: "owner@profitpulse.test",
         name: "Test Owner",
-        profile: { business_name: "Profit Pulse Test Co." },
+        profile: { business_name: "MyProfitPulse Test Co." },
       },
       subscription: {
         id: "test-subscription",
@@ -68,7 +68,7 @@ describe("AppLayout", () => {
       </AppLayout>
     );
 
-    expect(screen.getAllByAltText("ProfitPulse").length).toBeGreaterThan(0);
+    expect(screen.getAllByAltText("MyProfitPulse").length).toBeGreaterThan(0);
   });
 
   it("renders all navigation items in sidebar", () => {

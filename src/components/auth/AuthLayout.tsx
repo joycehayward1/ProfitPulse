@@ -55,8 +55,8 @@ export function AuthLayout({
           {backHref && <BackLink href={backHref} label={backLabel} tone="light" />}
           <Link href="/">
             <Image
-              src="/full-logo.png"
-              alt="ProfitPulse"
+              src="/logoupdated-transparent61926.png"
+              alt="MyProfitPulse"
               width={900}
               height={200}
               className="h-[150px] md:h-[190px] w-auto drop-shadow-lg"
@@ -86,7 +86,7 @@ export function AuthLayout({
 
         <div className="relative z-10">
           <p className="text-small text-text-muted">
-            &copy; {new Date().getFullYear()} ProfitPulse
+            &copy; {new Date().getFullYear()} MyProfitPulse
           </p>
         </div>
       </div>
@@ -98,11 +98,11 @@ export function AuthLayout({
           {backHref && <BackLink href={backHref} label={backLabel} tone="dark" />}
           <Link href="/">
             <Image
-              src="/full-logo.png"
-              alt="ProfitPulse"
+              src="/logoupdated-transparent61926.png"
+              alt="MyProfitPulse"
               width={900}
               height={200}
-              className="h-[150px] md:h-[190px] w-auto"
+              className="h-[150px] w-auto"
             />
           </Link>
         </div>

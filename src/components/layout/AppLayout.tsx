@@ -294,11 +294,11 @@ export function AppLayout({ children, pulseMessage }: AppLayoutProps) {
         <div className="h-16 flex items-center px-5 border-b border-border-light">
           <Link href="/dashboard" className="flex items-center group">
             <Image
-              src="/full-logo.png"
-              alt="ProfitPulse"
+              src="/logoupdated-transparent61926.png"
+              alt="MyProfitPulse"
               width={900}
               height={200}
-              className="w-[160px] transition-opacity duration-150 group-hover:opacity-80"
+              className="w-[160px] h-auto transition-opacity duration-150 group-hover:opacity-80"
             />
           </Link>
         </div>
@@ -333,8 +333,8 @@ export function AppLayout({ children, pulseMessage }: AppLayoutProps) {
               </button>
               <Link href="/dashboard" className="flex items-center">
                 <Image
-                  src="/full-logo.png"
-                  alt="ProfitPulse"
+                  src="/logoupdated-transparent61926.png"
+                  alt="MyProfitPulse"
                   width={900}
                   height={200}
                   className="h-8 w-auto"
@@ -381,8 +381,8 @@ export function AppLayout({ children, pulseMessage }: AppLayoutProps) {
               <div className="flex items-center justify-between h-14 px-4 border-b border-border-light">
                 <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)}>
                   <Image
-                    src="/full-logo.png"
-                    alt="ProfitPulse"
+                    src="/logoupdated-transparent61926.png"
+                    alt="MyProfitPulse"
                     width={900}
                     height={200}
                     className="h-8 w-auto"

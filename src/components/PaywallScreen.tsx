@@ -16,7 +16,7 @@ interface PaywallScreenProps {
  */
 export function PaywallScreen({
   heading = "Your trial has ended",
-  subheading = "Subscribe to Pro to keep using ProfitPulse and unlock the full dashboard.",
+  subheading = "Subscribe to Pro to keep using MyProfitPulse and unlock the full dashboard.",
 }: PaywallScreenProps) {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-md py-xl">

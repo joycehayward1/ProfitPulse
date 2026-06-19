@@ -11,8 +11,8 @@ export default function TermsOfService() {
         <div className="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
             <Image
-              src="/full-logo.png"
-              alt="ProfitPulse"
+              src="/logoupdated-transparent61926.png"
+              alt="MyProfitPulse"
               width={900}
               height={200}
               className="h-28 md:h-32 w-auto"
@@ -41,14 +41,14 @@ export default function TermsOfService() {
           {/* Introduction */}
           <section>
             <p>
-              Welcome to ProfitPulse. These Terms of Service (&quot;Terms&quot;) and End User
-              License Agreement (&quot;EULA&quot;) govern your use of the ProfitPulse platform at
+              Welcome to MyProfitPulse. These Terms of Service (&quot;Terms&quot;) and End User
+              License Agreement (&quot;EULA&quot;) govern your use of the MyProfitPulse platform at
               myprofitpulse.app (&quot;Service&quot; or &quot;Application&quot;), operated by Fusion 4
               Business (&quot;Company,&quot; &quot;we,&quot; &quot;us,&quot; or &quot;our&quot;), a company registered in
               Bermuda.
             </p>
             <p className="mt-3">
-              By creating an account, connecting QuickBooks, or using ProfitPulse, you
+              By creating an account, connecting QuickBooks, or using MyProfitPulse, you
               agree to these Terms and the EULA below. If you don&apos;t agree, please
               don&apos;t use the Service.
             </p>
@@ -73,7 +73,7 @@ export default function TermsOfService() {
             <p>
               This End User License Agreement is a legally binding agreement between you
               (&quot;User,&quot; &quot;you,&quot; or &quot;your&quot;) and Fusion 4 Business for your use of the
-              ProfitPulse software application, including any QuickBooks Online integration
+              MyProfitPulse software application, including any QuickBooks Online integration
               features (collectively, the &quot;Application&quot;). By installing, accessing,
               registering for, or using the Application, you acknowledge that you have read,
               understood, and agree to be bound by this EULA and our{" "}
@@ -123,7 +123,7 @@ export default function TermsOfService() {
               C. QuickBooks Online Integration and Data Authorization
             </h3>
             <p>
-              If you choose to connect ProfitPulse to QuickBooks Online, you authorize
+              If you choose to connect MyProfitPulse to QuickBooks Online, you authorize
               Fusion 4 Business to access, retrieve, store, process, and display accounting
               and financial data from your connected QuickBooks company on your behalf,
               solely to provide the Application&apos;s features (such as dashboards, insights,
@@ -133,17 +133,17 @@ export default function TermsOfService() {
             </p>
             <p className="mt-3">
               You acknowledge that Intuit or its service providers may transfer data
-              between QuickBooks Online and ProfitPulse to enable this integration. You
+              between QuickBooks Online and MyProfitPulse to enable this integration. You
               represent that you have the authority to connect the QuickBooks company and
               to grant this access on behalf of that business.
             </p>
             <p className="mt-3">
               <strong className="text-text-primary">Revoking access.</strong> You may
-              disconnect QuickBooks at any time from your ProfitPulse Settings page, which
+              disconnect QuickBooks at any time from your MyProfitPulse Settings page, which
               stops future data syncs and removes stored OAuth tokens from our systems. You
-              may also revoke ProfitPulse&apos;s access from your Intuit account or QuickBooks
+              may also revoke MyProfitPulse&apos;s access from your Intuit account or QuickBooks
               App Center settings. Disconnecting may limit or disable features that depend
-              on QuickBooks data. Data previously imported into ProfitPulse remains in your
+              on QuickBooks data. Data previously imported into MyProfitPulse remains in your
               account until you delete it or close your account.
             </p>
             <p className="mt-3">
@@ -185,7 +185,7 @@ export default function TermsOfService() {
             </p>
             <p className="mt-3">
               <strong className="text-text-primary">
-                ProfitPulse is an independent application and is not affiliated with,
+                MyProfitPulse is an independent application and is not affiliated with,
                 sponsored by, or endorsed by Intuit Inc.
               </strong>{" "}
               QuickBooks and Intuit are registered trademarks of Intuit Inc. Fusion 4
@@ -268,9 +268,9 @@ export default function TermsOfService() {
               1. Account Registration and Eligibility
             </h2>
             <p>
-              To use ProfitPulse, you must create an account with accurate, complete
+              To use MyProfitPulse, you must create an account with accurate, complete
               information. You must be at least 18 years old and have the legal authority
-              to enter into these Terms. If you&apos;re using ProfitPulse on behalf of a
+              to enter into these Terms. If you&apos;re using MyProfitPulse on behalf of a
               business, you represent that you have the authority to bind that business to
               these Terms.
             </p>
@@ -293,7 +293,7 @@ export default function TermsOfService() {
             <h2 className="font-display text-display-sm text-text-primary mb-3">
               2. Subscription and Billing
             </h2>
-            <p>ProfitPulse is a paid subscription service. Here&apos;s how billing works:</p>
+            <p>MyProfitPulse is a paid subscription service. Here&apos;s how billing works:</p>
             <ul className="list-disc pl-6 mt-3 space-y-2">
               <li>
                 <strong className="text-text-primary">Free Trial.</strong> New accounts
@@ -388,7 +388,7 @@ export default function TermsOfService() {
               5. Acceptable Use
             </h2>
             <p>
-              You agree to use ProfitPulse only for its intended purpose: analyzing and
+              You agree to use MyProfitPulse only for its intended purpose: analyzing and
               understanding your own business&apos;s financial data. You may not:
             </p>
             <ul className="list-disc pl-6 mt-3 space-y-2">
@@ -414,7 +414,7 @@ export default function TermsOfService() {
             </h2>
             <p>
               You retain full ownership of all financial data and business information you
-              upload to ProfitPulse. By uploading data, you grant us a limited license to
+              upload to MyProfitPulse. By uploading data, you grant us a limited license to
               process, analyze, and display that data solely to provide the Service to you.
             </p>
             <p className="mt-3">
@@ -446,7 +446,7 @@ export default function TermsOfService() {
               7. QuickBooks / Intuit Integration
             </h2>
             <p>
-              ProfitPulse offers an optional integration with QuickBooks Online. The legal
+              MyProfitPulse offers an optional integration with QuickBooks Online. The legal
               terms governing that integration — including your data authorization, right to
               disconnect, third-party disclaimers, and Intuit third-party beneficiary
               provisions — are set out in the{" "}
@@ -456,9 +456,9 @@ export default function TermsOfService() {
               above.
             </p>
             <p className="mt-3">
-              In summary: connecting QuickBooks allows ProfitPulse to sync accounting data
+              In summary: connecting QuickBooks allows MyProfitPulse to sync accounting data
               to power your dashboard. You can disconnect at any time from Settings or from
-              your Intuit account. ProfitPulse is not affiliated with or endorsed by Intuit.
+              your Intuit account. MyProfitPulse is not affiliated with or endorsed by Intuit.
             </p>
           </section>
 
@@ -469,14 +469,14 @@ export default function TermsOfService() {
             </h2>
             <p>
               <strong className="text-text-primary">
-                ProfitPulse provides financial insights and analysis tools. It does not
+                MyProfitPulse provides financial insights and analysis tools. It does not
                 provide financial, tax, legal, or investment advice. No fiduciary or
                 advisory relationship is created by your use of the Service.
               </strong>
             </p>
             <p className="mt-3">
               The health scores, scenarios, projections, and recommendations generated by
-              ProfitPulse are produced by automated systems including artificial
+              MyProfitPulse are produced by automated systems including artificial
               intelligence. They are based on the data you provide and on general
               best-practice principles. They are intended as informational tools — not as
               the basis for significant financial decisions.
@@ -487,12 +487,12 @@ export default function TermsOfService() {
               responsible for verifying any AI-generated insight before acting on it. We
               recommend consulting with a qualified financial professional for specific
               financial decisions. We are not responsible for decisions made based on
-              ProfitPulse&apos;s output.
+              MyProfitPulse&apos;s output.
             </p>
             <p className="mt-3">
-              You own the AI-generated output that ProfitPulse displays in your account.
+              You own the AI-generated output that MyProfitPulse displays in your account.
               You may use it for your own business purposes. You may not redistribute
-              ProfitPulse-generated output as your own commercial product.
+              MyProfitPulse-generated output as your own commercial product.
             </p>
           </section>
 
@@ -502,14 +502,14 @@ export default function TermsOfService() {
               9. Intellectual Property
             </h2>
             <p>
-              The ProfitPulse platform&mdash;including its design, code, features, logo,
+              The MyProfitPulse platform&mdash;including its design, code, features, logo,
               brand, content, and proprietary algorithms&mdash;is owned by Fusion 4
               Business and protected by intellectual property laws. These Terms don&apos;t
               transfer any ownership rights to you.
             </p>
             <p className="mt-3">
               Your subscription grants you a personal, non-exclusive, non-transferable,
-              revocable license to use ProfitPulse for your business during your active
+              revocable license to use MyProfitPulse for your business during your active
               subscription period.
             </p>
           </section>
@@ -520,7 +520,7 @@ export default function TermsOfService() {
               10. Service Availability
             </h2>
             <p>
-              We work hard to keep ProfitPulse available and performant, but we don&apos;t
+              We work hard to keep MyProfitPulse available and performant, but we don&apos;t
               guarantee uninterrupted service. The Service may occasionally be unavailable
               due to maintenance, infrastructure issues, third-party outages (e.g., our
               hosting provider or payment processor), or events outside our reasonable
@@ -543,7 +543,7 @@ export default function TermsOfService() {
               To the maximum extent permitted by law, Fusion 4 Business and its
               directors, employees, agents, and service providers shall not be liable for
               any indirect, incidental, special, consequential, exemplary, or punitive
-              damages arising from your use of ProfitPulse — including, but not limited
+              damages arising from your use of MyProfitPulse — including, but not limited
               to, loss of profits, loss of revenue, loss of business opportunities, loss
               of goodwill, or loss of data.
             </p>
@@ -643,7 +643,7 @@ export default function TermsOfService() {
             <p>
               We may update these Terms from time to time. When we make significant
               changes, we&apos;ll notify you by email and through the Service at least 14
-              days before the changes take effect. Your continued use of ProfitPulse after
+              days before the changes take effect. Your continued use of MyProfitPulse after
               the changes become effective constitutes your acceptance of the updated
               Terms.
             </p>
@@ -662,7 +662,7 @@ export default function TermsOfService() {
               <li>
                 <strong className="text-text-primary">Entire Agreement.</strong> These
                 Terms and EULA, together with our Privacy Policy, constitute the entire
-                agreement between you and Fusion 4 Business regarding ProfitPulse.
+                agreement between you and Fusion 4 Business regarding MyProfitPulse.
               </li>
               <li>
                 <strong className="text-text-primary">Severability.</strong> If any

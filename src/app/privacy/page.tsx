@@ -11,8 +11,8 @@ export default function PrivacyPolicy() {
         <div className="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
             <Image
-              src="/full-logo.png"
-              alt="ProfitPulse"
+              src="/logoupdated-transparent61926.png"
+              alt="MyProfitPulse"
               width={900}
               height={200}
               className="h-28 md:h-32 w-auto"
@@ -41,13 +41,13 @@ export default function PrivacyPolicy() {
           {/* Introduction */}
           <section>
             <p>
-              At ProfitPulse, we take your privacy seriously. This Privacy Policy explains
+              At MyProfitPulse, we take your privacy seriously. This Privacy Policy explains
               what data we collect, how we use it, who we share it with, and what rights
-              you have. ProfitPulse is operated by Fusion 4 Business (&quot;Company,&quot;
+              you have. MyProfitPulse is operated by Fusion 4 Business (&quot;Company,&quot;
               &quot;we,&quot; &quot;us,&quot; or &quot;our&quot;), a company registered in Bermuda.
             </p>
             <p className="mt-3">
-              By using ProfitPulse at myprofitpulse.app, you agree to the practices
+              By using MyProfitPulse at myprofitpulse.app, you agree to the practices
               described in this policy. If you don&apos;t agree, please don&apos;t use the
               Service.
             </p>
@@ -119,7 +119,7 @@ export default function PrivacyPolicy() {
               Usage Data
             </h3>
             <ul className="list-disc pl-6 space-y-1">
-              <li>Pages visited and features used within ProfitPulse</li>
+              <li>Pages visited and features used within MyProfitPulse</li>
               <li>Browser type, device type, and operating system</li>
               <li>IP address and approximate location (country level)</li>
               <li>Session timestamps</li>
@@ -151,7 +151,7 @@ export default function PrivacyPolicy() {
               </li>
               <li>
                 <strong className="text-text-primary">Improving the Service.</strong>{" "}
-                Understanding how ProfitPulse is used so we can fix bugs, improve
+                Understanding how MyProfitPulse is used so we can fix bugs, improve
                 features, and build a better product. Aggregate analytics only — never
                 your specific financial figures.
               </li>
@@ -173,7 +173,7 @@ export default function PrivacyPolicy() {
               3. AI Processing and Automated Decision-Making
             </h2>
             <p>
-              ProfitPulse uses artificial intelligence (AI) to extract financial data from
+              MyProfitPulse uses artificial intelligence (AI) to extract financial data from
               your uploaded spreadsheets and to generate insights, health scores, and
               scenario projections.
             </p>
@@ -354,7 +354,7 @@ export default function PrivacyPolicy() {
             <ul className="list-disc pl-6 mt-3 space-y-2">
               <li>
                 <strong className="text-text-primary">Access.</strong> You can view all
-                your personal and financial data within ProfitPulse at any time through
+                your personal and financial data within MyProfitPulse at any time through
                 your dashboard and Settings page.
               </li>
               <li>
@@ -425,11 +425,11 @@ export default function PrivacyPolicy() {
               9. Children&apos;s Privacy
             </h2>
             <p>
-              ProfitPulse is a business tool designed for adults. The Service is not
+              MyProfitPulse is a business tool designed for adults. The Service is not
               intended for anyone under 18 years of age. We do not knowingly collect
               personal information from children. If we learn that we&apos;ve collected
               data from someone under 18, we will delete that information promptly.
-              ProfitPulse is not directed to children under 13, and we comply with COPPA
+              MyProfitPulse is not directed to children under 13, and we comply with COPPA
               by not knowingly collecting from anyone under that age.
             </p>
           </section>
@@ -442,7 +442,7 @@ export default function PrivacyPolicy() {
             <p>
               Fusion 4 Business is based in Bermuda. Our service providers process data
               in other jurisdictions, including the United States and the European Union.
-              By using ProfitPulse, you consent to your data being transferred to and
+              By using MyProfitPulse, you consent to your data being transferred to and
               processed in these locations.
             </p>
             <p className="mt-3">
@@ -496,7 +496,7 @@ export default function PrivacyPolicy() {
                 <strong className="text-text-primary">
                   Right to Object to Automated Decision-Making (Article 22).
                 </strong>{" "}
-                ProfitPulse uses AI to generate a financial health score and
+                MyProfitPulse uses AI to generate a financial health score and
                 recommendations. While we have designed these to be informational and
                 non-binding (we never use them to deny service or take adverse action),
                 you have the right to request human review of any automated output by

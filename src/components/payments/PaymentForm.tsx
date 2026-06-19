@@ -28,7 +28,7 @@ interface PaymentFormProps {
 /**
  * Credit card form backed by Accept.js.
  *
- * Card data never touches the ProfitPulse server — it's sent directly to
+ * Card data never touches the MyProfitPulse server — it's sent directly to
  * Authorize.net via `dispatchData`, which returns an opaque nonce.
  *
  * For now this component just console.logs the nonce. A future phase will

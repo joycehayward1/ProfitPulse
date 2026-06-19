@@ -102,7 +102,7 @@ function BillingHistory({ userId }: { userId?: string }) {
                     {new Date(r.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                   </td>
                   <td className="py-3 text-[#4B4B4B]">
-                    ProfitPulse Pro — {r.billing_interval}
+                    MyProfitPulse Pro — {r.billing_interval}
                   </td>
                   <td className="py-3 text-right font-semibold text-[#111111]">
                     ${parseFloat(r.amount).toFixed(2)}
@@ -759,7 +759,7 @@ function SettingsContent() {
                   <h3 className="text-[16px] font-semibold text-[#111111]">Want to see more integrations?</h3>
                 </div>
                 <p className="text-[13px] text-[#8B8B8B] mb-4">
-                  Tell us which platforms and business tools you&apos;d like to connect with ProfitPulse.
+                  Tell us which platforms and business tools you&apos;d like to connect with MyProfitPulse.
                 </p>
                 <button className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-[#E4E4E7] text-[13px] font-medium text-[#4B4B4B] hover:border-[#E65100] hover:text-[#E65100] transition-colors">
                   <Icon icon="ph:paper-plane-tilt-bold" className="w-4 h-4" />
@@ -888,7 +888,7 @@ function SettingsContent() {
                           </h3>
                           <p className="text-[13px] text-[#8B8B8B]">
                             {status === "trial" && "Free Trial"}
-                            {status === "active" && `ProfitPulse Pro — ${interval ?? ""}`}
+                            {status === "active" && `MyProfitPulse Pro — ${interval ?? ""}`}
                             {status === "canceled" && `Canceled — access until ${periodEnd}`}
                             {status === "past_due" && "Payment past due"}
                             {(status === "terminated" || status === "expired") &&

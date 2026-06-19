@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
       const profile = await ensureCustomerProfileWithPayment({
         merchantCustomerId: body.userId,
         email: body.customer?.email,
-        description: `ProfitPulse user ${body.userId}`,
+        description: `MyProfitPulse user ${body.userId}`,
         nonce: body.nonce!,
         billTo: {
           firstName: body.customer?.firstName,
@@ -137,7 +137,7 @@ export async function POST(request: NextRequest) {
         amount,
         customerProfileId,
         customerPaymentProfileId,
-        description: `ProfitPulse Pro — ${body.billingInterval} (first period)`,
+        description: `MyProfitPulse Pro — ${body.billingInterval} (first period)`,
         email: body.customer?.email,
       });
       transactionId = txn.transId;
@@ -178,7 +178,7 @@ export async function POST(request: NextRequest) {
         amount,
         customerProfileId,
         customerPaymentProfileId,
-        description: `ProfitPulse Pro — ${body.billingInterval} (resubscribe)`,
+        description: `MyProfitPulse Pro — ${body.billingInterval} (resubscribe)`,
         email: body.customer?.email,
       });
       transactionId = txn.transId;
@@ -246,7 +246,7 @@ export async function POST(request: NextRequest) {
         amount,
         status: "success",
         billing_interval: body.billingInterval,
-        description: `ProfitPulse Pro ${body.billingInterval}${
+        description: `MyProfitPulse Pro ${body.billingInterval}${
           promo === "launch" ? " (launch pricing)" : ""
         } — ${isResubscribe ? "resubscribe" : "first period"}`,
       });

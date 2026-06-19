@@ -1,5 +1,5 @@
 /**
- * ProfitPulse Database Schema Types
+ * MyProfitPulse Database Schema Types
  *
  * These types mirror the InsForge database tables.
  * All tables have RLS enabled — users can only access their own rows.

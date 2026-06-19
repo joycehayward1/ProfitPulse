@@ -27,7 +27,7 @@ jest.mock("@/contexts/AuthContext", () => ({
       name: "Test Owner",
       profile: {
         name: "Test Owner",
-        business_name: "Profit Pulse Test Co.",
+        business_name: "MyProfitPulse Test Co.",
         industry: "Services",
       },
     },

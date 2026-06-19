@@ -224,7 +224,7 @@ async function handleMonthlyToAnnual(args: SwitchArgs & { currentPeriodEnd?: Dat
       amount: chargeAmount,
       customerProfileId,
       customerPaymentProfileId: paymentProfileId,
-      description: `ProfitPulse Pro — upgrade to annual ($${credit} credit applied)`,
+      description: `MyProfitPulse Pro — upgrade to annual ($${credit} credit applied)`,
       invoiceNumber: anetInvoiceNumber("SW"),
     });
   } catch (err) {

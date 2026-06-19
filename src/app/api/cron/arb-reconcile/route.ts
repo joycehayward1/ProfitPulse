@@ -144,7 +144,7 @@ export async function GET(request: NextRequest) {
             amount,
             status: "success",
             billing_interval: billingInterval,
-            description: `ProfitPulse Pro ${billingInterval} — renewal (reconciled, payNum ${latest.payNum})`,
+            description: `MyProfitPulse Pro ${billingInterval} — renewal (reconciled, payNum ${latest.payNum})`,
           });
 
           results.push({
