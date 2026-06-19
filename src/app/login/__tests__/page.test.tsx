@@ -160,7 +160,7 @@ describe("LoginPage", () => {
 
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith(
-        "/verify-email?email=aki.b%40pentridgemedia.com&resend=1"
+        "/verify-email?email=aki.b%40pentridgemedia.com"
       );
     });
   });

@@ -68,9 +68,7 @@ function LoginPageContent() {
 
         if (isEmailVerificationError(error)) {
           setLoading(false);
-          router.push(
-            `/verify-email?email=${encodeURIComponent(email)}&resend=1`
-          );
+          router.push(`/verify-email?email=${encodeURIComponent(email)}`);
           return;
         }
 
