@@ -53,13 +53,13 @@ export function AuthLayout({
         {/* Content */}
         <div className="relative z-10">
           {backHref && <BackLink href={backHref} label={backLabel} tone="light" />}
-          <Link href="/">
+          <Link href="/" className="inline-flex max-w-full">
             <Image
               src="/logoupdated-transparent61926.png"
               alt="MyProfitPulse"
               width={907}
               height={249}
-              className="w-[280px] md:w-[320px] h-auto drop-shadow-lg"
+              className="h-12 xl:h-14 w-auto max-w-[280px] xl:max-w-[320px] object-contain drop-shadow-lg"
             />
           </Link>
         </div>
@@ -96,13 +96,13 @@ export function AuthLayout({
         {/* Mobile header */}
         <div className="lg:hidden px-md py-sm border-b border-[#F0EDE8]">
           {backHref && <BackLink href={backHref} label={backLabel} tone="dark" />}
-          <Link href="/">
+          <Link href="/" className="inline-flex max-w-[200px]">
             <Image
               src="/logoupdated-transparent61926.png"
               alt="MyProfitPulse"
               width={907}
               height={249}
-              className="w-[200px] h-auto"
+              className="h-10 w-auto max-w-full object-contain"
             />
           </Link>
         </div>

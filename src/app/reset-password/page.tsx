@@ -140,12 +140,12 @@ function ResetPasswordForm() {
     );
   }
 
-  // No token — show message to request a new reset link
+  // No token — send user back to request a new reset code
   if (!token) {
     return (
       <AuthLayout
-        heading="Invalid or expired link"
-        subheading="This password reset link is no longer valid. Please request a new one."
+        heading="Reset session expired"
+        subheading="Start again from the forgot password page and enter the 6-digit code from your email."
         footerText="Remember your password?"
         footerLinkText="Log in"
         footerLinkHref="/login"
@@ -173,7 +173,7 @@ function ResetPasswordForm() {
             fullWidth
             size="lg"
           >
-            Request New Link
+            Request New Code
           </Button>
         </div>
       </AuthLayout>

@@ -1,17 +1,21 @@
 "use client";
 
 import { useState, FormEvent } from "react";
+import { useRouter } from "next/navigation";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { Button, Input, useToast } from "@/components/ui";
 
 export default function ForgotPasswordPage() {
+  const router = useRouter();
   const { showToast } = useToast();
   const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
   const [sent, setSent] = useState(false);
 
-  async function handleSubmit(e: FormEvent) {
+  async function handleSendEmail(e: FormEvent) {
     e.preventDefault();
 
     if (!email.trim()) {
@@ -40,10 +44,71 @@ export default function ForgotPasswordPage() {
       }
 
       setSent(true);
-      showToast("success", "Reset link sent! Check your email.");
+      setLoading(false);
+      showToast("success", "Reset code sent! Check your email.");
     } catch {
       setError("Something went wrong. Please try again.");
-      showToast("error", "Failed to send reset link. Please try again.");
+      showToast("error", "Failed to send reset code. Please try again.");
+      setLoading(false);
+    }
+  }
+
+  async function handleResendCode() {
+    setResending(true);
+    setError("");
+
+    try {
+      const { getInsForgeClient } = await import("@/lib/insforge");
+      const client = getInsForgeClient();
+      const { error: authError } = await client.auth.sendResetPasswordEmail({
+        email,
+      });
+
+      if (authError) {
+        setError("Failed to resend code. Please try again.");
+      } else {
+        showToast("success", "A new reset code has been sent.");
+      }
+    } catch {
+      setError("Failed to resend code. Please try again.");
+    } finally {
+      setResending(false);
+    }
+  }
+
+  async function handleVerifyCode(e: FormEvent) {
+    e.preventDefault();
+
+    if (!code.trim()) {
+      setError("Please enter the reset code");
+      return;
+    }
+    if (code.length !== 6) {
+      setError("Code must be 6 digits");
+      return;
+    }
+
+    setError("");
+    setLoading(true);
+
+    try {
+      const { getInsForgeClient } = await import("@/lib/insforge");
+      const client = getInsForgeClient();
+      const { data, error: exchangeError } =
+        await client.auth.exchangeResetPasswordToken({
+          email,
+          code,
+        });
+
+      if (exchangeError || !data?.token) {
+        setError("Invalid or expired code. Please try again.");
+        setLoading(false);
+        return;
+      }
+
+      router.push(`/reset-password?token=${encodeURIComponent(data.token)}`);
+    } catch {
+      setError("Something went wrong. Please try again.");
       setLoading(false);
     }
   }
@@ -51,42 +116,64 @@ export default function ForgotPasswordPage() {
   if (sent) {
     return (
       <AuthLayout
-        heading="Check your email"
-        subheading={`We sent a password reset link to ${email}. It may take a minute to arrive.`}
+        heading="Enter your reset code"
+        subheading={`We sent a 6-digit code to ${email}. Enter it below to choose a new password.`}
         footerText="Remember your password?"
         footerLinkText="Log in"
         footerLinkHref="/login"
       >
-        <div className="text-center space-y-md">
-          {/* Mail icon */}
-          <div className="mx-auto w-16 h-16 rounded-full bg-orange/10 flex items-center justify-center">
-            <svg
-              width="28"
-              height="28"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="#E65100"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <rect width="20" height="16" x="2" y="4" rx="2" />
-              <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
-            </svg>
-          </div>
-          <p className="text-body text-text-secondary">
-            Didn&apos;t get the email? Check your spam folder or try again.
-          </p>
-          <Button
-            variant="secondary"
-            onClick={() => {
-              setSent(false);
-              setLoading(false);
+        <form onSubmit={handleVerifyCode} noValidate className="space-y-sm">
+          {error && (
+            <div className="p-sm rounded-md bg-error/5 border border-error/20">
+              <p className="text-body text-error">{error}</p>
+            </div>
+          )}
+
+          <Input
+            label="Reset code"
+            type="text"
+            placeholder="000000"
+            value={code}
+            onChange={(e) => {
+              const value = e.target.value.replace(/\D/g, "").slice(0, 6);
+              setCode(value);
+              if (error) setError("");
             }}
-          >
-            Try again
-          </Button>
-        </div>
+            required
+            autoComplete="one-time-code"
+            maxLength={6}
+            autoFocus
+          />
+
+          <div className="pt-xs">
+            <Button type="submit" fullWidth loading={loading} size="lg">
+              Continue
+            </Button>
+          </div>
+
+          <div className="flex flex-col items-center gap-sm text-center">
+            <button
+              type="button"
+              onClick={handleResendCode}
+              disabled={resending}
+              className="text-small text-orange hover:underline disabled:opacity-50"
+            >
+              {resending ? "Sending..." : "Resend code"}
+            </button>
+            <Button
+              type="button"
+              variant="secondary"
+              fullWidth
+              onClick={() => {
+                setSent(false);
+                setCode("");
+                setError("");
+              }}
+            >
+              Use a different email
+            </Button>
+          </div>
+        </form>
       </AuthLayout>
     );
   }
@@ -94,12 +181,12 @@ export default function ForgotPasswordPage() {
   return (
     <AuthLayout
       heading="Reset your password"
-      subheading="Enter your email and we'll send you a link to get back in."
+      subheading="Enter your email and we'll send you a 6-digit code to get back in."
       footerText="Remember your password?"
       footerLinkText="Log in"
       footerLinkHref="/login"
     >
-      <form onSubmit={handleSubmit} noValidate className="space-y-sm">
+      <form onSubmit={handleSendEmail} noValidate className="space-y-sm">
         {error && (
           <div className="p-sm rounded-md bg-error/5 border border-error/20">
             <p className="text-body text-error">{error}</p>
@@ -121,13 +208,8 @@ export default function ForgotPasswordPage() {
         />
 
         <div className="pt-xs">
-          <Button
-            type="submit"
-            fullWidth
-            loading={loading}
-            size="lg"
-          >
-            Send Reset Link
+          <Button type="submit" fullWidth loading={loading} size="lg">
+            Send Reset Code
           </Button>
         </div>
       </form>

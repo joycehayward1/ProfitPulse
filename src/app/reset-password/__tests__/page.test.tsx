@@ -54,21 +54,21 @@ describe("ResetPasswordPage", () => {
     render(<ResetPasswordPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("Invalid or expired link")).toBeInTheDocument();
+      expect(screen.getByText("Reset session expired")).toBeInTheDocument();
     });
-    expect(screen.getByRole("button", { name: /request new link/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /request new code/i })).toBeInTheDocument();
   });
 
-  it("navigates to forgot-password when clicking Request New Link", async () => {
+  it("navigates to forgot-password when clicking Request New Code", async () => {
     mockGet.mockReturnValue(null);
 
     render(<ResetPasswordPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("Invalid or expired link")).toBeInTheDocument();
+      expect(screen.getByText("Reset session expired")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /request new link/i }));
+    fireEvent.click(screen.getByRole("button", { name: /request new code/i }));
     expect(mockPush).toHaveBeenCalledWith("/forgot-password");
   });
 

@@ -6,8 +6,9 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import ForgotPasswordPage from "../page";
 
 // Mock next/navigation
+const mockPush = jest.fn();
 jest.mock("next/navigation", () => ({
-  useRouter: () => ({ push: jest.fn() }),
+  useRouter: () => ({ push: mockPush }),
 }));
 
 // Mock next/image
@@ -19,10 +20,12 @@ jest.mock("next/image", () => ({
 
 // Mock InsForge client
 const mockSendReset = jest.fn();
+const mockExchangeReset = jest.fn();
 jest.mock("@/lib/insforge", () => ({
   getInsForgeClient: () => ({
     auth: {
       sendResetPasswordEmail: mockSendReset,
+      exchangeResetPasswordToken: mockExchangeReset,
     },
   }),
 }));
@@ -47,13 +50,13 @@ describe("ForgotPasswordPage", () => {
 
     expect(screen.getByText("Reset your password")).toBeInTheDocument();
     expect(screen.getByLabelText(/email address/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /send reset link/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /send reset code/i })).toBeInTheDocument();
   });
 
   it("shows validation error for empty email", async () => {
     render(<ForgotPasswordPage />);
 
-    fireEvent.click(screen.getByRole("button", { name: /send reset link/i }));
+    fireEvent.click(screen.getByRole("button", { name: /send reset code/i }));
 
     await waitFor(() => {
       expect(screen.getAllByText("Email is required").length).toBeGreaterThan(0);
@@ -66,7 +69,7 @@ describe("ForgotPasswordPage", () => {
     fireEvent.change(screen.getByLabelText(/email address/i), {
       target: { value: "not-valid" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /send reset link/i }));
+    fireEvent.click(screen.getByRole("button", { name: /send reset code/i }));
 
     await waitFor(() => {
       expect(screen.getByText("Please enter a valid email address")).toBeInTheDocument();
@@ -81,14 +84,14 @@ describe("ForgotPasswordPage", () => {
     fireEvent.change(screen.getByLabelText(/email address/i), {
       target: { value: "test@business.com" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /send reset link/i }));
+    fireEvent.click(screen.getByRole("button", { name: /send reset code/i }));
 
     await waitFor(() => {
       expect(mockSendReset).toHaveBeenCalledWith({ email: "test@business.com" });
     });
   });
 
-  it("shows 'Check your email' state after successful send", async () => {
+  it("shows code entry after successful send", async () => {
     mockSendReset.mockResolvedValue({ data: {}, error: null });
 
     render(<ForgotPasswordPage />);
@@ -96,11 +99,46 @@ describe("ForgotPasswordPage", () => {
     fireEvent.change(screen.getByLabelText(/email address/i), {
       target: { value: "test@business.com" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /send reset link/i }));
+    fireEvent.click(screen.getByRole("button", { name: /send reset code/i }));
 
     await waitFor(() => {
-      expect(screen.getByText("Check your email")).toBeInTheDocument();
+      expect(screen.getByText("Enter your reset code")).toBeInTheDocument();
+      expect(screen.getByLabelText(/reset code/i)).toBeInTheDocument();
       expect(screen.getByText(/test@business.com/)).toBeInTheDocument();
+    });
+  });
+
+  it("exchanges code and navigates to reset-password", async () => {
+    mockSendReset.mockResolvedValue({ data: {}, error: null });
+    mockExchangeReset.mockResolvedValue({
+      data: { token: "reset-token-123" },
+      error: null,
+    });
+
+    render(<ForgotPasswordPage />);
+
+    fireEvent.change(screen.getByLabelText(/email address/i), {
+      target: { value: "test@business.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /send reset code/i }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/reset code/i)).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText(/reset code/i), {
+      target: { value: "123456" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /continue/i }));
+
+    await waitFor(() => {
+      expect(mockExchangeReset).toHaveBeenCalledWith({
+        email: "test@business.com",
+        code: "123456",
+      });
+      expect(mockPush).toHaveBeenCalledWith(
+        "/reset-password?token=reset-token-123"
+      );
     });
   });
 
@@ -112,10 +150,10 @@ describe("ForgotPasswordPage", () => {
     fireEvent.change(screen.getByLabelText(/email address/i), {
       target: { value: "test@business.com" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /send reset link/i }));
+    fireEvent.click(screen.getByRole("button", { name: /send reset code/i }));
 
     await waitFor(() => {
-      expect(mockShowToast).toHaveBeenCalledWith("success", "Reset link sent! Check your email.");
+      expect(mockShowToast).toHaveBeenCalledWith("success", "Reset code sent! Check your email.");
     });
   });
 
@@ -127,13 +165,13 @@ describe("ForgotPasswordPage", () => {
     fireEvent.change(screen.getByLabelText(/email address/i), {
       target: { value: "test@business.com" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /send reset link/i }));
+    fireEvent.click(screen.getByRole("button", { name: /send reset code/i }));
 
     await waitFor(() => {
-      expect(screen.getByText("Check your email")).toBeInTheDocument();
+      expect(screen.getByText("Enter your reset code")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /try again/i }));
+    fireEvent.click(screen.getByRole("button", { name: /use a different email/i }));
 
     expect(screen.getByText("Reset your password")).toBeInTheDocument();
   });
@@ -149,7 +187,7 @@ describe("ForgotPasswordPage", () => {
     fireEvent.change(screen.getByLabelText(/email address/i), {
       target: { value: "test@business.com" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /send reset link/i }));
+    fireEvent.click(screen.getByRole("button", { name: /send reset code/i }));
 
     await waitFor(() => {
       expect(screen.getByText("User not found")).toBeInTheDocument();
