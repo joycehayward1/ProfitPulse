@@ -49,36 +49,6 @@ function VerifyEmailContent() {
     void sendCode();
   }, [email, shouldAutoResend]);
 
-  // Magic-link verification: /verify-email?otp=<token>
-  useEffect(() => {
-    const token = searchParams.get("otp") || searchParams.get("token");
-    if (!token) return;
-
-    async function verifyLink() {
-      setLoading(true);
-      setError("");
-      try {
-        const { getInsForgeClient } = await import("@/lib/insforge");
-        const client = getInsForgeClient();
-        const { data, error: verifyError } = await client.auth.verifyEmail({ otp: token });
-
-        if (verifyError) {
-          setError("This verification link is invalid or expired.");
-          setLoading(false);
-          return;
-        }
-
-        await refreshUser();
-        router.push(data?.redirectTo || "/dashboard");
-      } catch {
-        setError("Something went wrong verifying your email.");
-        setLoading(false);
-      }
-    }
-
-    void verifyLink();
-  }, [searchParams, refreshUser, router]);
-
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
 
