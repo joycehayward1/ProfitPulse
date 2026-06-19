@@ -6,6 +6,7 @@ import Link from "next/link";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { Button, Input } from "@/components/ui";
 import { useAuth } from "@/contexts/AuthContext";
+import { isEmailVerificationError } from "@/lib/auth-errors";
 
 interface FormErrors {
   email?: string;
@@ -65,12 +66,11 @@ function LoginPageContent() {
       if (error) {
         console.error("Login error:", error);
 
-        // Check if it's an email verification error
-        if (error.message?.toLowerCase().includes("verify") || error.message?.toLowerCase().includes("unverified")) {
-          setErrors({ general: "Please verify your email address first." });
+        if (isEmailVerificationError(error)) {
           setLoading(false);
-          // Redirect to verification page
-          setTimeout(() => router.push(`/verify-email?email=${encodeURIComponent(email)}`), 2000);
+          router.push(
+            `/verify-email?email=${encodeURIComponent(email)}&resend=1`
+          );
           return;
         }
 

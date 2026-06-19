@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, FormEvent, Suspense } from "react";
+import { useState, FormEvent, Suspense, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { Button, Input } from "@/components/ui";
@@ -11,11 +11,73 @@ function VerifyEmailContent() {
   const searchParams = useSearchParams();
   const { refreshUser } = useAuth();
   const email = searchParams.get("email") || "";
+  const shouldAutoResend = searchParams.get("resend") === "1";
 
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
+  const autoResendStarted = useRef(false);
+
+  useEffect(() => {
+    if (!email || !shouldAutoResend || autoResendStarted.current) return;
+    autoResendStarted.current = true;
+
+    async function sendCode() {
+      setResending(true);
+      setError("");
+      try {
+        const { getInsForgeClient } = await import("@/lib/insforge");
+        const client = getInsForgeClient();
+        const { error: resendError } = await client.auth.resendVerificationEmail({
+          email,
+        });
+
+        if (resendError) {
+          setError("Could not send a verification code. Use Resend code below.");
+        } else {
+          setInfo("We sent a new 6-digit code to your email.");
+        }
+      } catch {
+        setError("Could not send a verification code. Use Resend code below.");
+      } finally {
+        setResending(false);
+      }
+    }
+
+    void sendCode();
+  }, [email, shouldAutoResend]);
+
+  // Magic-link verification: /verify-email?otp=<token>
+  useEffect(() => {
+    const token = searchParams.get("otp") || searchParams.get("token");
+    if (!token) return;
+
+    async function verifyLink() {
+      setLoading(true);
+      setError("");
+      try {
+        const { getInsForgeClient } = await import("@/lib/insforge");
+        const client = getInsForgeClient();
+        const { data, error: verifyError } = await client.auth.verifyEmail({ otp: token });
+
+        if (verifyError) {
+          setError("This verification link is invalid or expired.");
+          setLoading(false);
+          return;
+        }
+
+        await refreshUser();
+        router.push(data?.redirectTo || "/dashboard");
+      } catch {
+        setError("Something went wrong verifying your email.");
+        setLoading(false);
+      }
+    }
+
+    void verifyLink();
+  }, [searchParams, refreshUser, router]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -80,7 +142,7 @@ function VerifyEmailContent() {
         setError("Failed to resend code. Please try again.");
       } else {
         setError("");
-        alert("A new verification code has been sent to your email!");
+        setInfo("A new verification code has been sent to your email.");
       }
     } catch {
       setError("Something went wrong. Please try again.");
@@ -98,6 +160,11 @@ function VerifyEmailContent() {
       footerLinkHref="/signup"
     >
       <form onSubmit={handleSubmit} noValidate className="space-y-sm">
+        {info && (
+          <div className="p-sm rounded-md bg-success/5 border border-success/20">
+            <p className="text-body text-success">{info}</p>
+          </div>
+        )}
         {error && (
           <div className="p-sm rounded-md bg-error/5 border border-error/20">
             <p className="text-body text-error">{error}</p>

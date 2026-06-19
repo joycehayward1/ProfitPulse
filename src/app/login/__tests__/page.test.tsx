@@ -141,6 +141,30 @@ describe("LoginPage", () => {
     });
   });
 
+  it("redirects to verify-email when verification is required", async () => {
+    mockSignIn.mockResolvedValue({
+      data: null,
+      error: { message: "Email verification required" },
+    });
+
+    render(<LoginPage />);
+
+    fireEvent.change(screen.getByLabelText(/email address/i), {
+      target: { value: "aki.b@pentridgemedia.com" },
+    });
+    fireEvent.change(screen.getByLabelText(/^password/i), {
+      target: { value: "password123" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /log in/i }));
+
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith(
+        "/verify-email?email=aki.b%40pentridgemedia.com&resend=1"
+      );
+    });
+  });
+
   it("has a forgot password link", () => {
     render(<LoginPage />);
     const link = screen.getByRole("link", { name: /forgot password/i });
