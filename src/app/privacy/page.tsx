@@ -13,9 +13,9 @@ export default function PrivacyPolicy() {
             <Image
               src="/logoupdated-transparent61926.png"
               alt="MyProfitPulse"
-              width={900}
-              height={200}
-              className="h-28 md:h-32 w-auto"
+              width={907}
+              height={249}
+              className="w-[200px] md:w-[240px] h-auto"
               priority
             />
           </Link>

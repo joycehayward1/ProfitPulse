@@ -296,8 +296,8 @@ export function AppLayout({ children, pulseMessage }: AppLayoutProps) {
             <Image
               src="/logoupdated-transparent61926.png"
               alt="MyProfitPulse"
-              width={900}
-              height={200}
+              width={907}
+              height={249}
               className="w-[160px] h-auto transition-opacity duration-150 group-hover:opacity-80"
             />
           </Link>
@@ -335,9 +335,9 @@ export function AppLayout({ children, pulseMessage }: AppLayoutProps) {
                 <Image
                   src="/logoupdated-transparent61926.png"
                   alt="MyProfitPulse"
-                  width={900}
-                  height={200}
-                  className="h-8 w-auto"
+                  width={907}
+                  height={249}
+                  className="w-[120px] h-auto"
                 />
               </Link>
             </div>
@@ -383,9 +383,9 @@ export function AppLayout({ children, pulseMessage }: AppLayoutProps) {
                   <Image
                     src="/logoupdated-transparent61926.png"
                     alt="MyProfitPulse"
-                    width={900}
-                    height={200}
-                    className="h-8 w-auto"
+                    width={907}
+                    height={249}
+                    className="w-[120px] h-auto"
                   />
                 </Link>
                 <button

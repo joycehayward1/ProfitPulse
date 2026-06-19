@@ -57,9 +57,9 @@ export function AuthLayout({
             <Image
               src="/logoupdated-transparent61926.png"
               alt="MyProfitPulse"
-              width={900}
-              height={200}
-              className="h-[150px] md:h-[190px] w-auto drop-shadow-lg"
+              width={907}
+              height={249}
+              className="w-[280px] md:w-[320px] h-auto drop-shadow-lg"
             />
           </Link>
         </div>
@@ -100,9 +100,9 @@ export function AuthLayout({
             <Image
               src="/logoupdated-transparent61926.png"
               alt="MyProfitPulse"
-              width={900}
-              height={200}
-              className="h-[150px] w-auto"
+              width={907}
+              height={249}
+              className="w-[200px] h-auto"
             />
           </Link>
         </div>

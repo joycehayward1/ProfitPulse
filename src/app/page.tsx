@@ -709,13 +709,13 @@ export default function LandingPage() {
           1. HEADER (sticky)
           ================================================================ */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-b from-[#2D2A26]/80 via-[#2D2A26]/40 to-transparent backdrop-blur-[2px]">
-        <nav className="max-w-6xl mx-auto px-sm md:px-lg flex items-center justify-between h-[110px]">
+        <nav className="max-w-6xl mx-auto px-sm md:px-lg flex items-center justify-between gap-md h-[110px]">
           <Image
             src="/logoupdated-transparent61926.png"
             alt="MyProfitPulse"
-            width={900}
-            height={200}
-            className="h-[150px] md:h-[190px] w-auto"
+            width={907}
+            height={249}
+            className="h-14 md:h-16 w-auto shrink-0 object-contain"
             priority
           />
 
@@ -1470,9 +1470,9 @@ export default function LandingPage() {
               <Image
                 src="/logoupdated-transparent61926.png"
                 alt="MyProfitPulse"
-                width={280}
-                height={77}
-                className="h-[56px] w-auto opacity-40"
+                width={907}
+                height={249}
+                className="w-[180px] md:w-[200px] h-auto opacity-40"
               />
               <span className="font-body text-body text-white/30">
                 &copy; 2026 MyProfitPulse. All rights reserved.
