@@ -117,6 +117,17 @@ function SignUpPageContent() {
         return;
       }
 
+      // Sync contact to Go High Level for CRM tagging (non-blocking)
+      try {
+        await fetch("/api/auth/sync-ghl-contact", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, fullName }),
+        });
+      } catch (ghlError) {
+        console.error("Failed to sync signup to Go High Level:", ghlError);
+      }
+
       // After signup, persist business info on the profile row.
       // profiles has UNIQUE(user_id) and the row may not exist yet, so upsert.
       if (data?.user) {
