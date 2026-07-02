@@ -725,7 +725,7 @@ export default function LandingPage() {
               </a>
             ))}
             <Button size="sm" onClick={() => router.push("/signup")}>
-              Get Started
+              Get Started For Free
             </Button>
           </div>
 
@@ -760,7 +760,7 @@ export default function LandingPage() {
                 router.push("/signup");
               }}
             >
-              Get Started
+              Get Started For Free
             </Button>
           </div>
         )}
@@ -1385,7 +1385,7 @@ export default function LandingPage() {
               Setup takes under 5 minutes. No credit card required.
             </p>
             <Button size="lg" onClick={() => router.push("/signup")}>
-              Get Started Free
+              Get Started For Free
             </Button>
           </RevealSection>
         </div>
