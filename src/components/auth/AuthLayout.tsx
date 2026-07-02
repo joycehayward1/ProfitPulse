@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { BrandLogo } from "@/components/BrandLogo";
 
 interface AuthLayoutProps {
   children: React.ReactNode;
@@ -54,13 +55,7 @@ export function AuthLayout({
         <div className="relative z-10">
           {backHref && <BackLink href={backHref} label={backLabel} tone="light" />}
           <Link href="/" className="inline-flex max-w-full">
-            <Image
-              src="/logoupdated-transparent61926.png"
-              alt="MyProfitPulse"
-              width={907}
-              height={249}
-              className="h-12 xl:h-14 w-auto max-w-[280px] xl:max-w-[320px] object-contain drop-shadow-lg"
-            />
+            <BrandLogo size="auth-desktop" />
           </Link>
         </div>
 
@@ -97,13 +92,7 @@ export function AuthLayout({
         <div className="lg:hidden px-md py-sm border-b border-[#F0EDE8]">
           {backHref && <BackLink href={backHref} label={backLabel} tone="dark" />}
           <Link href="/" className="inline-flex max-w-[200px]">
-            <Image
-              src="/logoupdated-transparent61926.png"
-              alt="MyProfitPulse"
-              width={907}
-              height={249}
-              className="h-10 w-auto max-w-full object-contain"
-            />
+            <BrandLogo size="auth-mobile" />
           </Link>
         </div>
 

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { BrandLogo } from "@/components/BrandLogo";
 import { Button, Card } from "@/components/ui";
 import {
   GLOSSARY_CATEGORIES,
@@ -710,14 +711,7 @@ export default function LandingPage() {
           ================================================================ */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-b from-[#2D2A26]/80 via-[#2D2A26]/40 to-transparent backdrop-blur-[2px]">
         <nav className="max-w-6xl mx-auto px-sm md:px-lg flex items-center justify-between gap-md h-[110px]">
-          <Image
-            src="/logoupdated-transparent61926.png"
-            alt="MyProfitPulse"
-            width={907}
-            height={249}
-            className="h-14 md:h-16 w-auto shrink-0 object-contain"
-            priority
-          />
+          <BrandLogo size="landing" priority />
 
           {/* Desktop nav */}
           <div className="hidden lg:flex items-center gap-lg">
@@ -1467,13 +1461,7 @@ export default function LandingPage() {
           {/* Bottom bar */}
           <div className="border-t border-white/10 pt-lg flex flex-col md:flex-row items-center justify-between gap-md">
             <div className="flex items-center gap-sm">
-              <Image
-                src="/logoupdated-transparent61926.png"
-                alt="MyProfitPulse"
-                width={907}
-                height={249}
-                className="w-[180px] md:w-[200px] h-auto opacity-40"
-              />
+              <BrandLogo size="landing-footer" />
               <span className="font-body text-body text-white/30">
                 &copy; 2026 MyProfitPulse. All rights reserved.
               </span>

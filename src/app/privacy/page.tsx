@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
+import { BrandLogo } from "@/components/BrandLogo";
 
 export default function PrivacyPolicy() {
   return (
@@ -10,14 +10,7 @@ export default function PrivacyPolicy() {
       <header className="border-b border-border bg-surface">
         <div className="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <Image
-              src="/logoupdated-transparent61926.png"
-              alt="MyProfitPulse"
-              width={907}
-              height={249}
-              className="w-[200px] md:w-[240px] h-auto"
-              priority
-            />
+            <BrandLogo size="legal" priority />
           </Link>
           <Link
             href="/"

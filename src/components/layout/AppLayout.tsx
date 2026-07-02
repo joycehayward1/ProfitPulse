@@ -3,6 +3,7 @@
 import { useState, useEffect, ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { BrandLogo } from "@/components/BrandLogo";
 import { usePathname, useRouter } from "next/navigation";
 import { Icon } from "@iconify/react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -293,13 +294,7 @@ export function AppLayout({ children, pulseMessage }: AppLayoutProps) {
         {/* Logo */}
         <div className="h-16 flex items-center px-5 border-b border-border-light">
           <Link href="/dashboard" className="flex items-center group">
-            <Image
-              src="/logoupdated-transparent61926.png"
-              alt="MyProfitPulse"
-              width={907}
-              height={249}
-              className="w-[160px] h-auto transition-opacity duration-150 group-hover:opacity-80"
-            />
+            <BrandLogo size="sidebar" />
           </Link>
         </div>
 
@@ -332,13 +327,7 @@ export function AppLayout({ children, pulseMessage }: AppLayoutProps) {
                 />
               </button>
               <Link href="/dashboard" className="flex items-center">
-                <Image
-                  src="/logoupdated-transparent61926.png"
-                  alt="MyProfitPulse"
-                  width={907}
-                  height={249}
-                  className="w-[120px] h-auto"
-                />
+                <BrandLogo size="sidebar-mobile" />
               </Link>
             </div>
 
@@ -380,13 +369,7 @@ export function AppLayout({ children, pulseMessage }: AppLayoutProps) {
             >
               <div className="flex items-center justify-between h-14 px-4 border-b border-border-light">
                 <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)}>
-                  <Image
-                    src="/logoupdated-transparent61926.png"
-                    alt="MyProfitPulse"
-                    width={907}
-                    height={249}
-                    className="w-[120px] h-auto"
-                  />
+                  <BrandLogo size="sidebar-mobile" />
                 </Link>
                 <button
                   onClick={() => setMobileMenuOpen(false)}
