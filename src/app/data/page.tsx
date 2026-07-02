@@ -259,6 +259,48 @@ const SNAPSHOT_SECTIONS: Array<{
   },
 ];
 
+const EXPENSE_BREAKDOWN_FIELDS: Array<{
+  key: "rent" | "payroll" | "supplies" | "marketing" | "other";
+  label: string;
+}> = [
+  { key: "rent", label: "Rent" },
+  { key: "payroll", label: "Payroll" },
+  { key: "supplies", label: "Supplies" },
+  { key: "marketing", label: "Marketing" },
+  { key: "other", label: "Other" },
+];
+
+interface DetailRow {
+  label: string;
+  display: string;
+  csv: string;
+}
+
+interface DetailSection {
+  title: string;
+  rows: DetailRow[];
+}
+
+function csvEscape(value: string) {
+  if (/[",\n]/.test(value)) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
+}
+
+function triggerCsvDownload(filename: string, rows: string[][]) {
+  const content = rows.map((row) => row.map(csvEscape).join(",")).join("\n");
+  const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 function DataContent() {
   const { user } = useRequireAuth();
   const searchParams = useSearchParams();
@@ -316,6 +358,8 @@ function DataContent() {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [qbDisconnecting, setQbDisconnecting] = useState(false);
   const [deletingEntryId, setDeletingEntryId] = useState<string | null>(null);
+  const [viewingEntry, setViewingEntry] = useState<HistoryEntry | null>(null);
+  const [rawSnapshots, setRawSnapshots] = useState<Record<string, FinancialSnapshot>>({});
   const quickBooksModeLocked = false; // QB disabled — coming soon
 
   // AI Upload States
@@ -461,7 +505,7 @@ function DataContent() {
       .select("*")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
-      .limit(20);
+      .limit(60);
 
     if (snapError) {
       console.error("Error loading financial_snapshots history:", snapError);
@@ -469,6 +513,15 @@ function DataContent() {
 
     const allEntries: HistoryEntry[] = (snapData || []).map((row) =>
       mapSnapshotToHistoryEntry(row as FinancialSnapshot)
+    );
+
+    setRawSnapshots(
+      Object.fromEntries(
+        (snapData || []).map((row) => {
+          const snapshot = row as FinancialSnapshot;
+          return [snapshot.id, snapshot];
+        })
+      )
     );
 
     setHistoryEntries(allEntries);
@@ -729,6 +782,16 @@ function DataContent() {
     }
   }, [activeTab, quickBooksModeLocked]);
 
+  // Close the period detail modal on Escape
+  useEffect(() => {
+    if (!viewingEntry) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setViewingEntry(null);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [viewingEntry]);
+
   function getCurrentPeriod() {
     const now = new Date();
     const year = now.getFullYear();
@@ -763,6 +826,150 @@ function DataContent() {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount);
+  }
+
+  function currencyRow(label: string, value: number): DetailRow {
+    return {
+      label,
+      display: formatCurrency(value),
+      csv: String(Math.round(value * 100) / 100),
+    };
+  }
+
+  function getEntryDetailSections(entry: HistoryEntry): DetailSection[] {
+    const raw = rawSnapshots[entry.id];
+    const sections: DetailSection[] = [];
+
+    sections.push({
+      title: "Summary",
+      rows: [
+        currencyRow("Cash on Hand", entry.cash),
+        currencyRow("Monthly Revenue", entry.revenue),
+        currencyRow("Monthly Expenses", entry.expenses),
+        currencyRow("Profit", entry.revenue - entry.expenses),
+        currencyRow("Accounts Receivable", entry.receivables),
+        currencyRow("Accounts Payable", entry.payables),
+        currencyRow("YTD Revenue", entry.ytdRevenue),
+        currencyRow("YTD Expenses", entry.ytdExpenses),
+        currencyRow("Inventory Value", entry.inventoryValue),
+      ],
+    });
+
+    const breakdown = entry.expenseBreakdown;
+    if (breakdown) {
+      const rows = EXPENSE_BREAKDOWN_FIELDS.filter(({ key }) => breakdown[key]).map(
+        ({ key, label }) => currencyRow(label, breakdown[key] || 0)
+      );
+      if (rows.length > 0) {
+        sections.push({ title: "Expense Breakdown", rows });
+      }
+    }
+
+    if (raw) {
+      for (const section of SNAPSHOT_SECTIONS) {
+        const rows: DetailRow[] = [];
+        for (const { key, label, format } of section.fields) {
+          const value = raw[key as keyof FinancialSnapshot];
+          if (value == null || typeof value !== "number") continue;
+          if (format === "currency") {
+            rows.push(currencyRow(label, value));
+          } else if (format === "percent") {
+            const pct = `${(value * 100).toFixed(1)}%`;
+            rows.push({ label, display: pct, csv: pct });
+          } else {
+            rows.push({ label, display: value.toFixed(2), csv: value.toFixed(2) });
+          }
+        }
+        if (rows.length > 0) {
+          sections.push({ title: section.title, rows });
+        }
+      }
+
+      const lineItemGroups: Array<[string, Record<string, number> | null]> = [
+        ["P&L Line Items", raw.pl_detail],
+        ["Balance Sheet Line Items", raw.bs_detail],
+        ["Cash Flow Line Items", raw.cf_detail],
+      ];
+      for (const [title, detail] of lineItemGroups) {
+        if (!detail) continue;
+        const rows = Object.entries(detail)
+          .filter(([, value]) => typeof value === "number")
+          .map(([label, value]) => currencyRow(label, value));
+        if (rows.length > 0) {
+          sections.push({ title, rows });
+        }
+      }
+    }
+
+    return sections;
+  }
+
+  function handleDownloadEntryCsv(entry: HistoryEntry) {
+    const rows: string[][] = [["Section", "Field", "Value"]];
+    rows.push(["", "Period", formatPeriodDisplay(entry.period)]);
+    rows.push(["", "Source", formatDataSourceLabel(entry.dataSource)]);
+    rows.push(["", "Saved", formatDate(entry.createdAt)]);
+    for (const section of getEntryDetailSections(entry)) {
+      for (const row of section.rows) {
+        rows.push([section.title, row.label, row.csv]);
+      }
+    }
+    triggerCsvDownload(`profitpulse-${toMonthInputValue(entry.period)}.csv`, rows);
+  }
+
+  function handleDownloadLedgerCsv() {
+    if (historyEntries.length === 0) return;
+
+    const richFields = SNAPSHOT_SECTIONS.flatMap((section) => section.fields);
+    const header = [
+      "Period",
+      "Source",
+      "Saved",
+      "Cash on Hand",
+      "Monthly Revenue",
+      "Monthly Expenses",
+      "Profit",
+      "Accounts Receivable",
+      "Accounts Payable",
+      "YTD Revenue",
+      "YTD Expenses",
+      "Inventory Value",
+      ...EXPENSE_BREAKDOWN_FIELDS.map(({ label }) => `Expense: ${label}`),
+      ...richFields.map(({ label }) => label),
+    ];
+
+    const sorted = [...historyEntries].sort((a, b) => a.period.localeCompare(b.period));
+    const rows = sorted.map((entry) => {
+      const raw = rawSnapshots[entry.id];
+      const breakdown = entry.expenseBreakdown || {};
+      return [
+        formatPeriodDisplay(entry.period),
+        formatDataSourceLabel(entry.dataSource),
+        formatDate(entry.createdAt),
+        String(entry.cash),
+        String(entry.revenue),
+        String(entry.expenses),
+        String(entry.revenue - entry.expenses),
+        String(entry.receivables),
+        String(entry.payables),
+        String(entry.ytdRevenue),
+        String(entry.ytdExpenses),
+        String(entry.inventoryValue),
+        ...EXPENSE_BREAKDOWN_FIELDS.map(({ key }) =>
+          breakdown[key] != null ? String(breakdown[key]) : ""
+        ),
+        ...richFields.map(({ key, format }) => {
+          const value = raw ? raw[key as keyof FinancialSnapshot] : null;
+          if (value == null || typeof value !== "number") return "";
+          return format === "percent" ? `${(value * 100).toFixed(1)}%` : String(value);
+        }),
+      ];
+    });
+
+    triggerCsvDownload(
+      `profitpulse-ledger-${new Date().toISOString().slice(0, 10)}.csv`,
+      [header, ...rows]
+    );
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -2170,18 +2377,28 @@ function DataContent() {
                   Every saved snapshot used by Dashboard and Scenarios.
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setLoadingHistory(true);
-                  void refreshHistory(false).finally(() => {
-                    setLoadingHistory(false);
-                  });
-                }}
-                className="rounded-lg px-4 py-2 text-[13px] font-medium text-[#4B4B4B] border border-[#E4E4E7] hover:bg-[#F4F4F5] transition-colors"
-              >
-                Refresh Ledger
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={historyEntries.length === 0}
+                  onClick={handleDownloadLedgerCsv}
+                  className="rounded-lg px-4 py-2 text-[13px] font-medium text-[#4B4B4B] border border-[#E4E4E7] hover:bg-[#F4F4F5] disabled:opacity-50 disabled:hover:bg-transparent transition-colors"
+                >
+                  Export CSV
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLoadingHistory(true);
+                    void refreshHistory(false).finally(() => {
+                      setLoadingHistory(false);
+                    });
+                  }}
+                  className="rounded-lg px-4 py-2 text-[13px] font-medium text-[#4B4B4B] border border-[#E4E4E7] hover:bg-[#F4F4F5] transition-colors"
+                >
+                  Refresh Ledger
+                </button>
+              </div>
             </div>
 
             {loadingHistory ? (
@@ -2227,7 +2444,8 @@ function DataContent() {
                         return (
                           <tr
                             key={entry.id}
-                            className="border-b border-[#F0F0F2] last:border-b-0 hover:bg-[#F4F4F5]/50"
+                            onClick={() => setViewingEntry(entry)}
+                            className="border-b border-[#F0F0F2] last:border-b-0 hover:bg-[#F4F4F5]/50 cursor-pointer"
                           >
                             <td className="px-6 py-3 text-[14px] text-[#111111]">
                               {formatPeriodDisplay(entry.period)}
@@ -2265,11 +2483,22 @@ function DataContent() {
                             <td className="px-6 py-3 text-[13px] text-[#8B8B8B]">
                               {formatDate(entry.createdAt)}
                             </td>
-                            <td className="px-6 py-3 text-right">
+                            <td className="px-6 py-3 text-right whitespace-nowrap">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setViewingEntry(entry);
+                                }}
+                                className="text-[13px] font-medium text-[#E65100] hover:text-[#BF4300] transition-colors mr-4"
+                              >
+                                View
+                              </button>
                               <button
                                 type="button"
                                 disabled={deletingEntryId === entry.id}
-                                onClick={() => {
+                                onClick={(e) => {
+                                  e.stopPropagation();
                                   void handleDeleteLedgerEntry(entry.id, entry.period);
                                 }}
                                 className="text-[13px] font-medium text-[#8B8B8B] hover:text-red-600 disabled:opacity-50 transition-colors"
@@ -2288,6 +2517,82 @@ function DataContent() {
           </div>
         </div>
       </div>
+
+      {/* Period detail modal */}
+      {viewingEntry && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={() => setViewingEntry(null)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Saved data for ${formatPeriodDisplay(viewingEntry.period)}`}
+            className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[85vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4 px-6 py-4 border-b border-[#E4E4E7]">
+              <div>
+                <h3 className="text-[18px] font-semibold text-[#111111]">
+                  {formatPeriodDisplay(viewingEntry.period)}
+                </h3>
+                <p className="text-[13px] text-[#8B8B8B] mt-0.5">
+                  {formatDataSourceLabel(viewingEntry.dataSource)} · Saved{" "}
+                  {formatDate(viewingEntry.createdAt)}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setViewingEntry(null)}
+                aria-label="Close"
+                className="p-1 text-[#8B8B8B] hover:text-[#111111] transition-colors"
+              >
+                <Icon icon="ph:x-bold" className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="overflow-y-auto px-6 py-4 space-y-6">
+              {getEntryDetailSections(viewingEntry).map((section) => (
+                <div key={section.title}>
+                  <h4 className="text-[12px] uppercase tracking-wider font-semibold text-[#8B8B8B] mb-2">
+                    {section.title}
+                  </h4>
+                  <table className="w-full text-[14px]">
+                    <tbody>
+                      {section.rows.map((row) => (
+                        <tr
+                          key={`${section.title}-${row.label}`}
+                          className="border-b border-[#F0F0F2] last:border-b-0"
+                        >
+                          <td className="py-2 text-[14px] text-[#4B4B4B]">{row.label}</td>
+                          <td className="py-2 text-right text-[14px] text-[#111111]">
+                            {row.display}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ))}
+            </div>
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-[#E4E4E7]">
+              <button
+                type="button"
+                onClick={() => setViewingEntry(null)}
+                className="rounded-lg px-4 py-2 text-[13px] font-medium text-[#4B4B4B] border border-[#E4E4E7] hover:bg-[#F4F4F5] transition-colors"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDownloadEntryCsv(viewingEntry)}
+                className="rounded-lg px-4 py-2 text-[13px] font-medium text-white bg-[#E65100] hover:bg-[#BF4300] transition-colors"
+              >
+                Download CSV
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppLayout>
   );
 }
