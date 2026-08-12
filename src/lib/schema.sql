@@ -72,6 +72,16 @@ CREATE TABLE IF NOT EXISTS payment_records (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Comped email allowlist: emails granted free lifetime Pro on signup.
+-- Managed from the admin panel; claimed_at/claimed_by set when the user registers.
+CREATE TABLE IF NOT EXISTS comped_emails (
+  email TEXT PRIMARY KEY CHECK (email = lower(email)),
+  note TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  claimed_at TIMESTAMPTZ,
+  claimed_by UUID REFERENCES auth.users(id) ON DELETE SET NULL
+);
+
 -- Health assessments
 CREATE TABLE IF NOT EXISTS health_assessments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -191,6 +201,8 @@ ALTER TABLE alert_configs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE alert_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE scenarios ENABLE ROW LEVEL SECURITY;
 ALTER TABLE quickbooks_connections ENABLE ROW LEVEL SECURITY;
+-- comped_emails: no user-facing policies — server routes only (service key)
+ALTER TABLE comped_emails ENABLE ROW LEVEL SECURITY;
 
 -- Profiles: Users can read/write their own profile
 CREATE POLICY profiles_select_own ON profiles FOR SELECT USING (auth.uid() = user_id);

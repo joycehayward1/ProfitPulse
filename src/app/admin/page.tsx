@@ -48,6 +48,14 @@ interface PaymentRecord {
   created_at: string;
 }
 
+interface CompedEmail {
+  email: string;
+  note: string | null;
+  created_at: string;
+  claimed_at: string | null;
+  claimed_by: string | null;
+}
+
 type PlanFilter = "all" | "active" | "trial" | "past_due" | "canceled" | "none";
 type GrantDuration = "1m" | "12m" | "lifetime";
 
@@ -77,7 +85,7 @@ function isLifetime(periodEnd: string | null): boolean {
   return new Date(periodEnd).getFullYear() - new Date().getFullYear() > 50;
 }
 type SortKey = "joined" | "name" | "health" | "plan";
-type Tab = "users" | "payments";
+type Tab = "users" | "payments" | "comped";
 
 async function getAuthHeaders(): Promise<Record<string, string> | null> {
   const { getInsForgeClient } = await import("@/lib/insforge");
@@ -224,6 +232,10 @@ export default function AdminPage() {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
+  const [compedEmails, setCompedEmails] = useState<CompedEmail[]>([]);
+  const [newCompEmail, setNewCompEmail] = useState("");
+  const [newCompNote, setNewCompNote] = useState("");
+  const [addingComp, setAddingComp] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<ConfirmState | null>(null);
@@ -267,10 +279,11 @@ export default function AdminPage() {
       const headers = await getAuthHeaders();
       if (!headers) return;
 
-      const [statsRes, usersRes, paymentsRes] = await Promise.all([
+      const [statsRes, usersRes, paymentsRes, compedRes] = await Promise.all([
         fetch("/api/admin/stats", { headers }),
         fetch("/api/admin/users", { headers }),
         fetch("/api/admin/payments", { headers }),
+        fetch("/api/admin/comped-emails", { headers }),
       ]);
 
       if (statsRes.ok) {
@@ -283,6 +296,10 @@ export default function AdminPage() {
       if (paymentsRes.ok) {
         const paymentsData = await paymentsRes.json();
         setPayments(paymentsData.payments || []);
+      }
+      if (compedRes.ok) {
+        const compedData = await compedRes.json();
+        setCompedEmails(compedData.compedEmails || []);
       }
     } catch (err) {
       console.error("Failed to load admin data:", err);
@@ -368,6 +385,74 @@ export default function AdminPage() {
           `comp-${u.id}`,
           `${label} of free time given to ${u.email}`
         ),
+    });
+  }
+
+  async function addCompedEmail() {
+    const email = newCompEmail.trim().toLowerCase();
+    if (!email) return;
+    setAddingComp(true);
+    try {
+      const headers = await getAuthHeaders();
+      if (!headers) {
+        showToast("error", "Session expired — please sign in again");
+        return;
+      }
+      const res = await fetch("/api/admin/comped-emails", {
+        method: "POST",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify({ email, note: newCompNote.trim() || undefined }),
+      });
+      if (res.ok) {
+        showToast("success", `${email} added — they'll get free Pro when they sign up`);
+        setNewCompEmail("");
+        setNewCompNote("");
+        await loadData();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        showToast("error", data.error || "Failed to add email");
+      }
+    } catch {
+      showToast("error", "Failed to add email — check your connection");
+    } finally {
+      setAddingComp(false);
+    }
+  }
+
+  function confirmRemoveComped(c: CompedEmail) {
+    setConfirm({
+      title: `Remove ${c.email} from the comp list?`,
+      message: c.claimed_at
+        ? "They already signed up and keep their free access — this just removes the list entry."
+        : "They haven't signed up yet. If they register after this, they'll get a normal 7-day trial instead of free Pro.",
+      confirmLabel: "Remove",
+      onConfirm: async () => {
+        setConfirm(null);
+        setActionLoading(`comped-${c.email}`);
+        try {
+          const headers = await getAuthHeaders();
+          if (!headers) {
+            showToast("error", "Session expired — please sign in again");
+            return;
+          }
+          const res = await fetch("/api/admin/comped-emails", {
+            method: "DELETE",
+            headers: { ...headers, "Content-Type": "application/json" },
+            body: JSON.stringify({ email: c.email }),
+          });
+          if (res.ok) {
+            showToast("success", `${c.email} removed from comp list`);
+            await loadData();
+          } else {
+            const data = await res.json().catch(() => ({}));
+            showToast("error", data.error || "Failed to remove email");
+          }
+        } catch {
+          showToast("error", "Failed to remove email — check your connection");
+        } finally {
+          setActionLoading(null);
+        }
+      },
     });
   }
 
@@ -611,6 +696,7 @@ export default function AdminPage() {
             [
               { key: "users", label: "Users", icon: "ph:users-bold", count: users.length },
               { key: "payments", label: "Payments", icon: "ph:receipt-bold", count: payments.length },
+              { key: "comped", label: "Comped", icon: "ph:gift-bold", count: compedEmails.length },
             ] as { key: Tab; label: string; icon: string; count: number }[]
           ).map((t) => (
             <button
@@ -988,6 +1074,118 @@ export default function AdminPage() {
                         >
                           {p.status === "refunded" ? "−" : ""}
                           {formatMoney(p.amount)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Comped tab */}
+        {tab === "comped" && (
+          <div className="bg-white rounded-xl border border-[#F0F0F2] shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)]">
+            <div className="p-5 border-b border-[#F0F0F2]">
+              <h2 className="text-[16px] font-semibold text-[#111111]">Comped Emails</h2>
+              <p className="text-[13px] text-[#8B8B8B] mt-0.5">
+                Anyone on this list gets free lifetime Pro automatically when they sign
+                up — no trial, no card. They must register with the exact email listed.
+              </p>
+              <div className="flex flex-wrap items-center gap-2 mt-4">
+                <input
+                  type="email"
+                  value={newCompEmail}
+                  onChange={(e) => setNewCompEmail(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && addCompedEmail()}
+                  placeholder="email@example.com"
+                  className="flex-1 min-w-[200px] px-3 py-2 rounded-lg border border-[#E4E4E7] text-[14px] text-[#111111] placeholder:text-[#9A948E] focus:outline-none focus:border-[#E65100] focus:ring-1 focus:ring-[#E65100] transition-colors"
+                />
+                <input
+                  type="text"
+                  value={newCompNote}
+                  onChange={(e) => setNewCompNote(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && addCompedEmail()}
+                  placeholder="Note (name / business)"
+                  className="flex-1 min-w-[200px] px-3 py-2 rounded-lg border border-[#E4E4E7] text-[14px] text-[#111111] placeholder:text-[#9A948E] focus:outline-none focus:border-[#E65100] focus:ring-1 focus:ring-[#E65100] transition-colors"
+                />
+                <button
+                  onClick={addCompedEmail}
+                  disabled={addingComp || !newCompEmail.trim()}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#E65100] text-[13px] font-medium text-white hover:bg-[#D44A00] disabled:opacity-50 transition-colors"
+                >
+                  <Icon icon="ph:plus-bold" className="w-3.5 h-3.5" />
+                  {addingComp ? "Adding..." : "Add"}
+                </button>
+              </div>
+            </div>
+
+            {loadingData ? (
+              <div className="p-6">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-12 bg-[#F4F4F5] rounded animate-pulse mb-3" />
+                ))}
+              </div>
+            ) : compedEmails.length === 0 ? (
+              <div className="text-center py-16">
+                <Icon icon="ph:gift-duotone" className="w-12 h-12 text-[#E4E4E7] mx-auto mb-3" />
+                <p className="text-[13px] text-[#8B8B8B]">No comped emails yet</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-[14px]">
+                  <thead>
+                    <tr className="border-b border-[#F0F0F2]">
+                      <th className="text-left text-[12px] uppercase tracking-wider font-semibold text-[#8B8B8B] py-3 px-6">
+                        Email
+                      </th>
+                      <th className="text-left text-[12px] uppercase tracking-wider font-semibold text-[#8B8B8B] py-3 px-4">
+                        Note
+                      </th>
+                      <th className="text-left text-[12px] uppercase tracking-wider font-semibold text-[#8B8B8B] py-3 px-4">
+                        Status
+                      </th>
+                      <th className="text-left text-[12px] uppercase tracking-wider font-semibold text-[#8B8B8B] py-3 px-4">
+                        Added
+                      </th>
+                      <th className="text-right text-[12px] uppercase tracking-wider font-semibold text-[#8B8B8B] py-3 px-6">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {compedEmails.map((c) => (
+                      <tr
+                        key={c.email}
+                        className="border-b border-[#F0F0F2] last:border-b-0 hover:bg-[#FAFAFA] transition-colors"
+                      >
+                        <td className="py-3 px-6 font-medium text-[#111111]">{c.email}</td>
+                        <td className="py-3 px-4 text-[#4B4B4B]">{c.note || "—"}</td>
+                        <td className="py-3 px-4">
+                          {c.claimed_at ? (
+                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#F0FDF4] text-[#16A34A]">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#16A34A]" />
+                              Signed up {formatDate(c.claimed_at)}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#FFF7ED] text-[#EA580C]">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#EA580C]" />
+                              Pending signup
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-[#4B4B4B]">{formatDate(c.created_at)}</td>
+                        <td className="py-3 px-6 text-right">
+                          <button
+                            onClick={() => confirmRemoveComped(c)}
+                            disabled={actionLoading === `comped-${c.email}`}
+                            title="Remove from comp list"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[#E4E4E7] text-[12px] font-medium text-[#4B4B4B] hover:border-[#DC2626] hover:text-[#DC2626] disabled:opacity-40 transition-colors"
+                          >
+                            <Icon icon="ph:trash-bold" className="w-3.5 h-3.5" />
+                            {actionLoading === `comped-${c.email}` ? "..." : "Remove"}
+                          </button>
                         </td>
                       </tr>
                     ))}
