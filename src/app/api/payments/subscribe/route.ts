@@ -5,6 +5,7 @@ import {
   createCustomerPaymentProfile,
   chargeCustomerProfile,
   createARBSubscription,
+  getARBSubscription,
   getPlanAmount,
   computePeriodEnd,
 } from "@/lib/authorize-net";
@@ -93,6 +94,33 @@ export async function POST(request: NextRequest) {
       { error: "You already have an active subscription" },
       { status: 400 }
     );
+  }
+
+  // Our DB can lag behind Authorize.net (missed webhook, past_due whose card
+  // may recover). Before creating a new ARB, verify the one on file is truly
+  // dead — otherwise the user ends up with two live subscriptions.
+  if (existingSub?.anet_subscription_id) {
+    let arbStatus: string | null = null;
+    try {
+      const arb = await getARBSubscription(
+        existingSub.anet_subscription_id as string
+      );
+      arbStatus = arb.status.toLowerCase();
+    } catch {
+      // ARB not found or lookup failed — treat as no live subscription
+    }
+    if (arbStatus === "active" || arbStatus === "suspended") {
+      console.warn(
+        `[subscribe] blocked duplicate subscribe for user ${body.userId}: ARB ${existingSub.anet_subscription_id} is ${arbStatus} (db status: ${existingSub.subscription_status})`
+      );
+      return NextResponse.json(
+        {
+          error:
+            "You already have a subscription on file. If a recent payment failed, update your payment method instead of subscribing again.",
+        },
+        { status: 409 }
+      );
+    }
   }
 
   // Determine which scenario
