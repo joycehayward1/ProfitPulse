@@ -191,7 +191,9 @@ async function processEvent(event: WebhookEvent): Promise<void> {
         finalizingPendingSwitch ? sub.pending_switch_to : sub.billing_interval
       ) as BillingInterval;
       const periodEnd = computePeriodEnd(billingInterval, now);
-      const amount = details.amount ?? getPlanAmount(billingInterval);
+      const amount =
+        details.amount ??
+        getPlanAmount(billingInterval, sub.pricing_promo ?? "standard");
 
       const updatePayload: Record<string, unknown> = {
         subscription_status: "active",

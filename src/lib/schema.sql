@@ -51,6 +51,9 @@ CREATE TABLE IF NOT EXISTS subscriptions (
 
   pricing_promo TEXT CHECK (pricing_promo IS NULL OR pricing_promo IN ('launch')),
 
+  -- Goodwill credit: extra days of access after current_period_end
+  comp_days INTEGER NOT NULL DEFAULT 0,
+
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE(user_id)

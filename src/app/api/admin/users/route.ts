@@ -108,6 +108,7 @@ export async function GET(request: NextRequest) {
       next_billing_date: sub?.next_billing_date || null,
       current_period_end: sub?.current_period_end || null,
       pricing_promo: sub?.pricing_promo || null,
+      comp_days: (sub?.comp_days as number | undefined) ?? 0,
       last_payment_date: sub?.last_payment_date || null,
       last_payment_amount: sub?.last_payment_amount || null,
       last_payment_status: sub?.last_payment_status || null,

@@ -74,6 +74,9 @@ export interface Subscription {
   /** Locked-in promo rate for renewals (e.g. launch day pricing). */
   pricing_promo: "launch" | null;
 
+  /** Goodwill credit: extra days of access after current_period_end. */
+  comp_days: number;
+
   created_at: string;
   updated_at: string;
 }

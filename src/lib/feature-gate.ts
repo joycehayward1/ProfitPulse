@@ -24,27 +24,47 @@ function daysSince(isoDate: string): number {
  *   is still in the future).
  * - `locked`: everything else (expired trial, terminated, etc.).
  */
+/**
+ * End of paid access including any comped days (goodwill credit granted via
+ * the admin panel). With comp_days = 0 this is just current_period_end.
+ */
+function effectivePeriodEnd(subscription: Subscription): Date | null {
+  if (!subscription.current_period_end) return null;
+  const end = new Date(subscription.current_period_end);
+  if (subscription.comp_days) {
+    end.setDate(end.getDate() + subscription.comp_days);
+  }
+  return end;
+}
+
 export function getUserAccessLevel(subscription: Subscription | null): AccessLevel {
   if (!subscription) return "locked";
 
   const now = new Date();
+  const periodEnd = effectivePeriodEnd(subscription);
 
   // Active paid subscriber
   if (
     subscription.subscription_status === "active" &&
     subscription.plan === "pro" &&
-    subscription.current_period_end &&
-    new Date(subscription.current_period_end) > now
+    periodEnd &&
+    periodEnd > now
   ) {
     return "full";
   }
 
-  // Canceled but still in paid period
+  // Canceled but still in paid (or comped) period
   if (
     subscription.subscription_status === "canceled" &&
-    subscription.current_period_end &&
-    new Date(subscription.current_period_end) > now
+    periodEnd &&
+    periodEnd > now
   ) {
+    return "full";
+  }
+
+  // Comped users keep access through their comp window even if the ARB
+  // ended some other way (terminated after card failures, expired).
+  if (subscription.comp_days > 0 && periodEnd && periodEnd > now) {
     return "full";
   }
 

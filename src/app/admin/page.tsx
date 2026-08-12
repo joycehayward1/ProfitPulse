@@ -17,6 +17,7 @@ interface AdminUser {
   next_billing_date: string | null;
   current_period_end: string | null;
   pricing_promo: string | null;
+  comp_days: number;
   last_payment_date: string | null;
   last_payment_amount: number | null;
   last_payment_status: string | null;
@@ -61,6 +62,14 @@ const GRANT_LABELS: Record<GrantDuration, string> = {
   "12m": "12 months",
   lifetime: "lifetime",
 };
+
+/** Goodwill credit presets: extra free days added after the paid period ends. */
+const COMP_OPTIONS: { days: number; label: string }[] = [
+  { days: 7, label: "1 week" },
+  { days: 14, label: "2 weeks" },
+  { days: 30, label: "1 month" },
+  { days: 90, label: "3 months" },
+];
 
 /** Period ends more than 50 years out are admin-granted lifetime comps. */
 function isLifetime(periodEnd: string | null): boolean {
@@ -219,6 +228,7 @@ export default function AdminPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<ConfirmState | null>(null);
   const [grantMenuFor, setGrantMenuFor] = useState<string | null>(null);
+  const [compMenuFor, setCompMenuFor] = useState<string | null>(null);
 
   const [tab, setTab] = useState<Tab>("users");
   const [search, setSearch] = useState("");
@@ -291,7 +301,7 @@ export default function AdminPage() {
   // Actions
   async function runAction(
     endpoint: string,
-    body: Record<string, string>,
+    body: Record<string, string | number>,
     loadingKey: string,
     successMessage: string
   ) {
@@ -338,6 +348,25 @@ export default function AdminPage() {
           { userId: u.id, duration },
           `grant-${u.id}`,
           `Pro (${GRANT_LABELS[duration]}) granted to ${u.email}`
+        ),
+    });
+  }
+
+  function confirmCompDays(u: AdminUser, days: number, label: string) {
+    setCompMenuFor(null);
+    const who = u.name !== "—" ? u.name : u.email;
+    setConfirm({
+      title: `Give ${label} free?`,
+      message: `${who} will get ${days} extra days of access after their paid period ends. Billing is not affected — their subscription keeps renewing as normal, and the free time kicks in whenever it stops.${
+        u.comp_days > 0 ? ` They already have ${u.comp_days} comp days; this adds to it.` : ""
+      }`,
+      confirmLabel: "Give Free Time",
+      onConfirm: () =>
+        runAction(
+          "/api/admin/comp-days",
+          { userId: u.id, days },
+          `comp-${u.id}`,
+          `${label} of free time given to ${u.email}`
         ),
     });
   }
@@ -719,6 +748,15 @@ export default function AdminPage() {
                                     Launch
                                   </span>
                                 )}
+                                {u.comp_days > 0 && (
+                                  <span
+                                    title="Free days added after the paid period ends"
+                                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#EFF6FF] text-[#2563EB]"
+                                  >
+                                    <Icon icon="ph:gift-bold" className="w-2.5 h-2.5" />
+                                    +{u.comp_days}d comp
+                                  </span>
+                                )}
                               </div>
                               {daysLeft !== null && (
                                 <span
@@ -816,6 +854,40 @@ export default function AdminPage() {
                                           className="w-full flex items-center gap-2 px-3 py-2 text-[12px] font-medium text-[#4B4B4B] hover:bg-[#FAFAFA] hover:text-[#16A34A] transition-colors text-left"
                                         >
                                           <Icon icon={opt.icon} className="w-3.5 h-3.5" />
+                                          {opt.label}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                              <div className="relative">
+                                <button
+                                  onClick={() =>
+                                    setCompMenuFor(compMenuFor === u.id ? null : u.id)
+                                  }
+                                  disabled={actionLoading === `comp-${u.id}`}
+                                  title="Give free days after the paid period ends (billing unaffected)"
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[#E4E4E7] text-[12px] font-medium text-[#4B4B4B] hover:border-[#2563EB] hover:text-[#2563EB] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                >
+                                  <Icon icon="ph:gift-bold" className="w-3.5 h-3.5" />
+                                  {actionLoading === `comp-${u.id}` ? "..." : "Comp"}
+                                  <Icon icon="ph:caret-down-bold" className="w-3 h-3" />
+                                </button>
+                                {compMenuFor === u.id && (
+                                  <>
+                                    <div
+                                      className="fixed inset-0 z-30"
+                                      onClick={() => setCompMenuFor(null)}
+                                    />
+                                    <div className="absolute right-0 top-full mt-1 z-40 bg-white rounded-lg border border-[#E4E4E7] shadow-lg overflow-hidden min-w-[150px]">
+                                      {COMP_OPTIONS.map((opt) => (
+                                        <button
+                                          key={opt.days}
+                                          onClick={() => confirmCompDays(u, opt.days, opt.label)}
+                                          className="w-full flex items-center gap-2 px-3 py-2 text-[12px] font-medium text-[#4B4B4B] hover:bg-[#FAFAFA] hover:text-[#2563EB] transition-colors text-left"
+                                        >
+                                          <Icon icon="ph:gift-bold" className="w-3.5 h-3.5" />
                                           {opt.label}
                                         </button>
                                       ))}

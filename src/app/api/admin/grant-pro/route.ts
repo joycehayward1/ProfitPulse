@@ -71,6 +71,9 @@ export async function POST(request: NextRequest) {
     billing_cycle_start_date: now.toISOString(),
     current_period_end: periodEnd.toISOString(),
     trial_end_date: null,
+    // Granted access is not billed — detach any old ARB pointer so the
+    // reconcile cron doesn't mirror a cancelled ARB back onto this row.
+    anet_subscription_id: null,
   };
 
   if (existing) {

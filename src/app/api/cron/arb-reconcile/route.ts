@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@insforge/sdk";
-import { getARBSubscription, computePeriodEnd } from "@/lib/authorize-net";
+import { getARBSubscription, computePeriodEnd, getPlanAmount } from "@/lib/authorize-net";
+import type { PricingPromo } from "@/lib/plan-amounts";
 import type { BillingInterval } from "@/components/payments/PricingCards";
 
 /**
@@ -120,8 +121,10 @@ export async function GET(request: NextRequest) {
 
         if (!existingPayment) {
           const newPeriodEnd = computePeriodEnd(billingInterval, latestPaidAt);
-          const amount =
-            billingInterval === "monthly" ? 59.99 : 599.88;
+          const amount = getPlanAmount(
+            billingInterval,
+            (sub.pricing_promo as PricingPromo | null) ?? "standard"
+          );
 
           await client.database
             .from("subscriptions")
