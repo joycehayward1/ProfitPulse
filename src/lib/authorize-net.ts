@@ -951,17 +951,25 @@ export { getPlanAmount } from "@/lib/plan-amounts";
 
 /**
  * Returns the date when the current paid period ends (and when ARB should
- * first charge). Monthly → +30 days, Annual → +365 days.
+ * first charge). Monthly → +1 calendar month, Annual → +1 calendar year.
+ *
+ * Authorize.net ARB bills on the same day-of-month/year, not every 30/365
+ * days — a +30-day period ends a day early after 31-day months and locks
+ * out paying subscribers before ANET has billed them.
  */
 export function computePeriodEnd(
   billingInterval: BillingInterval,
   from: Date = new Date()
 ): Date {
   const end = new Date(from);
+  const day = end.getDate();
   if (billingInterval === "monthly") {
-    end.setDate(end.getDate() + 30);
+    end.setMonth(end.getMonth() + 1);
   } else {
-    end.setDate(end.getDate() + 365);
+    end.setFullYear(end.getFullYear() + 1);
   }
+  // ANET bills the last day of shorter months (Jan 31 → Feb 28); JS date
+  // math overflows into the next month instead, so clamp back.
+  if (end.getDate() !== day) end.setDate(0);
   return end;
 }

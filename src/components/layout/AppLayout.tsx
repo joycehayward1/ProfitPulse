@@ -425,7 +425,14 @@ export function AppLayout({ children, pulseMessage }: AppLayoutProps) {
         <main className="flex-1 px-4 sm:px-6 lg:px-10 py-6 lg:py-8">
           <div className="max-w-content mx-auto">
             {!authLoading && accessLevel === "locked" && user ? (
-              <PaywallScreen />
+              subscription?.last_payment_date ? (
+                <PaywallScreen
+                  heading="There's a problem with your subscription"
+                  subheading="Your subscription is no longer active — your last renewal may not have gone through. Subscribe below to pick up where you left off. Your data is safe."
+                />
+              ) : (
+                <PaywallScreen />
+              )
             ) : (
               children
             )}
