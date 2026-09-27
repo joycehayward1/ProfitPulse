@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
     const userIds = profiles.map((p: Record<string, unknown>) => p.user_id as string);
     const placeholders = userIds.map((_, i) => `$${i + 1}`).join(",");
     try {
-      const res = await fetch(`${baseUrl}/api/database/advance/rawsql/unrestricted`, {
+      const res = await fetch(`${baseUrl}/api/database/advance/rawsql`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${apiKey}`,

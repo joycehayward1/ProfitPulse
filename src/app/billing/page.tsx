@@ -13,6 +13,7 @@ import { UpdateCardForm } from "@/components/payments/UpdateCardForm";
 import { formatPlanAmount } from "@/lib/plan-amounts";
 import { getInsForgeClient } from "@/lib/insforge";
 import type { PaymentRecord } from "@/lib/database.types";
+import { authFetch } from "@/lib/auth-fetch";
 
 function formatDate(iso: string | null | undefined): string {
   if (!iso) return "—";
@@ -86,7 +87,7 @@ export default function BillingPage() {
     if (!user?.id) return;
     setCancelling(true);
     try {
-      const res = await fetch("/api/payments/cancel", {
+      const res = await authFetch("/api/payments/cancel", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId: user.id }),
@@ -110,7 +111,7 @@ export default function BillingPage() {
     if (!user?.id) return;
     setSwitching(true);
     try {
-      const res = await fetch("/api/payments/switch-plan", {
+      const res = await authFetch("/api/payments/switch-plan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId: user.id, target: switchTarget }),

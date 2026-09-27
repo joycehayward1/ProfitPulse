@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
   // UPDATE is allowed). Renames the external account id so OAuth callbacks
   // can no longer link back to this row.
   const tombstoneProviders = await fetch(
-    `${baseUrl}/api/database/advance/rawsql/unrestricted`,
+    `${baseUrl}/api/database/advance/rawsql`,
     {
       method: "POST",
       headers,
@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
 
   // Tombstone the auth.users row: rename email, null password, wipe profile.
   const tombstoneUser = await fetch(
-    `${baseUrl}/api/database/advance/rawsql/unrestricted`,
+    `${baseUrl}/api/database/advance/rawsql`,
     {
       method: "POST",
       headers,

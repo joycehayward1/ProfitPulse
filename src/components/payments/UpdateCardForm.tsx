@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import { useAcceptJs } from "react-acceptjs";
 import { Icon } from "@iconify/react";
 import { getAnetEnvironment } from "@/lib/anet-env";
+import { authFetch } from "@/lib/auth-fetch";
 
 interface UpdateCardFormProps {
   userId: string;
@@ -72,7 +73,7 @@ export function UpdateCardForm({
       const firstName = nameParts[0] || undefined;
       const lastName = nameParts.slice(1).join(" ") || undefined;
 
-      const res = await fetch("/api/payments/update-card", {
+      const res = await authFetch("/api/payments/update-card", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

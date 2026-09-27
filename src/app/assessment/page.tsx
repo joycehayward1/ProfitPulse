@@ -12,6 +12,7 @@ import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { useToast } from "@/components/ui/Toast";
 import { describePainPoints, type SelfAssessment, type SelfAssessmentInsert } from "@/lib/self-assessment";
 import { SelfAssessmentStep } from "./SelfAssessmentStep";
+import { authFetch } from "@/lib/auth-fetch";
 
 type DataSource = "upload" | "quickbooks" | "manual" | null;
 type Step = "self-assessment" | "choose-source" | "upload" | "review" | "context" | "processing";
@@ -560,7 +561,7 @@ function AssessmentContent() {
     console.log("🤖 Using AI to analyze uploaded files...");
 
     try {
-      const res = await fetch("/api/extract-financials", {
+      const res = await authFetch("/api/extract-financials", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ fileContent: allContent }),

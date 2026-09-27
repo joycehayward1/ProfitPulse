@@ -6,6 +6,7 @@ import { Icon } from "@iconify/react";
 import type { BillingInterval } from "./PricingCards";
 import { formatPlanAmount, type PricingPromo } from "@/lib/plan-amounts";
 import { getAnetEnvironment } from "@/lib/anet-env";
+import { authFetch } from "@/lib/auth-fetch";
 
 interface PaymentFormProps {
   billingInterval: BillingInterval;
@@ -95,7 +96,7 @@ export function PaymentForm({
       const firstName = nameParts[0] || undefined;
       const lastName = nameParts.slice(1).join(" ") || undefined;
 
-      const subRes = await fetch("/api/payments/subscribe", {
+      const subRes = await authFetch("/api/payments/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

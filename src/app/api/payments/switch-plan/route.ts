@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@insforge/sdk";
+import { getInsForgeAdmin } from "@/lib/insforge";
+import { getAuthenticatedUserId } from "@/lib/server-auth";
 import {
   cancelARBSubscription,
   chargeCustomerProfile,
@@ -61,9 +62,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  if (!body.userId) {
-    return NextResponse.json({ error: "userId required" }, { status: 400 });
+  // Act only on the signed-in caller's own subscription, never a body userId.
+  const userId = await getAuthenticatedUserId(request);
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  body.userId = userId;
   if (body.target !== "monthly" && body.target !== "annual") {
     return NextResponse.json(
       { error: "target must be 'monthly' or 'annual'" },
@@ -71,10 +75,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const client = createClient({
-    baseUrl: process.env.NEXT_PUBLIC_INSFORGE_URL!,
-    anonKey: process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY!,
-  });
+  const client = getInsForgeAdmin();
 
   // Fetch current subscription
   const { data: sub, error: fetchError } = await client.database
@@ -155,7 +156,7 @@ export async function POST(request: NextRequest) {
 // ─── Flow 4: Monthly → Annual ────────────────────────────────────────────────
 
 interface SwitchArgs {
-  client: ReturnType<typeof createClient>;
+  client: ReturnType<typeof getInsForgeAdmin>;
   userId: string;
   oldSubscriptionId: string;
   customerProfileId: string;

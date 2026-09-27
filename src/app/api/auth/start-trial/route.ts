@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@insforge/sdk";
+import { getInsForgeAdmin } from "@/lib/insforge";
+import { getAuthenticatedUserId } from "@/lib/server-auth";
 
 const TRIAL_DAYS = 7;
 
@@ -11,7 +12,7 @@ async function rawSql(
   const apiKey = process.env.INSFORGE_API_KEY;
   if (!baseUrl || !apiKey) return null;
   try {
-    const res = await fetch(`${baseUrl}/api/database/advance/rawsql/unrestricted`, {
+    const res = await fetch(`${baseUrl}/api/database/advance/rawsql`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -46,7 +47,8 @@ async function findCompedEmail(userId: string): Promise<string | null> {
  * POST /api/auth/start-trial
  * Body: { userId: string }
  *
- * Called immediately after a user signs up. Creates their `subscriptions`
+ * Called after signup and again by AuthContext on first signed-in load (the
+ * signup call has no session until the email is verified). Creates their `subscriptions`
  * row with trial fields set:
  *   plan: 'none'
  *   subscription_status: 'trial'
@@ -57,27 +59,15 @@ async function findCompedEmail(userId: string): Promise<string | null> {
  * lifetime Pro (admin-managed goodwill accounts, never billed).
  *
  * Idempotent — if a row already exists for the user, returns it unchanged.
- *
- * Note: takes userId from body rather than auth header because the InsForge
- * client session isn't always cached yet immediately after signUp().
+ * Acts only on the signed-in caller (Bearer token), never a body userId.
  */
 export async function POST(request: NextRequest) {
-  let body: { userId?: string };
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid body" }, { status: 400 });
-  }
-
-  const userId = body.userId;
+  const userId = await getAuthenticatedUserId(request);
   if (!userId) {
-    return NextResponse.json({ error: "userId required" }, { status: 400 });
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const client = createClient({
-    baseUrl: process.env.NEXT_PUBLIC_INSFORGE_URL!,
-    anonKey: process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY!,
-  });
+  const client = getInsForgeAdmin();
 
   // Idempotent: if a row already exists, return it
   const { data: existing } = await client.database

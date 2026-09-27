@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { Button, Input } from "@/components/ui";
 import { INDUSTRIES } from "@/lib/industries";
+import { authFetch } from "@/lib/auth-fetch";
+import { clearPendingProfile, savePendingProfile } from "@/lib/pending-profile";
 
 interface FormErrors {
   fullName?: string;
@@ -130,8 +132,12 @@ function SignUpPageContent() {
 
       // After signup, persist business info on the profile row.
       // profiles has UNIQUE(user_id) and the row may not exist yet, so upsert.
+      // When email verification is required there is no user or session yet
+      // (and RLS rejects the write), so stash it for AuthContext to save on
+      // first signed-in load.
+      savePendingProfile({ email, businessName, industry });
       if (data?.user) {
-        await client.database.from("profiles").upsert(
+        const { error: profileError } = await client.database.from("profiles").upsert(
           {
             user_id: data.user.id,
             business_name: businessName,
@@ -139,10 +145,11 @@ function SignUpPageContent() {
           },
           { onConflict: "user_id" },
         );
+        if (!profileError) clearPendingProfile();
 
         // Start the user's 7-day trial (creates subscriptions row)
         try {
-          await fetch("/api/auth/start-trial", {
+          await authFetch("/api/auth/start-trial", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ userId: data.user.id }),

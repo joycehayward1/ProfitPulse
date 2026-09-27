@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Papa from "papaparse";
 import { getInsForgeAdmin } from "@/lib/insforge";
+import { getAuthenticatedUserId } from "@/lib/server-auth";
 
 export const maxDuration = 300;
 
@@ -133,6 +134,11 @@ ${lines.join("\n")}`;
 
 export async function POST(request: NextRequest) {
   try {
+    // Signed-in users only — each call spends AI credits.
+    if (!(await getAuthenticatedUserId(request))) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { fileContent } = await request.json();
 
     if (!fileContent || typeof fileContent !== "string" || !fileContent.trim()) {

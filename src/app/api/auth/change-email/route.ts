@@ -1,12 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getAuthenticatedUserId } from "@/lib/server-auth";
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId, newEmail } = await request.json();
+    // Only the signed-in user can change their own email.
+    const userId = await getAuthenticatedUserId(request);
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-    if (!userId || !newEmail) {
+    const { newEmail } = await request.json();
+
+    if (!newEmail) {
       return NextResponse.json(
-        { error: "Missing userId or newEmail" },
+        { error: "Missing newEmail" },
         { status: 400 }
       );
     }
@@ -32,7 +39,7 @@ export async function POST(request: NextRequest) {
     const sanitizedEmail = newEmail.toLowerCase().trim();
 
     // Check if email is already taken
-    const checkRes = await fetch(`${baseUrl}/api/database/advance/rawsql/unrestricted`, {
+    const checkRes = await fetch(`${baseUrl}/api/database/advance/rawsql`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -55,7 +62,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Update email in auth.users
-    const updateRes = await fetch(`${baseUrl}/api/database/advance/rawsql/unrestricted`, {
+    const updateRes = await fetch(`${baseUrl}/api/database/advance/rawsql`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,

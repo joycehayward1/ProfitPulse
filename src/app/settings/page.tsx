@@ -9,6 +9,7 @@ import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/Toast";
 import { INDUSTRIES } from "@/lib/industries";
+import { authFetch } from "@/lib/auth-fetch";
 
 type SettingsTab = "profile" | "business" | "integrations" | "notifications" | "billing" | "account";
 
@@ -478,7 +479,7 @@ function SettingsContent() {
       // Check if email changed
       const emailChanged = profileData.email !== user?.email && profileData.email.trim() !== "";
       if (emailChanged) {
-        const res = await fetch("/api/auth/change-email", {
+        const res = await authFetch("/api/auth/change-email", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ userId: user?.id, newEmail: profileData.email.trim() }),
@@ -919,7 +920,7 @@ function SettingsContent() {
                               if (!user || switchingPlan) return;
                               setSwitchingPlan(true);
                               try {
-                                const res = await fetch("/api/payments/switch-plan", {
+                                const res = await authFetch("/api/payments/switch-plan", {
                                   method: "POST",
                                   headers: { "Content-Type": "application/json" },
                                   body: JSON.stringify({ userId: user.id, target: "annual" }),
@@ -947,7 +948,7 @@ function SettingsContent() {
                               if (!user || switchingPlan) return;
                               setSwitchingPlan(true);
                               try {
-                                const res = await fetch("/api/payments/switch-plan", {
+                                const res = await authFetch("/api/payments/switch-plan", {
                                   method: "POST",
                                   headers: { "Content-Type": "application/json" },
                                   body: JSON.stringify({ userId: user.id, target: "monthly" }),
@@ -1042,7 +1043,7 @@ function SettingsContent() {
                       if (!user?.id) return;
                       setCancelling(true);
                       try {
-                        const res = await fetch("/api/payments/cancel", {
+                        const res = await authFetch("/api/payments/cancel", {
                           method: "POST",
                           headers: { "Content-Type": "application/json" },
                           body: JSON.stringify({ userId: user.id }),

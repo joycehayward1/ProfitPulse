@@ -4,6 +4,8 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getInsForgeClient } from "@/lib/insforge";
 import type { Subscription } from "@/lib/database.types";
+import { authFetch } from "@/lib/auth-fetch";
+import { clearPendingProfile, readPendingProfile } from "@/lib/pending-profile";
 
 interface User {
   id: string;
@@ -61,7 +63,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .maybeSingle(),
       ]);
 
-      const profile = profileResult.data ?? sessionUser.profile ?? undefined;
+      let profileRow = profileResult.data;
+
+      // Business info captured at signup before the email was verified.
+      const pending = readPendingProfile(sessionUser.email);
+      if (pending && !profileRow?.business_name) {
+        const { data: saved, error: saveError } = await client.database
+          .from("profiles")
+          .upsert(
+            {
+              user_id: sessionUser.id,
+              business_name: pending.businessName,
+              industry: pending.industry,
+            },
+            { onConflict: "user_id" },
+          )
+          .select("name, avatar_url, business_name, industry")
+          .maybeSingle();
+        if (!saveError) {
+          clearPendingProfile();
+          profileRow = saved ?? profileRow;
+        }
+      }
+
+      const profile = profileRow ?? sessionUser.profile ?? undefined;
 
       setUser({
         id: sessionUser.id,
@@ -77,7 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // the signup page's trial call was skipped), create one now.
       if (!subRow) {
         try {
-          const res = await fetch("/api/auth/start-trial", {
+          const res = await authFetch("/api/auth/start-trial", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ userId: sessionUser.id }),

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@insforge/sdk";
+import { getInsForgeAdmin } from "@/lib/insforge";
 import { getResend, FROM_EMAIL, REPLY_TO_EMAIL } from "@/lib/resend";
 import { buildWeeklySummaryEmail } from "@/lib/email-templates";
 
@@ -15,10 +15,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const client = createClient({
-    baseUrl: process.env.NEXT_PUBLIC_INSFORGE_URL!,
-    anonKey: process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY!,
-  });
+  const client = getInsForgeAdmin();
 
   // Get all users who have weekly_summary enabled (email stored in preferences)
   const { data: prefs, error: prefsError } = await client.database

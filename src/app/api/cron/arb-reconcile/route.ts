@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@insforge/sdk";
+import { getInsForgeAdmin } from "@/lib/insforge";
 import { getARBSubscription, computePeriodEnd, getPlanAmount } from "@/lib/authorize-net";
 import type { PricingPromo } from "@/lib/plan-amounts";
 import type { BillingInterval } from "@/components/payments/PricingCards";
@@ -37,10 +37,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const client = createClient({
-    baseUrl: process.env.NEXT_PUBLIC_INSFORGE_URL!,
-    anonKey: process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY!,
-  });
+  const client = getInsForgeAdmin();
 
   // Find every subscription that has an ARB ID and isn't already terminated
   const { data: subs, error: fetchError } = await client.database

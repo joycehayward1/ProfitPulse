@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@insforge/sdk";
+import { getInsForgeAdmin } from "@/lib/insforge";
+import { getAuthenticatedUserId } from "@/lib/server-auth";
 import { cancelARBSubscription } from "@/lib/authorize-net";
 
 /**
@@ -24,14 +25,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  if (!body.userId) {
-    return NextResponse.json({ error: "userId required" }, { status: 400 });
+  // Act only on the signed-in caller's own subscription, never a body userId.
+  const userId = await getAuthenticatedUserId(request);
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  body.userId = userId;
 
-  const client = createClient({
-    baseUrl: process.env.NEXT_PUBLIC_INSFORGE_URL!,
-    anonKey: process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY!,
-  });
+  const client = getInsForgeAdmin();
 
   const { data: sub, error: fetchError } = await client.database
     .from("subscriptions")

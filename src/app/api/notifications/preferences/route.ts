@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/server-auth";
-import { createClient } from "@insforge/sdk";
+import { getInsForgeAdmin } from "@/lib/insforge";
 import { getResend, FROM_EMAIL, REPLY_TO_EMAIL } from "@/lib/resend";
 
 export async function POST(request: NextRequest) {
@@ -12,10 +12,7 @@ export async function POST(request: NextRequest) {
   const prefs = await request.json();
 
   // Save preferences to database
-  const client = createClient({
-    baseUrl: process.env.NEXT_PUBLIC_INSFORGE_URL!,
-    anonKey: process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY!,
-  });
+  const client = getInsForgeAdmin();
 
   const { error: dbError } = await client.database
     .from("notification_preferences")
@@ -68,10 +65,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const client = createClient({
-    baseUrl: process.env.NEXT_PUBLIC_INSFORGE_URL!,
-    anonKey: process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY!,
-  });
+  const client = getInsForgeAdmin();
 
   const { data, error } = await client.database
     .from("notification_preferences")

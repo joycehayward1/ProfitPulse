@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@insforge/sdk";
+import { getInsForgeAdmin } from "@/lib/insforge";
+import { getAuthenticatedUserId } from "@/lib/server-auth";
 import {
   ensureCustomerProfileWithPayment,
   createCustomerPaymentProfile,
@@ -61,9 +62,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  if (!body.userId) {
-    return NextResponse.json({ error: "userId required" }, { status: 400 });
+  // Act only on the signed-in caller's own subscription, never a body userId.
+  const userId = await getAuthenticatedUserId(request);
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  body.userId = userId;
   if (body.billingInterval !== "monthly" && body.billingInterval !== "annual") {
     return NextResponse.json(
       { error: "billingInterval must be 'monthly' or 'annual'" },
@@ -73,10 +77,7 @@ export async function POST(request: NextRequest) {
 
   const promo: PricingPromo = body.promo === "launch" ? "launch" : "standard";
   const amount = getPlanAmount(body.billingInterval, promo);
-  const client = createClient({
-    baseUrl: process.env.NEXT_PUBLIC_INSFORGE_URL!,
-    anonKey: process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY!,
-  });
+  const client = getInsForgeAdmin();
 
   // Check if this user already has a stored customer profile (resubscribe flow)
   const { data: existingSub } = await client.database

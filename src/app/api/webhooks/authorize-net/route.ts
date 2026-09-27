@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
-import { createClient } from "@insforge/sdk";
+import { getInsForgeAdmin } from "@/lib/insforge";
 import {
   getTransactionDetails,
   computePeriodEnd,
@@ -86,10 +86,7 @@ function verifySignature(rawBody: string, header: string | null): boolean {
 }
 
 function getInsForgeClient() {
-  return createClient({
-    baseUrl: process.env.NEXT_PUBLIC_INSFORGE_URL!,
-    anonKey: process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY!,
-  });
+  return getInsForgeAdmin();
 }
 
 export async function POST(request: NextRequest) {

@@ -10,6 +10,7 @@ import { useToast } from "@/components/ui/Toast";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { getInsForgeClient } from "@/lib/insforge";
 import type { FinancialSnapshot } from "@/lib/database.types";
+import { authFetch } from "@/lib/auth-fetch";
 
 type Tab = "manual" | "upload" | "quickbooks";
 
@@ -1319,7 +1320,7 @@ function DataContent() {
     setUploadStep("processing");
 
     try {
-      const res = await fetch("/api/extract-financials", {
+      const res = await authFetch("/api/extract-financials", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ fileContent }),
