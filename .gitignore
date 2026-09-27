@@ -44,3 +44,8 @@ next-env.d.ts
 # sentry
 .sentryclirc
 .next_corrupt_*/
+
+# Local MCP/editor configs (contain the InsForge admin API key)
+.mcp.json
+.cursor/mcp.json
+.codex/config.toml
