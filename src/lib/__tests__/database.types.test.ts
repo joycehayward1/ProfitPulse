@@ -28,6 +28,7 @@ describe("TABLE_NAMES", () => {
       "profiles",
       "subscriptions",
       "health_assessments",
+      "self_assessments",
       "financial_data",
       "expense_categories",
       "alert_configs",

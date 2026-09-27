@@ -98,6 +98,19 @@ CREATE TABLE IF NOT EXISTS health_assessments (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Self-assessments (one-time F4B onboarding questionnaire, private to the user)
+CREATE TABLE IF NOT EXISTS self_assessments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
+  ratings JSONB NOT NULL,
+  pain_points TEXT[] NOT NULL DEFAULT '{}',
+  pain_point_other TEXT,
+  vision TEXT,
+  accounting_system TEXT,
+  habits_score INTEGER NOT NULL CHECK (habits_score >= 0 AND habits_score <= 100),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- Financial data (monthly snapshots)
 CREATE TABLE IF NOT EXISTS financial_data (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -195,6 +208,7 @@ ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE payment_records ENABLE ROW LEVEL SECURITY;
 ALTER TABLE health_assessments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE self_assessments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE financial_data ENABLE ROW LEVEL SECURITY;
 ALTER TABLE expense_categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE alert_configs ENABLE ROW LEVEL SECURITY;
@@ -225,6 +239,10 @@ CREATE POLICY health_assessments_select_own ON health_assessments FOR SELECT USI
 CREATE POLICY health_assessments_insert_own ON health_assessments FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY health_assessments_update_own ON health_assessments FOR UPDATE USING (auth.uid() = user_id);
 CREATE POLICY health_assessments_delete_own ON health_assessments FOR DELETE USING (auth.uid() = user_id);
+
+-- Self-assessments: one-time, so users can read and create their own row only
+CREATE POLICY self_assessments_select_own ON self_assessments FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY self_assessments_insert_own ON self_assessments FOR INSERT WITH CHECK (auth.uid() = user_id);
 
 -- Financial Data: Users can read/write their own data
 CREATE POLICY financial_data_select_own ON financial_data FOR SELECT USING (auth.uid() = user_id);

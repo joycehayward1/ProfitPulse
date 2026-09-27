@@ -10,9 +10,11 @@ import { Button } from "@/components/ui/Button";
 import { CurrencyInput } from "@/components/ui/CurrencyInput";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { useToast } from "@/components/ui/Toast";
+import { describePainPoints, type SelfAssessment, type SelfAssessmentInsert } from "@/lib/self-assessment";
+import { SelfAssessmentStep } from "./SelfAssessmentStep";
 
 type DataSource = "upload" | "quickbooks" | "manual" | null;
-type Step = "choose-source" | "upload" | "review" | "context" | "processing";
+type Step = "self-assessment" | "choose-source" | "upload" | "review" | "context" | "processing";
 
 interface QuickBooksSyncMetrics {
   cash: number;
@@ -154,6 +156,8 @@ function AssessmentContent() {
   const [qbSyncedAt, setQbSyncedAt] = useState<string | null>(null);
   const [qbSyncPeriodText, setQbSyncPeriodText] = useState<string | null>(null);
   const [checkingExistingAssessment, setCheckingExistingAssessment] = useState(true);
+  const [selfAssessment, setSelfAssessment] = useState<SelfAssessment | null>(null);
+  const [savingSelfAssessment, setSavingSelfAssessment] = useState(false);
 
   // User-confirmed data
   const [formData, setFormData] = useState({
@@ -166,7 +170,6 @@ function AssessmentContent() {
     ytdExpenses: "",
     inventoryValue: "",
     employeeCount: "",
-    biggestWorry: "",
   });
 
   // Expense breakdown (optional)
@@ -310,6 +313,21 @@ function AssessmentContent() {
           if (!error && data?.id) {
             router.replace("/dashboard");
             return;
+          }
+        }
+
+        // New users take the one-time self-assessment before the data step.
+        const { data: selfData } = await client.database
+          .from("self_assessments")
+          .select("*")
+          .eq("user_id", userId)
+          .maybeSingle();
+
+        if (!cancelled) {
+          if (selfData) {
+            setSelfAssessment(selfData as SelfAssessment);
+          } else {
+            setCurrentStep("self-assessment");
           }
           setCheckingExistingAssessment(false);
         }
@@ -603,6 +621,49 @@ function AssessmentContent() {
     setIsProcessing(false);
   }
 
+  // Pain points from the self-assessment feed the existing AI "biggest worry" context.
+  const biggestWorry = selfAssessment
+    ? describePainPoints(selfAssessment.pain_points, selfAssessment.pain_point_other) || null
+    : null;
+
+  async function handleSelfAssessmentSubmit(payload: SelfAssessmentInsert) {
+    setSavingSelfAssessment(true);
+    try {
+      const { getInsForgeClient } = await import("@/lib/insforge");
+      const client = getInsForgeClient();
+      const { data, error } = await client.database
+        .from("self_assessments")
+        .insert([payload])
+        .select()
+        .single();
+
+      let saved = data as SelfAssessment | null;
+      if (error) {
+        // One-time: if a row already exists (e.g. an earlier save), use it.
+        const { data: existing } = await client.database
+          .from("self_assessments")
+          .select("*")
+          .eq("user_id", payload.user_id)
+          .maybeSingle();
+        if (!existing) {
+          console.error("Error saving self-assessment:", error);
+          showToast("error", "Couldn't save your answers. Please try again.");
+          return;
+        }
+        saved = existing as SelfAssessment;
+      }
+
+      setSelfAssessment(saved);
+      setCurrentStep(dataSource === "quickbooks" && qbConnected ? "review" : "choose-source");
+      window.scrollTo({ top: 0 });
+    } catch (err) {
+      console.error("Error saving self-assessment:", err);
+      showToast("error", "Couldn't save your answers. Please try again.");
+    } finally {
+      setSavingSelfAssessment(false);
+    }
+  }
+
   // Submit Assessment
   async function handleSubmit() {
     if (!user) return;
@@ -631,7 +692,7 @@ function AssessmentContent() {
           monthly_expenses: expenses,
           accounts_receivable: receivables,
           employee_count: parseInt(formData.employeeCount) || 0,
-          biggest_worry: formData.biggestWorry || null,
+          biggest_worry: biggestWorry,
           health_score: healthScore,
         };
 
@@ -724,7 +785,7 @@ function AssessmentContent() {
             monthly_expenses: expenses,
             accounts_receivable: receivables,
             employee_count: parseInt(formData.employeeCount) || 0,
-            biggest_worry: formData.biggestWorry,
+            biggest_worry: biggestWorry,
             health_score: healthScore,
           })
         );
@@ -755,7 +816,7 @@ function AssessmentContent() {
           monthly_expenses: expenses,
           accounts_receivable: receivables,
           employee_count: parseInt(formData.employeeCount) || 0,
-          biggest_worry: formData.biggestWorry || null,
+          biggest_worry: biggestWorry,
           health_score: healthScore,
         };
 
@@ -853,7 +914,7 @@ function AssessmentContent() {
               other: otherAmount,
             } : null,
             employee_count: parseInt(formData.employeeCount) || 0,
-            biggest_worry: formData.biggestWorry,
+            biggest_worry: biggestWorry,
             health_score: healthScore,
           })
         );
@@ -923,6 +984,14 @@ function AssessmentContent() {
     <AppLayout>
       <div className="min-h-screen bg-background py-8">
         <div className="max-w-3xl mx-auto px-4">
+          {currentStep === "self-assessment" && user && (
+            <SelfAssessmentStep
+              userId={user.id}
+              isSaving={savingSelfAssessment}
+              onSubmit={handleSelfAssessmentSubmit}
+            />
+          )}
+
           {/* Choose Source */}
           {currentStep === "choose-source" && (
             <div className="animate-fade-in">
@@ -1619,24 +1688,6 @@ function AssessmentContent() {
                         }
                         placeholder="0"
                         className="w-full px-4 py-3 rounded-md border border-text-muted/30 bg-surface text-text-primary font-body focus:outline-none focus:ring-2 focus:ring-orange focus:border-transparent"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-body font-medium text-text-secondary mb-2">
-                        What&apos;s your biggest financial worry right now?
-                      </label>
-                      <textarea
-                        value={formData.biggestWorry}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            biggestWorry: e.target.value,
-                          })
-                        }
-                        placeholder="E.g., Not enough cash flow, late-paying clients..."
-                        rows={3}
-                        className="w-full px-4 py-3 rounded-md border border-text-muted/30 bg-surface text-text-primary font-body focus:outline-none focus:ring-2 focus:ring-orange focus:border-transparent resize-none"
                       />
                     </div>
                   </div>

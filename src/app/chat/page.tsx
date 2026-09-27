@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { useToast } from "@/components/ui/Toast";
 import { buildChatSystemPrompt } from "@/lib/prompts";
+import { RATING_QUESTIONS, describePainPoints, type SelfAssessment } from "@/lib/self-assessment";
 
 interface Message {
   role: "user" | "assistant";
@@ -93,6 +94,23 @@ export default function ChatPage() {
         context += `- Current liabilities: $${financialData.current_liabilities?.toLocaleString() || 0}\n`;
       } else {
         context = "No financial data available yet. User should complete the health assessment first.";
+      }
+
+      const { data: selfAssessment } = await client.database
+        .from('self_assessments')
+        .select('*')
+        .eq('user_id', user!.id)
+        .maybeSingle();
+
+      if (selfAssessment) {
+        const sa = selfAssessment as SelfAssessment;
+        context += "\nOwner's self-assessment (their own view, 1–5 agreement):\n";
+        for (const q of RATING_QUESTIONS) {
+          context += `- ${q.text} ${sa.ratings[q.id]}/5\n`;
+        }
+        context += `- Top pain points: ${describePainPoints(sa.pain_points, sa.pain_point_other)}\n`;
+        if (sa.accounting_system) context += `- Keeps books with: ${sa.accounting_system}\n`;
+        if (sa.vision) context += `- 12-month vision of financial success: "${sa.vision}"\n`;
       }
 
       // Generate AI response using Claude Sonnet 4.5

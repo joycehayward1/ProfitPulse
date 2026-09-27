@@ -253,6 +253,7 @@ export const TABLE_NAMES = {
   profiles: "profiles",
   subscriptions: "subscriptions",
   health_assessments: "health_assessments",
+  self_assessments: "self_assessments",
   financial_data: "financial_data",
   expense_categories: "expense_categories",
   alert_configs: "alert_configs",

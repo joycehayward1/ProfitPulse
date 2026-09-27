@@ -15,6 +15,8 @@ import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { useAuth } from "@/contexts/AuthContext";
 import { isInTrial } from "@/lib/feature-gate";
 import { LockedFeature } from "@/components/LockedFeature";
+import { FocusAreasCard } from "@/components/FocusAreasCard";
+import type { FinancialContext, SelfAssessment } from "@/lib/self-assessment";
 import { InfoTooltip } from "@/components/ui/MetricTooltip";
 import {
   BarChart,
@@ -349,6 +351,30 @@ export default function DashboardPage() {
     fetchSnapshots();
   }, [user]);
 
+  // ─── Self-Assessment (one-time onboarding check-in) ──────────────────────
+  const [selfAssessment, setSelfAssessment] = useState<SelfAssessment | null>(null);
+
+  useEffect(() => {
+    async function fetchSelfAssessment() {
+      if (!user) return;
+      try {
+        const { getInsForgeClient } = await import("@/lib/insforge");
+        const client = getInsForgeClient();
+        const { data, error } = await client.database
+          .from("self_assessments")
+          .select("*")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        if (!error && data) {
+          setSelfAssessment(data as SelfAssessment);
+        }
+      } catch (err) {
+        console.error("Error fetching self-assessment:", err);
+      }
+    }
+    fetchSelfAssessment();
+  }, [user]);
+
   const latestSnapshot = snapshots[0] ?? null;
   const priorMonthSnapshot = snapshots[1] ?? null;
 
@@ -383,6 +409,23 @@ export default function DashboardPage() {
       Expenses: s.total_expenses ?? 0,
     }));
   }, [chartSnapshots]);
+
+  const focusContext = useMemo((): FinancialContext | null => {
+    if (!assessment) return null;
+    const hasLiabilities =
+      latestSnapshot?.current_liabilities != null || latestSnapshot?.long_term_liabilities != null;
+    return {
+      cashOnHand: assessment.cash_on_hand,
+      monthlyRevenue: assessment.monthly_revenue,
+      monthlyExpenses: assessment.monthly_expenses,
+      netProfit: latestSnapshot?.net_profit ?? assessment.monthly_revenue - assessment.monthly_expenses,
+      totalLiabilities: hasLiabilities
+        ? (latestSnapshot?.current_liabilities ?? 0) + (latestSnapshot?.long_term_liabilities ?? 0)
+        : null,
+      incomeHistory: chartSnapshots.map((s) => s.total_income ?? 0),
+      runwayLocked: trialMode,
+    };
+  }, [assessment, latestSnapshot, chartSnapshots, trialMode]);
 
   const timeOfDay = getTimeOfDay();
   const formattedDate = getFormattedDate();
@@ -583,6 +626,11 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Focus Areas from the self-assessment */}
+        {!loading && selfAssessment && focusContext && (
+          <FocusAreasCard selfAssessment={selfAssessment} context={focusContext} />
         )}
 
         {/* Metric Cards - Profit, Cash Flow, Runway */}

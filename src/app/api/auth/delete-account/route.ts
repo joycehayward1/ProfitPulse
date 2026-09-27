@@ -66,6 +66,7 @@ export async function POST(request: NextRequest) {
   const publicTables = [
     "financial_snapshots",
     "health_assessments",
+    "self_assessments",
     "subscriptions",
     "notification_preferences",
     "quickbooks_connections",
