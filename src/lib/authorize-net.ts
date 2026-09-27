@@ -801,6 +801,9 @@ interface GetTransactionDetailsResponse {
     transId: string;
     transactionType: string;
     transactionStatus: string;
+    /** 1 = approved, 2 = declined, 3 = error, 4 = held for review */
+    responseCode?: number | string;
+    submitTimeUTC?: string;
     authAmount?: number;
     settleAmount?: number;
     subscription?: {
@@ -820,6 +823,9 @@ export interface TransactionDetails {
   subscriptionId: string | null;
   payNum: string | null;
   customerEmail: string | null;
+  /** 1 = approved, 2 = declined, 3 = error, 4 = held for review */
+  responseCode: number | null;
+  submitTimeUTC: string | null;
 }
 
 /**
@@ -840,13 +846,41 @@ export async function getTransactionDetails(
   const result = await callAnet<GetTransactionDetailsResponse>(payload);
   assertOk(result, "getTransactionDetails");
 
+  const code = Number(result.transaction.responseCode);
   return {
     transId: result.transaction.transId,
     amount: result.transaction.settleAmount ?? result.transaction.authAmount ?? null,
     subscriptionId: result.transaction.subscription?.id ?? null,
-    payNum: result.transaction.subscription?.payNum ?? null,
+    payNum:
+      result.transaction.subscription?.payNum != null
+        ? String(result.transaction.subscription.payNum)
+        : null,
     customerEmail: result.transaction.customer?.email ?? null,
+    responseCode: Number.isFinite(code) ? code : null,
+    submitTimeUTC: result.transaction.submitTimeUTC ?? null,
   };
+}
+
+/**
+ * getTransactionDetails with retries. Authorize.net's reporting API can lag a
+ * freshly captured transaction by a few seconds ("record cannot be found"),
+ * which is exactly when the webhook asks for it.
+ */
+export async function getTransactionDetailsWithRetry(
+  transId: string,
+  attempts = 4,
+  delayMs = 3000
+): Promise<TransactionDetails> {
+  let lastError: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await getTransactionDetails(transId);
+    } catch (err) {
+      lastError = err;
+      if (i < attempts - 1) await new Promise((r) => setTimeout(r, delayMs * (i + 1)));
+    }
+  }
+  throw lastError;
 }
 
 // ─── 5. ARBGetSubscriptionRequest ────────────────────────────────────────────
@@ -881,9 +915,19 @@ interface ARBGetSubscriptionResponse {
   messages: AnetMessages;
 }
 
+export interface ARBTransactionAttempt {
+  transId: string;
+  payNum: string;
+  submitTimeUTC: string;
+  /** Raw response from ARBGetSubscription — may be a code or a text message */
+  response: string;
+}
+
 export interface ARBSubscriptionStatus {
   subscriptionId: string;
   status: string;
+  /** Every charge attempt on the subscription, oldest first. */
+  transactions: ARBTransactionAttempt[];
   lastTransaction: {
     transId: string;
     payNum: string;
@@ -916,9 +960,14 @@ export async function getARBSubscription(
   const arbTxRaw = sub.arbTransactions?.arbTransaction;
   const arbTxs = Array.isArray(arbTxRaw) ? arbTxRaw : arbTxRaw ? [arbTxRaw] : [];
 
-  // Find the most recent successful transaction (response code "1" = approved)
+  // ARBGetSubscription reports `response` as a text message ("This
+  // transaction has been approved.") rather than a code, so accept either.
+  // Callers that act on a charge should confirm it with getTransactionDetails.
+  const isApproved = (response: unknown) =>
+    String(response) === "1" || /approved/i.test(String(response ?? ""));
+
   const successful = arbTxs
-    .filter((t) => t.response === "1" && t.transId)
+    .filter((t) => isApproved(t.response) && t.transId)
     .sort((a, b) => {
       const aTime = new Date(a.submitTimeUTC ?? 0).getTime();
       const bTime = new Date(b.submitTimeUTC ?? 0).getTime();
@@ -926,13 +975,24 @@ export async function getARBSubscription(
     });
   const latest = successful[0] ?? null;
 
+  const transactions: ARBTransactionAttempt[] = arbTxs
+    .filter((t) => t.transId)
+    .map((t) => ({
+      transId: String(t.transId),
+      payNum: String(t.payNum ?? ""),
+      submitTimeUTC: t.submitTimeUTC ?? "",
+      response: String(t.response ?? ""),
+    }))
+    .sort((a, b) => new Date(a.submitTimeUTC).getTime() - new Date(b.submitTimeUTC).getTime());
+
   return {
     subscriptionId,
     status: sub.status ?? "unknown",
+    transactions,
     lastTransaction: latest
       ? {
-          transId: latest.transId!,
-          payNum: latest.payNum ?? "",
+          transId: String(latest.transId),
+          payNum: String(latest.payNum ?? ""),
           submitTimeUTC: latest.submitTimeUTC ?? "",
           response: latest.response ?? "",
         }

@@ -8,6 +8,9 @@ interface PaywallScreenProps {
   heading?: string;
   /** Optional subheading override. */
   subheading?: string;
+  /** Button target and label (default: subscribe on /pricing). */
+  ctaHref?: string;
+  ctaLabel?: string;
 }
 
 /**
@@ -17,6 +20,8 @@ interface PaywallScreenProps {
 export function PaywallScreen({
   heading = "Your trial has ended",
   subheading = "Subscribe to Pro to keep using MyProfitPulse and unlock the full dashboard.",
+  ctaHref = "/pricing",
+  ctaLabel = "Subscribe to Pro",
 }: PaywallScreenProps) {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-md py-xl">
@@ -54,7 +59,7 @@ export function PaywallScreen({
         </div>
 
         <Link
-          href="/pricing"
+          href={ctaHref}
           className={[
             "inline-block w-full px-8 py-4 rounded-md",
             "bg-orange text-white text-body font-medium",
@@ -62,7 +67,7 @@ export function PaywallScreen({
             "shadow-[0_2px_8px_rgba(230,81,0,0.25)]",
           ].join(" ")}
         >
-          Subscribe to Pro
+          {ctaLabel}
         </Link>
       </div>
     </div>

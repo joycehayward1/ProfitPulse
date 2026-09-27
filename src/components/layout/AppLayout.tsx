@@ -423,8 +423,21 @@ export function AppLayout({ children, pulseMessage }: AppLayoutProps) {
         {/* Main Content */}
         <main className="flex-1 px-4 sm:px-6 lg:px-10 py-6 lg:py-8">
           <div className="max-w-content mx-auto">
-            {!authLoading && accessLevel === "locked" && user ? (
-              subscription?.last_payment_date ? (
+            {/* Billing stays reachable when locked so a declined card can be fixed;
+                /admin checks admin rights itself and must never be paywalled. */}
+            {!authLoading &&
+            accessLevel === "locked" &&
+            user &&
+            pathname !== "/billing" &&
+            !pathname?.startsWith("/admin") ? (
+              subscription?.last_payment_status === "failed" ? (
+                <PaywallScreen
+                  heading="Your payment didn't go through"
+                  subheading="Your last renewal was declined, so your account is paused. Try your card again or use a different one, and you'll be right back in. Your data is safe."
+                  ctaHref="/billing"
+                  ctaLabel="Fix my payment"
+                />
+              ) : subscription?.last_payment_date ? (
                 <PaywallScreen
                   heading="There's a problem with your subscription"
                   subheading="Your subscription is no longer active — your last renewal may not have gone through. Subscribe below to pick up where you left off. Your data is safe."
@@ -440,7 +453,7 @@ export function AppLayout({ children, pulseMessage }: AppLayoutProps) {
       </div>
 
       {/* Pulse Assistant */}
-      {onboardingDone && (
+      {onboardingDone && !pathname?.startsWith("/admin") && (
         <PulseAssistant
           message={pulseMessage || getPulseMessage(pathname || "")}
           page={pathname || ""}

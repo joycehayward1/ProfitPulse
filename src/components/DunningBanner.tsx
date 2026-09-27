@@ -46,7 +46,7 @@ export function DunningBanner({ subscription }: DunningBannerProps) {
         />
         <div className="min-w-0">
           <span className="text-body font-medium text-text-primary">
-            Your payment failed — update your billing info.
+            Your{subscription.last_payment_amount ? ` $${Number(subscription.last_payment_amount).toFixed(2)}` : ""} payment didn&apos;t go through.
           </span>
           <span className="hidden sm:inline text-body text-text-secondary ml-1">
             {graceMsg}
@@ -57,7 +57,7 @@ export function DunningBanner({ subscription }: DunningBannerProps) {
         href="/billing"
         className="px-4 py-2 rounded-md text-small font-medium whitespace-nowrap bg-error text-white hover:bg-[#B91C1C] transition-colors"
       >
-        Update card
+        Fix payment
       </Link>
     </div>
   );

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getInsForgeAdmin } from "@/lib/insforge";
-import { getAuthenticatedUserId } from "@/lib/server-auth";
+import { getAuthenticatedUser } from "@/lib/server-auth";
+import { owesMissedRenewal, settleMissedRenewal } from "@/lib/missed-renewal";
+import type { Subscription } from "@/lib/database.types";
 import {
   createCustomerPaymentProfile,
   updateARBSubscription,
@@ -20,9 +22,10 @@ import {
  * Steps:
  *   1. Create a new payment profile under the user's existing Customer Profile
  *   2. Update the active ARB to use the new payment profile
- *   3. Update InsForge:
- *      - anet_payment_profile_id: new ID
- *      - If user was past_due, flip status back to active (card is good now)
+ *   3. If a renewal was declined and is still owed, charge the missed period
+ *      to the new card right away (see lib/missed-renewal). Access comes back
+ *      only when that charge succeeds.
+ *   4. Update InsForge: anet_payment_profile_id → new ID
  *
  * Requires the user to already have an existing customer_profile_id and
  * (ideally) an active ARB. For users without an ARB, they should use the
@@ -41,11 +44,11 @@ export async function POST(request: NextRequest) {
   }
 
   // Act only on the signed-in caller's own subscription, never a body userId.
-  const userId = await getAuthenticatedUserId(request);
-  if (!userId) {
+  const authUser = await getAuthenticatedUser(request);
+  if (!authUser) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  body.userId = userId;
+  body.userId = authUser.id;
   if (!body.nonce?.dataDescriptor || !body.nonce?.dataValue) {
     return NextResponse.json(
       { error: "Payment nonce is missing or malformed" },
@@ -107,28 +110,55 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Step 3: Update InsForge — new payment profile, reset past_due if needed
-    const updatePayload: Record<string, unknown> = {
-      anet_payment_profile_id: newProfile.customerPaymentProfileId,
-      updated_at: new Date().toISOString(),
-    };
-    if (sub.subscription_status === "past_due") {
-      updatePayload.subscription_status = "active";
-      updatePayload.last_payment_status = null;
+    // Step 3: collect a declined renewal that's still owed, on the new card
+    const owed = owesMissedRenewal(sub as Subscription);
+    const settle = owed
+      ? await settleMissedRenewal(
+          sub as Subscription,
+          newProfile.customerPaymentProfileId,
+          authUser.email
+        )
+      : null;
+
+    // Step 4: save the new payment profile. A successful settle already did
+    // (and restored access); otherwise access stays as-is until paid.
+    if (settle?.status !== "paid") {
+      const updatePayload: Record<string, unknown> = {
+        anet_payment_profile_id: newProfile.customerPaymentProfileId,
+        updated_at: new Date().toISOString(),
+      };
+      // Suspended ARB: Authorize.net reactivates it and retries the failed
+      // payment itself when the payment info changes (the webhook records it).
+      if (settle?.status === "left_to_authorize_net") {
+        updatePayload.subscription_status = "active";
+        updatePayload.last_payment_status = null;
+      }
+      const { error: updateError } = await client.database
+        .from("subscriptions")
+        .update(updatePayload)
+        .eq("user_id", body.userId);
+      if (updateError) {
+        console.error("[update-card] DB update failed:", updateError);
+      }
     }
 
-    const { error: updateError } = await client.database
-      .from("subscriptions")
-      .update(updatePayload)
-      .eq("user_id", body.userId);
-
-    if (updateError) {
-      console.error("[update-card] DB update failed:", updateError);
+    if (settle?.status === "declined") {
+      return NextResponse.json(
+        {
+          error: `Your new card was saved, but the ${`$${settle.amount.toFixed(2)}`} payment for your missed month was declined (${settle.reason}). Try a different card.`,
+          cardSaved: true,
+        },
+        { status: 402 }
+      );
     }
 
     return NextResponse.json({
       success: true,
       customerPaymentProfileId: newProfile.customerPaymentProfileId,
+      missedPayment:
+        settle?.status === "paid"
+          ? { amount: settle.amount, paidThrough: settle.periodEnd }
+          : null,
     });
   } catch (err: unknown) {
     const message =

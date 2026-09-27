@@ -9,7 +9,7 @@ import { authFetch } from "@/lib/auth-fetch";
 interface UpdateCardFormProps {
   userId: string;
   userEmail?: string;
-  onSuccess: () => void;
+  onSuccess: (result?: { missedPayment?: { amount: number; paidThrough: string } | null }) => void;
   onCancel: () => void;
 }
 
@@ -93,7 +93,7 @@ export function UpdateCardForm({
         return;
       }
 
-      onSuccess();
+      onSuccess(json);
     } catch (err: unknown) {
       const msg =
         (err as { messages?: { message?: { text?: string }[] } })?.messages

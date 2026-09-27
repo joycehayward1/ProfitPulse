@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { getInsForgeAdmin } from "@/lib/insforge";
 import {
-  getTransactionDetails,
+  getTransactionDetailsWithRetry,
   computePeriodEnd,
   getPlanAmount,
 } from "@/lib/authorize-net";
@@ -108,7 +108,10 @@ export async function POST(request: NextRequest) {
     return new NextResponse("invalid json", { status: 400 });
   }
 
-  // ⚠ Always return 200 from here on — we log errors and keep Authorize.net happy.
+  // A processing failure returns 500 so Authorize.net redelivers the event
+  // (it retries with backoff). Handlers are idempotent — renewals are keyed on
+  // the transaction ID — so a redelivery never double-records. The nightly
+  // reconcile is the backstop if every retry fails.
   try {
     await processEvent(event);
   } catch (err) {
@@ -116,6 +119,7 @@ export async function POST(request: NextRequest) {
       `[webhook] processing failed for ${event.eventType}:`,
       err
     );
+    return new NextResponse("processing failed", { status: 500 });
   }
 
   return NextResponse.json({ ok: true });
@@ -143,8 +147,20 @@ async function processEvent(event: WebhookEvent): Promise<void> {
         return;
       }
 
-      // Look up transaction details to find the subscription ID
-      const details = await getTransactionDetails(transId);
+      // Already recorded (redelivery, or the nightly reconcile got it first)
+      const { data: alreadyRecorded } = await client.database
+        .from("payment_records")
+        .select("id")
+        .eq("anet_transaction_id", transId)
+        .maybeSingle();
+      if (alreadyRecorded) {
+        console.log(`[webhook] transaction ${transId} already recorded — skipping`);
+        return;
+      }
+
+      // Look up transaction details to find the subscription ID. Retries
+      // because the reporting API can lag a just-captured transaction.
+      const details = await getTransactionDetailsWithRetry(transId);
 
       if (!details.subscriptionId) {
         // Not a recurring charge — probably the initial subscribe transaction,
@@ -169,11 +185,46 @@ async function processEvent(event: WebhookEvent): Promise<void> {
         return;
       }
 
-      // Skip the first charge (payNum == "1") — it's handled by /subscribe
-      if (details.payNum === "1") {
-        console.log(
-          `[webhook] skipping payNum=1 for sub ${details.subscriptionId} (handled by /subscribe)`
-        );
+      // Note: ARB payNum 1 IS a renewal. /subscribe charges the first period
+      // as a one-off transaction and starts the ARB one period later, so every
+      // ARB charge — including payNum 1 — is recorded here.
+
+      // Declined / errored renewal: record it and put the subscriber into
+      // past_due so they see the update-card banner. Authorize.net leaves the
+      // subscription itself "active" after a non-first declined payment.
+      if (details.responseCode === 2 || details.responseCode === 3) {
+        const failedAt = new Date(details.submitTimeUTC || Date.now());
+        const failedAmount =
+          details.amount ??
+          getPlanAmount(sub.billing_interval as BillingInterval, sub.pricing_promo ?? "standard");
+
+        const { error: failError } = await client.database
+          .from("subscriptions")
+          .update({
+            subscription_status: "past_due",
+            last_payment_date: failedAt.toISOString(),
+            last_payment_amount: failedAmount,
+            last_payment_status: "failed",
+            updated_at: new Date().toISOString(),
+          })
+          .eq("user_id", sub.user_id);
+        if (failError) throw new Error(`failed to mark past_due: ${failError.message}`);
+
+        await client.database.from("payment_records").insert([
+          {
+            user_id: sub.user_id,
+            anet_transaction_id: transId,
+            type: "renewal",
+            amount: failedAmount,
+            status: "failed",
+            billing_interval: sub.billing_interval,
+            description: `MyProfitPulse Pro ${sub.billing_interval} — renewal declined (payNum ${details.payNum})`,
+          },
+        ]);
+        return;
+      }
+      if (details.responseCode !== null && details.responseCode !== 1) {
+        console.log(`[webhook] transaction ${transId} responseCode ${details.responseCode} — not recording yet`);
         return;
       }
 
@@ -218,13 +269,12 @@ async function processEvent(event: WebhookEvent): Promise<void> {
         .eq("user_id", sub.user_id);
 
       if (updateError) {
-        console.error("[webhook] failed to update subscription:", updateError);
-        return;
+        throw new Error(`failed to update subscription: ${updateError.message}`);
       }
 
       const { error: paymentError } = await client.database
         .from("payment_records")
-        .insert({
+        .insert([{
           user_id: sub.user_id,
           anet_transaction_id: transId,
           type: "renewal",
@@ -232,7 +282,7 @@ async function processEvent(event: WebhookEvent): Promise<void> {
           status: "success",
           billing_interval: billingInterval,
           description: `MyProfitPulse Pro ${billingInterval} — renewal (payNum ${details.payNum})`,
-        });
+        }]);
 
       if (paymentError) {
         console.error("[webhook] failed to insert payment record:", paymentError);

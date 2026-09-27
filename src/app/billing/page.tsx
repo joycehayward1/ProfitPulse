@@ -48,6 +48,38 @@ export default function BillingPage() {
 
   const [cancelling, setCancelling] = useState(false);
   const [switching, setSwitching] = useState(false);
+  const [retrying, setRetrying] = useState(false);
+
+  // A declined renewal that's still owed (see lib/missed-renewal).
+  const owesPayment = Boolean(
+    subscription?.last_payment_status === "failed" &&
+      subscription?.anet_subscription_id &&
+      subscription?.anet_customer_profile_id &&
+      (subscription?.subscription_status === "past_due" ||
+        subscription?.subscription_status === "active")
+  );
+  const owedAmount = Number(subscription?.last_payment_amount) || null;
+
+  async function handleRetryPayment() {
+    setRetrying(true);
+    try {
+      const res = await authFetch("/api/payments/retry-payment", { method: "POST" });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || json.error) {
+        showToast("error", json.error ?? "The payment didn't go through. Try a different card.");
+        return;
+      }
+      showToast(
+        "success",
+        `Payment of ${formatCurrency(json.amount)} went through. You're all set.`
+      );
+      await refreshUser();
+    } catch {
+      showToast("error", "Couldn't reach the server. Check your connection and try again.");
+    } finally {
+      setRetrying(false);
+    }
+  }
 
   useEffect(() => {
     async function loadPayments() {
@@ -145,6 +177,38 @@ export default function BillingPage() {
           </Link>
           <h1 className="font-display text-h1 text-text-primary">Billing</h1>
         </div>
+
+        {/* Missed payment */}
+        {owesPayment && (
+          <div className="rounded-xl p-lg border border-error/30 bg-error/5" role="alert">
+            <div className="flex items-start gap-md">
+              <div className="w-10 h-10 rounded-full bg-error/10 flex items-center justify-center flex-shrink-0">
+                <Icon icon="lucide:credit-card" className="text-error" width={20} height={20} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h2 className="font-display text-h3 text-text-primary">
+                  Your {owedAmount ? formatCurrency(owedAmount) + " " : ""}payment didn&apos;t go through
+                </h2>
+                <p className="text-body text-text-secondary mt-1">
+                  Your renewal
+                  {subscription?.last_payment_date
+                    ? ` on ${formatDate(subscription.last_payment_date)}`
+                    : ""}{" "}
+                  was declined. Try your card again, or use a different one. We&apos;ll charge the missed
+                  month right away and your account picks up where it left off.
+                </p>
+                <div className="flex flex-wrap gap-sm mt-md">
+                  <Button variant="primary" onClick={handleRetryPayment} disabled={retrying}>
+                    {retrying ? "Trying your card…" : "Try my card again"}
+                  </Button>
+                  <Button variant="secondary" onClick={() => setShowCardModal(true)} disabled={retrying}>
+                    Use a different card
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Current Plan Card */}
         <div className="bg-gradient-to-br from-orange/5 via-surface to-surface rounded-xl p-xl border border-orange/20 shadow-sm">
@@ -481,8 +545,13 @@ export default function BillingPage() {
           <UpdateCardForm
             userId={user.id}
             userEmail={user.email}
-            onSuccess={async () => {
-              showToast("success", "Payment method updated");
+            onSuccess={async (result) => {
+              showToast(
+                "success",
+                result?.missedPayment
+                  ? `Card updated and your ${formatCurrency(result.missedPayment.amount)} payment went through. You're all set.`
+                  : "Payment method updated"
+              );
               await refreshUser();
               setShowCardModal(false);
             }}
