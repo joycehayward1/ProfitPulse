@@ -4,9 +4,8 @@
  * trust a userId from the request body.
  */
 export async function authFetch(input: string, init: RequestInit = {}): Promise<Response> {
-  const { getInsForgeClient } = await import("@/lib/insforge");
-  const { data } = await getInsForgeClient().auth.getCurrentSession();
-  const token = data?.session?.accessToken;
+  const { getAccessToken } = await import("@/lib/insforge");
+  const token = await getAccessToken();
 
   const headers = new Headers(init.headers);
   if (token) headers.set("Authorization", `Bearer ${token}`);

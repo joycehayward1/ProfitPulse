@@ -15,6 +15,7 @@ jest.mock("@/components/ui/Toast", () => ({
 }));
 
 jest.mock("@/lib/insforge", () => ({
+  getAccessToken: jest.fn().mockResolvedValue("test-token"),
   getInsForgeClient: jest.fn(() => ({
     auth: {
       getCurrentSession: jest.fn().mockResolvedValue({

@@ -115,13 +115,12 @@ export function AppLayout({ children, pulseMessage }: AppLayoutProps) {
     let cancelled = false;
     async function checkAdmin() {
       try {
-        const { getInsForgeClient } = await import("@/lib/insforge");
-        const client = getInsForgeClient();
-        const { data } = await client.auth.getCurrentSession();
-        if (!data?.session?.accessToken) return;
+        const { getAccessToken } = await import("@/lib/insforge");
+        const token = await getAccessToken();
+        if (!token) return;
 
         const res = await fetch("/api/admin/check", {
-          headers: { Authorization: `Bearer ${data.session.accessToken}` },
+          headers: { Authorization: `Bearer ${token}` },
         });
         const result = await res.json();
         if (!cancelled) {

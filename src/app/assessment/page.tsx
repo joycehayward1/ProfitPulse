@@ -203,16 +203,14 @@ function AssessmentContent() {
   }
 
   const getAuthHeaders = useCallback(async (): Promise<Record<string, string> | null> => {
-    const { getInsForgeClient } = await import("@/lib/insforge");
-    const client = getInsForgeClient();
-    const { data, error } = await client.auth.getCurrentSession();
-
-    if (error || !data?.session?.accessToken) {
+    const { getAccessToken } = await import("@/lib/insforge");
+    const token = await getAccessToken();
+    if (!token) {
       return null;
     }
 
     return {
-      Authorization: `Bearer ${data.session.accessToken}`,
+      Authorization: `Bearer ${token}`,
     };
   }, []);
 

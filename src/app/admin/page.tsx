@@ -88,11 +88,10 @@ type SortKey = "joined" | "name" | "health" | "plan";
 type Tab = "users" | "payments" | "comped";
 
 async function getAuthHeaders(): Promise<Record<string, string> | null> {
-  const { getInsForgeClient } = await import("@/lib/insforge");
-  const client = getInsForgeClient();
-  const { data, error } = await client.auth.getCurrentSession();
-  if (error || !data?.session?.accessToken) return null;
-  return { Authorization: `Bearer ${data.session.accessToken}` };
+  const { getAccessToken } = await import("@/lib/insforge");
+  const token = await getAccessToken();
+  if (!token) return null;
+  return { Authorization: `Bearer ${token}` };
 }
 
 function PlanBadge({ plan }: { plan: string }) {

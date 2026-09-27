@@ -38,16 +38,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   async function loadUser() {
     try {
       const client = getInsForgeClient();
-      const { data, error } = await client.auth.getCurrentSession();
+      const { data, error } = await client.auth.getCurrentUser();
 
-      if (error || !data?.session) {
+      if (error || !data?.user) {
         setUser(null);
         setSubscription(null);
         setLoading(false);
         return;
       }
 
-      const sessionUser = data.session.user;
+      const sessionUser = data.user;
 
       // Fetch latest profile data + subscription in parallel
       const [profileResult, subResult] = await Promise.all([

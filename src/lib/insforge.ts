@@ -34,6 +34,22 @@ export function getInsForgeClient(): InsForgeClient {
 }
 
 /**
+ * The signed-in user's access token, or null when signed out. Restores the
+ * session from the refresh cookie on page load and refreshes the token when
+ * it is expired or about to expire, so long-open pages keep working.
+ */
+export async function getAccessToken(): Promise<string | null> {
+  const client = getInsForgeClient();
+  const { data } = await client.auth.getCurrentUser();
+  if (!data.user) return null;
+  try {
+    return await client.getHttpClient().getValidAccessToken();
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Server-side InsForge client with admin privileges.
  * Only use in API routes and server components — never expose to the browser.
  */

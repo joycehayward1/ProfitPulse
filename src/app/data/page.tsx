@@ -8,7 +8,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Button, CurrencyInput } from "@/components/ui";
 import { useToast } from "@/components/ui/Toast";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
-import { getInsForgeClient } from "@/lib/insforge";
+import { getAccessToken, getInsForgeClient } from "@/lib/insforge";
 import type { FinancialSnapshot } from "@/lib/database.types";
 import { authFetch } from "@/lib/auth-fetch";
 
@@ -553,14 +553,13 @@ function DataContent() {
   }
 
   async function getAuthHeaders(): Promise<Record<string, string> | null> {
-    const client = getInsForgeClient();
-    const { data, error } = await client.auth.getCurrentSession();
-    if (error || !data?.session?.accessToken) {
+    const token = await getAccessToken();
+    if (!token) {
       return null;
     }
 
     return {
-      Authorization: `Bearer ${data.session.accessToken}`,
+      Authorization: `Bearer ${token}`,
     };
   }
 
@@ -1050,8 +1049,7 @@ function DataContent() {
       if (error) {
         // The auth token may have gone stale during a long editing session.
         // Re-check the session (which refreshes it) and retry once.
-        const { data: sessionData } = await client.auth.getCurrentSession();
-        if (!sessionData?.session?.accessToken) {
+        if (!(await getAccessToken())) {
           showToast(
             "error",
             "Your session expired. Please log in again — your entries are kept on this device and will still be here."
@@ -1418,8 +1416,7 @@ function DataContent() {
 
       if (error) {
         // Stale auth token after a long review session — refresh and retry once.
-        const { data: sessionData } = await client.auth.getCurrentSession();
-        if (sessionData?.session?.accessToken) {
+        if (await getAccessToken()) {
           ({ error } = await client.database
             .from("financial_snapshots")
             .upsert(snapshotRows, { onConflict: "user_id,period_date" }));
@@ -1582,11 +1579,9 @@ function DataContent() {
 
     setQbConnecting(true);
     try {
-      const client = getInsForgeClient();
-      const { data, error } = await client.auth.getCurrentSession();
-      const accessToken = data?.session?.accessToken;
+      const accessToken = await getAccessToken();
 
-      if (error || !accessToken) {
+      if (!accessToken) {
         showToast("error", "Your session expired. Please log in again.");
         return;
       }
