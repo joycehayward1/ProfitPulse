@@ -5,29 +5,28 @@ import { Icon } from "@iconify/react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { useToast } from "@/components/ui";
-
-interface AdminUser {
-  id: string;
-  name: string;
-  email: string;
-  business_name: string | null;
-  plan: string;
-  billing_interval: string | null;
-  trial_end_date: string | null;
-  next_billing_date: string | null;
-  current_period_end: string | null;
-  pricing_promo: string | null;
-  comp_days: number;
-  last_payment_date: string | null;
-  last_payment_amount: number | null;
-  last_payment_status: string | null;
-  health_score: number | null;
-  data_periods: number;
-  joined: string | null;
-}
+import { UserDetailDrawer, statusDot } from "./UserDetailDrawer";
+import {
+  ACCESS_REASON_LABELS,
+  accessLine,
+  calendarDaysUntil,
+  daysUntil,
+  describeAction,
+  displayName,
+  formatDate,
+  formatMoney,
+  getAuthHeaders,
+  initials,
+  localISODate,
+  type AdminAction,
+  type AdminUser,
+  type GrantDuration,
+} from "./admin-utils";
 
 interface AdminStats {
   totalUsers: number;
+  withAccess: number;
+  freeAccess: number;
   activeSubscribers: number;
   trialUsers: number;
   pastDue: number;
@@ -51,129 +50,32 @@ interface PaymentRecord {
 interface CompedEmail {
   email: string;
   note: string | null;
+  access_months: number | null;
   created_at: string;
   claimed_at: string | null;
   claimed_by: string | null;
 }
 
-type PlanFilter = "all" | "active" | "trial" | "past_due" | "canceled" | "none";
-type GrantDuration = "1m" | "12m" | "lifetime";
+type Tab = "people" | "payments" | "comped" | "activity";
+type PeopleFilter = "all" | "can_use" | "locked" | "trial" | "problems";
+type SortKey = "newest" | "name" | "ending";
 
-const GRANT_OPTIONS: { value: GrantDuration; label: string; icon: string }[] = [
-  { value: "1m", label: "1 month", icon: "ph:calendar-bold" },
-  { value: "12m", label: "12 months", icon: "ph:calendar-plus-bold" },
-  { value: "lifetime", label: "Lifetime", icon: "ph:infinity-bold" },
-];
-
-const GRANT_LABELS: Record<GrantDuration, string> = {
+const GRANT_TEXT: Record<Exclude<GrantDuration, "custom">, string> = {
   "1m": "1 month",
+  "3m": "3 months",
+  "6m": "6 months",
   "12m": "12 months",
-  lifetime: "lifetime",
+  lifetime: "life",
 };
 
-/** Goodwill credit presets: extra free days added after the paid period ends. */
-const COMP_OPTIONS: { days: number; label: string }[] = [
-  { days: 7, label: "1 week" },
-  { days: 14, label: "2 weeks" },
-  { days: 30, label: "1 month" },
-  { days: 90, label: "3 months" },
+const COMPED_LENGTHS: { months: number | null; label: string }[] = [
+  { months: null, label: "For life" },
+  { months: 3, label: "3 months" },
+  { months: 6, label: "6 months" },
+  { months: 12, label: "12 months" },
 ];
 
-/** Period ends more than 50 years out are admin-granted lifetime comps. */
-function isLifetime(periodEnd: string | null): boolean {
-  if (!periodEnd) return false;
-  return new Date(periodEnd).getFullYear() - new Date().getFullYear() > 50;
-}
-type SortKey = "joined" | "name" | "health" | "plan";
-type Tab = "users" | "payments" | "comped";
-
-async function getAuthHeaders(): Promise<Record<string, string> | null> {
-  const { getAccessToken } = await import("@/lib/insforge");
-  const token = await getAccessToken();
-  if (!token) return null;
-  return { Authorization: `Bearer ${token}` };
-}
-
-function PlanBadge({ plan }: { plan: string }) {
-  const config: Record<string, { bg: string; text: string; dot: string; label: string }> = {
-    active: { bg: "bg-[#F0FDF4]", text: "text-[#16A34A]", dot: "bg-[#16A34A]", label: "Active" },
-    trial: { bg: "bg-[#FFF7ED]", text: "text-[#EA580C]", dot: "bg-[#EA580C]", label: "Trial" },
-    canceled: { bg: "bg-[#FEF2F2]", text: "text-[#DC2626]", dot: "bg-[#DC2626]", label: "Canceled" },
-    past_due: { bg: "bg-[#FEF2F2]", text: "text-[#DC2626]", dot: "bg-[#DC2626]", label: "Past Due" },
-    terminated: { bg: "bg-[#F4F4F5]", text: "text-[#8B8B8B]", dot: "bg-[#8B8B8B]", label: "Terminated" },
-    expired: { bg: "bg-[#F4F4F5]", text: "text-[#8B8B8B]", dot: "bg-[#8B8B8B]", label: "Expired" },
-    none: { bg: "bg-[#F4F4F5]", text: "text-[#8B8B8B]", dot: "bg-[#8B8B8B]", label: "None" },
-  };
-
-  const c = config[plan] || config.none;
-
-  return (
-    <span
-      className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium ${c.bg} ${c.text}`}
-    >
-      <span className={`w-1.5 h-1.5 rounded-full ${c.dot}`} />
-      {c.label}
-    </span>
-  );
-}
-
-function PaymentStatusBadge({ status }: { status: string }) {
-  const config: Record<string, { bg: string; text: string; label: string }> = {
-    success: { bg: "bg-[#F0FDF4]", text: "text-[#16A34A]", label: "Success" },
-    failed: { bg: "bg-[#FEF2F2]", text: "text-[#DC2626]", label: "Failed" },
-    voided: { bg: "bg-[#F4F4F5]", text: "text-[#8B8B8B]", label: "Voided" },
-    refunded: { bg: "bg-[#FFF7ED]", text: "text-[#EA580C]", label: "Refunded" },
-  };
-  const c = config[status] || config.voided;
-  return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${c.bg} ${c.text}`}>
-      {c.label}
-    </span>
-  );
-}
-
-function trialDaysLeft(trialEnd: string | null): number | null {
-  if (!trialEnd) return null;
-  const diff = new Date(trialEnd).getTime() - Date.now();
-  return Math.ceil(diff / (1000 * 60 * 60 * 24));
-}
-
-function formatDate(date: string | null): string {
-  if (!date) return "—";
-  return new Date(date).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
-function formatMoney(amount: number): string {
-  return amount.toLocaleString("en-US", {
-    style: "currency",
-    currency: "USD",
-  });
-}
-
-interface StatCardProps {
-  icon: string;
-  iconColor: string;
-  label: string;
-  value: string;
-  sub?: string;
-}
-
-function StatCard({ icon, iconColor, label, value, sub }: StatCardProps) {
-  return (
-    <div className="bg-white rounded-xl border border-[#F0F0F2] shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)] p-5">
-      <div className="flex items-center gap-2 mb-2">
-        <Icon icon={icon} className={`w-4 h-4 ${iconColor}`} />
-        <p className="text-[13px] font-medium text-[#8B8B8B]">{label}</p>
-      </div>
-      <p className="text-[26px] font-bold text-[#111111] leading-tight">{value}</p>
-      {sub && <p className="text-[11px] text-[#8B8B8B] mt-1">{sub}</p>}
-    </div>
-  );
-}
+const PROBLEM_REASONS = new Set(["past_due", "grace", "lapsed"]);
 
 interface ConfirmState {
   title: string;
@@ -182,43 +84,155 @@ interface ConfirmState {
   onConfirm: () => void;
 }
 
-function ConfirmDialog({
-  confirm,
+interface PromptState {
+  title: string;
+  message: string;
+  inputType: "number" | "date";
+  inputLabel: string;
+  min?: string;
+  max?: string;
+  confirmLabel: string;
+  onSubmit: (value: string) => void;
+}
+
+interface Attention {
+  user: AdminUser;
+  tone: "error" | "warning" | "neutral";
+  text: string;
+}
+
+function plural(n: number, one: string, many = `${one}s`): string {
+  return `${n} ${n === 1 ? one : many}`;
+}
+
+function greeting(): string {
+  const h = new Date().getHours();
+  return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
+}
+
+/** CSV field, quoted when it contains a comma, quote, or newline. */
+function csvField(value: unknown): string {
+  const s = value === null || value === undefined ? "" : String(value);
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+function Avatar({ user }: { user: AdminUser }) {
+  return (
+    <span className="w-9 h-9 rounded-full bg-orange-subtle text-orange flex items-center justify-center text-[13px] font-semibold flex-shrink-0">
+      {initials(user)}
+    </span>
+  );
+}
+
+function Modal({
+  children,
   onCancel,
+  onSubmit,
 }: {
-  confirm: ConfirmState;
+  children: React.ReactNode;
   onCancel: () => void;
+  onSubmit: () => void;
 }) {
+  useEffect(() => {
+    // Capture phase + stopImmediatePropagation: Escape closes only this
+    // dialog, not the person panel underneath it.
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.stopImmediatePropagation();
+      onCancel();
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [onCancel]);
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-[#1C1917]/40 backdrop-blur-[2px] px-4"
       onClick={onCancel}
     >
-      <div
-        className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6"
+      <form
+        role="dialog"
+        aria-modal="true"
+        className="bg-surface rounded-2xl shadow-overlay max-w-md w-full p-7"
         onClick={(e) => e.stopPropagation()}
+        onSubmit={(e) => {
+          e.preventDefault();
+          onSubmit();
+        }}
       >
-        <div className="w-12 h-12 rounded-full bg-[#FFF7ED] flex items-center justify-center mb-4">
-          <Icon icon="ph:warning-circle-bold" className="w-6 h-6 text-[#E65100]" />
-        </div>
-        <h3 className="text-[18px] font-bold text-[#111111] mb-2">{confirm.title}</h3>
-        <p className="text-[14px] text-[#4B4B4B] mb-6">{confirm.message}</p>
-        <div className="flex justify-end gap-3">
-          <button
-            onClick={onCancel}
-            className="px-4 py-2 rounded-lg border border-[#E4E4E7] text-[14px] font-medium text-[#4B4B4B] hover:bg-[#FAFAFA] transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={confirm.onConfirm}
-            className="px-4 py-2 rounded-lg bg-[#E65100] text-[14px] font-medium text-white hover:bg-[#D44A00] transition-colors"
-          >
-            {confirm.confirmLabel}
-          </button>
-        </div>
-      </div>
+        {children}
+      </form>
     </div>
+  );
+}
+
+function ModalButtons({
+  confirmLabel,
+  onCancel,
+  disabled,
+}: {
+  confirmLabel: string;
+  onCancel: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="flex justify-end gap-2 mt-7">
+      <button
+        type="button"
+        onClick={onCancel}
+        className="px-4 py-2 rounded-lg text-[14px] font-medium text-text-secondary hover:bg-background"
+      >
+        Cancel
+      </button>
+      <button
+        type="submit"
+        autoFocus
+        disabled={disabled}
+        className="px-4 py-2 rounded-lg bg-orange text-[14px] font-medium text-white hover:bg-[#D44A00] disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange/40 focus-visible:ring-offset-2"
+      >
+        {confirmLabel}
+      </button>
+    </div>
+  );
+}
+
+function ConfirmDialog({ confirm, onCancel }: { confirm: ConfirmState; onCancel: () => void }) {
+  return (
+    <Modal onCancel={onCancel} onSubmit={confirm.onConfirm}>
+      <h3 className="font-display text-[28px] leading-tight text-text-primary">{confirm.title}</h3>
+      <p className="text-[15px] text-text-secondary mt-3 leading-relaxed">{confirm.message}</p>
+      <ModalButtons confirmLabel={confirm.confirmLabel} onCancel={onCancel} />
+    </Modal>
+  );
+}
+
+function PromptDialog({ prompt, onCancel }: { prompt: PromptState; onCancel: () => void }) {
+  const [value, setValue] = useState("");
+  const valid =
+    prompt.inputType === "number"
+      ? value !== "" &&
+        Number.isInteger(Number(value)) &&
+        Number(value) >= Number(prompt.min ?? 1) &&
+        Number(value) <= Number(prompt.max ?? Infinity)
+      : value !== "" && (!prompt.min || value >= prompt.min);
+
+  return (
+    <Modal onCancel={onCancel} onSubmit={() => valid && prompt.onSubmit(value)}>
+      <h3 className="font-display text-[28px] leading-tight text-text-primary">{prompt.title}</h3>
+      <p className="text-[15px] text-text-secondary mt-3 leading-relaxed">{prompt.message}</p>
+      <label className="block text-[13px] font-medium text-text-secondary mt-5 mb-1.5">
+        {prompt.inputLabel}
+      </label>
+      <input
+        type={prompt.inputType}
+        value={value}
+        min={prompt.min}
+        max={prompt.max}
+        onChange={(e) => setValue(e.target.value)}
+        className="w-full px-3.5 py-2.5 rounded-lg border border-border bg-surface text-[15px] text-text-primary focus:outline-none focus:border-orange focus:ring-2 focus:ring-orange/20"
+      />
+      <ModalButtons confirmLabel={prompt.confirmLabel} onCancel={onCancel} disabled={!valid} />
+    </Modal>
   );
 }
 
@@ -232,26 +246,29 @@ export default function AdminPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
   const [compedEmails, setCompedEmails] = useState<CompedEmail[]>([]);
+  const [actions, setActions] = useState<AdminAction[]>([]);
+  const [loadingData, setLoadingData] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [confirm, setConfirm] = useState<ConfirmState | null>(null);
+  const [prompt, setPrompt] = useState<PromptState | null>(null);
+  const [detailUserId, setDetailUserId] = useState<string | null>(null);
+  const [detailVersion, setDetailVersion] = useState(0);
+
   const [newCompEmail, setNewCompEmail] = useState("");
   const [newCompNote, setNewCompNote] = useState("");
+  const [newCompMonths, setNewCompMonths] = useState<number | null>(null);
   const [addingComp, setAddingComp] = useState(false);
-  const [loadingData, setLoadingData] = useState(true);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [confirm, setConfirm] = useState<ConfirmState | null>(null);
-  const [grantMenuFor, setGrantMenuFor] = useState<string | null>(null);
-  const [compMenuFor, setCompMenuFor] = useState<string | null>(null);
 
-  const [tab, setTab] = useState<Tab>("users");
+  const [tab, setTab] = useState<Tab>("people");
   const [search, setSearch] = useState("");
-  const [planFilter, setPlanFilter] = useState<PlanFilter>("all");
-  const [sortKey, setSortKey] = useState<SortKey>("joined");
-  const [sortAsc, setSortAsc] = useState(false);
+  const [filter, setFilter] = useState<PeopleFilter>("all");
+  const [sortKey, setSortKey] = useState<SortKey>("newest");
+  const [showAllAttention, setShowAllAttention] = useState(false);
 
-  // Check admin status (identity comes from the session token server-side)
+  // Admin check (identity comes from the session token server-side)
   useEffect(() => {
     if (!user) return;
-
-    async function checkAdmin() {
+    (async () => {
       try {
         const headers = await getAuthHeaders();
         if (!headers) {
@@ -266,67 +283,68 @@ export default function AdminPage() {
       } finally {
         setCheckingAdmin(false);
       }
-    }
-    checkAdmin();
+    })();
   }, [user]);
 
-  // Load admin data
   const loadData = useCallback(async () => {
     setLoadingData(true);
-
     try {
       const headers = await getAuthHeaders();
-      if (!headers) return;
+      if (!headers) {
+        showToast("error", "Your session expired. Sign in again to continue.");
+        return;
+      }
 
-      const [statsRes, usersRes, paymentsRes, compedRes] = await Promise.all([
+      const [statsRes, usersRes, paymentsRes, compedRes, actionsRes] = await Promise.all([
         fetch("/api/admin/stats", { headers }),
         fetch("/api/admin/users", { headers }),
         fetch("/api/admin/payments", { headers }),
         fetch("/api/admin/comped-emails", { headers }),
+        fetch("/api/admin/actions", { headers }),
       ]);
 
-      if (statsRes.ok) {
-        setStats(await statsRes.json());
-      }
-      if (usersRes.ok) {
-        const usersData = await usersRes.json();
-        setUsers(usersData.users || []);
-      }
-      if (paymentsRes.ok) {
-        const paymentsData = await paymentsRes.json();
-        setPayments(paymentsData.payments || []);
-      }
-      if (compedRes.ok) {
-        const compedData = await compedRes.json();
-        setCompedEmails(compedData.compedEmails || []);
+      if (statsRes.ok) setStats(await statsRes.json());
+      if (usersRes.ok) setUsers((await usersRes.json()).users || []);
+      if (paymentsRes.ok) setPayments((await paymentsRes.json()).payments || []);
+      if (compedRes.ok) setCompedEmails((await compedRes.json()).compedEmails || []);
+      if (actionsRes.ok) setActions((await actionsRes.json()).actions || []);
+
+      const failed = [
+        !statsRes.ok && "numbers",
+        !usersRes.ok && "people",
+        !paymentsRes.ok && "payments",
+        !compedRes.ok && "free access list",
+        !actionsRes.ok && "activity",
+      ].filter(Boolean);
+      if (failed.length) {
+        showToast("error", `Couldn't load the ${failed.join(", ")}. Refresh to try again.`);
       }
     } catch (err) {
       console.error("Failed to load admin data:", err);
-      showToast("error", "Failed to load admin data");
+      showToast("error", "Couldn't load the admin data. Refresh to try again.");
     } finally {
       setLoadingData(false);
     }
   }, [showToast]);
 
   useEffect(() => {
-    if (isAdmin) {
-      loadData();
-    }
+    if (isAdmin) loadData();
   }, [isAdmin, loadData]);
 
-  // Actions
+  // ─── Actions ───────────────────────────────────────────────────────────────
+
   async function runAction(
     endpoint: string,
-    body: Record<string, string | number>,
-    loadingKey: string,
+    body: Record<string, string | number | null>,
     successMessage: string
   ) {
     setConfirm(null);
-    setActionLoading(loadingKey);
+    setPrompt(null);
+    setBusy(true);
     try {
       const headers = await getAuthHeaders();
       if (!headers) {
-        showToast("error", "Session expired — please sign in again");
+        showToast("error", "Your session expired. Sign in again to continue.");
         return;
       }
       const res = await fetch(endpoint, {
@@ -337,53 +355,95 @@ export default function AdminPage() {
       if (res.ok) {
         showToast("success", successMessage);
         await loadData();
+        setDetailVersion((v) => v + 1);
       } else {
         const data = await res.json().catch(() => ({}));
-        showToast("error", data.error || "Action failed");
+        showToast("error", data.error || "That didn't go through. Try again.");
       }
     } catch {
-      showToast("error", "Action failed — check your connection");
+      showToast("error", "Couldn't reach the server. Check your connection and try again.");
     } finally {
-      setActionLoading(null);
+      setBusy(false);
     }
   }
 
-  function confirmGrantPro(u: AdminUser, duration: GrantDuration) {
-    setGrantMenuFor(null);
-    const who = u.name !== "—" ? u.name : u.email;
+  function grantPro(u: AdminUser, duration: GrantDuration) {
+    const who = displayName(u);
+    if (duration === "custom") {
+      setPrompt({
+        title: "Free Pro until a date",
+        message: `${who} can use everything through the end of the day you pick. Their card isn't charged.`,
+        inputType: "date",
+        inputLabel: "Last day of access",
+        min: localISODate(1),
+        confirmLabel: "Give free Pro",
+        onSubmit: (endDate) =>
+          runAction(
+            "/api/admin/grant-pro",
+            { userId: u.id, duration, endDate },
+            `${who} has free Pro until ${formatDate(`${endDate}T12:00:00`)}`
+          ),
+      });
+      return;
+    }
+    const length = GRANT_TEXT[duration];
     setConfirm({
-      title: `Grant ${GRANT_LABELS[duration]} of Pro?`,
+      title: duration === "lifetime" ? "Free Pro for life?" : `${length} of free Pro?`,
       message:
         duration === "lifetime"
-          ? `${who} will get permanent Pro access, replacing any trial. This does not charge their card.`
-          : `${who} will get Pro access for ${GRANT_LABELS[duration]}, replacing any trial. This does not charge their card, and access ends after the period unless re-granted.`,
-      confirmLabel: "Grant Pro",
+          ? `${who} gets permanent access to everything, replacing any trial. Their card is never charged.`
+          : `${who} gets full access for ${length}, replacing any trial. Their card isn't charged, and access ends after that unless you extend it.`,
+      confirmLabel: "Give free Pro",
       onConfirm: () =>
         runAction(
           "/api/admin/grant-pro",
           { userId: u.id, duration },
-          `grant-${u.id}`,
-          `Pro (${GRANT_LABELS[duration]}) granted to ${u.email}`
+          duration === "lifetime" ? `${who} has free Pro for life` : `${who} has ${length} of free Pro`
         ),
     });
   }
 
-  function confirmCompDays(u: AdminUser, days: number, label: string) {
-    setCompMenuFor(null);
-    const who = u.name !== "—" ? u.name : u.email;
+  function addFreeDays(u: AdminUser, days: number, label: string) {
+    const who = displayName(u);
     setConfirm({
-      title: `Give ${label} free?`,
-      message: `${who} will get ${days} extra days of access after their paid period ends. Billing is not affected — their subscription keeps renewing as normal, and the free time kicks in whenever it stops.${
-        u.comp_days > 0 ? ` They already have ${u.comp_days} comp days; this adds to it.` : ""
+      title: `Add ${label} free?`,
+      message: `${who} gets ${days} extra days after their paid time ends. Billing isn't touched. The free days kick in whenever their subscription stops.${
+        u.comp_days > 0 ? ` This adds to the ${u.comp_days} free days they already have.` : ""
       }`,
-      confirmLabel: "Give Free Time",
+      confirmLabel: "Add free days",
       onConfirm: () =>
-        runAction(
-          "/api/admin/comp-days",
-          { userId: u.id, days },
-          `comp-${u.id}`,
-          `${label} of free time given to ${u.email}`
-        ),
+        runAction("/api/admin/comp-days", { userId: u.id, days }, `Added ${label} free for ${who}`),
+    });
+  }
+
+  function extendTrial(u: AdminUser, days: number | "custom") {
+    const who = displayName(u);
+    const left = u.access.level === "trial" ? daysUntil(u.access.until) : null;
+    const describe = (amount: string) =>
+      left !== null && left > 0
+        ? `${who} has ${plural(left, "day")} left. This adds ${amount}.`
+        : `${who} gets a new free trial of ${amount}, starting today.`;
+    const run = (n: number) =>
+      runAction("/api/admin/extend-trial", { userId: u.id, days: n }, `${who}'s trial extended by ${n} days`);
+
+    if (days === "custom") {
+      setPrompt({
+        title: "Extend their trial",
+        message: describe("the days you choose"),
+        inputType: "number",
+        inputLabel: "Days to add (1 to 365)",
+        min: "1",
+        max: "365",
+        confirmLabel: "Extend trial",
+        onSubmit: (value) => run(Number(value)),
+      });
+      return;
+    }
+    setConfirm({
+      title: `Extend their trial by ${days} days?`,
+      message: describe(`${days} days`),
+      confirmLabel: "Extend trial",
+      onConfirm: () => run(days),
     });
   }
 
@@ -394,44 +454,52 @@ export default function AdminPage() {
     try {
       const headers = await getAuthHeaders();
       if (!headers) {
-        showToast("error", "Session expired — please sign in again");
+        showToast("error", "Your session expired. Sign in again to continue.");
         return;
       }
       const res = await fetch("/api/admin/comped-emails", {
         method: "POST",
         headers: { ...headers, "Content-Type": "application/json" },
-        body: JSON.stringify({ email, note: newCompNote.trim() || undefined }),
+        body: JSON.stringify({
+          email,
+          note: newCompNote.trim() || undefined,
+          accessMonths: newCompMonths,
+        }),
       });
       if (res.ok) {
-        showToast("success", `${email} added — they'll get free Pro when they sign up`);
+        showToast(
+          "success",
+          `Added ${email}. They'll get ${newCompMonths ? `${newCompMonths} months of` : "lifetime"} free Pro when they sign up.`
+        );
         setNewCompEmail("");
         setNewCompNote("");
+        setNewCompMonths(null);
         await loadData();
       } else {
         const data = await res.json().catch(() => ({}));
-        showToast("error", data.error || "Failed to add email");
+        showToast("error", data.error || "Couldn't add that email. Try again.");
       }
     } catch {
-      showToast("error", "Failed to add email — check your connection");
+      showToast("error", "Couldn't reach the server. Check your connection and try again.");
     } finally {
       setAddingComp(false);
     }
   }
 
-  function confirmRemoveComped(c: CompedEmail) {
+  function removeCompedEmail(c: CompedEmail) {
     setConfirm({
-      title: `Remove ${c.email} from the comp list?`,
+      title: `Remove ${c.email}?`,
       message: c.claimed_at
-        ? "They already signed up and keep their free access — this just removes the list entry."
-        : "They haven't signed up yet. If they register after this, they'll get a normal 7-day trial instead of free Pro.",
-      confirmLabel: "Remove",
+        ? "They've already signed up and keep their free access. This only removes them from the list."
+        : "They haven't signed up yet. If they do after this, they'll get the normal 7-day trial instead of free Pro.",
+      confirmLabel: "Remove from list",
       onConfirm: async () => {
         setConfirm(null);
-        setActionLoading(`comped-${c.email}`);
+        setBusy(true);
         try {
           const headers = await getAuthHeaders();
           if (!headers) {
-            showToast("error", "Session expired — please sign in again");
+            showToast("error", "Your session expired. Sign in again to continue.");
             return;
           }
           const res = await fetch("/api/admin/comped-emails", {
@@ -440,46 +508,81 @@ export default function AdminPage() {
             body: JSON.stringify({ email: c.email }),
           });
           if (res.ok) {
-            showToast("success", `${c.email} removed from comp list`);
+            showToast("success", `Removed ${c.email} from the list`);
             await loadData();
           } else {
             const data = await res.json().catch(() => ({}));
-            showToast("error", data.error || "Failed to remove email");
+            showToast("error", data.error || "Couldn't remove that email. Try again.");
           }
         } catch {
-          showToast("error", "Failed to remove email — check your connection");
+          showToast("error", "Couldn't reach the server. Check your connection and try again.");
         } finally {
-          setActionLoading(null);
+          setBusy(false);
         }
       },
     });
   }
 
-  function confirmExtendTrial(u: AdminUser) {
-    const daysLeft = trialDaysLeft(u.trial_end_date);
-    setConfirm({
-      title: "Extend trial by 7 days?",
-      message: `${u.name !== "—" ? u.name : u.email}'s trial will be extended by 7 days${
-        daysLeft !== null && daysLeft > 0 ? ` (currently ${daysLeft} day${daysLeft === 1 ? "" : "s"} left)` : ""
-      }.`,
-      confirmLabel: "Extend Trial",
-      onConfirm: () =>
-        runAction(
-          "/api/admin/extend-trial",
-          { userId: u.id },
-          `trial-${u.id}`,
-          `Trial extended for ${u.email}`
-        ),
-    });
-  }
+  // ─── Derived data ──────────────────────────────────────────────────────────
 
-  // Derived user list: search + filter + sort
+  const attention = useMemo((): Attention[] => {
+    const items: Attention[] = [];
+    for (const u of users) {
+      const r = u.access.reason;
+      if (PROBLEM_REASONS.has(r)) {
+        items.push({
+          user: u,
+          tone: "error",
+          text:
+            r === "lapsed"
+              ? "Paid time ran out and no renewal came through"
+              : r === "grace"
+              ? `Payment failed. They can still use the app until ${formatDate(u.access.until)}`
+              : "Payment failed. They're locked out until the card is updated",
+        });
+      } else if (r === "trial") {
+        const d = calendarDaysUntil(u.access.until) ?? 99;
+        if (d <= 3) {
+          items.push({
+            user: u,
+            tone: "warning",
+            text: d <= 0 ? "Trial ends today" : d === 1 ? "Trial ends tomorrow" : `Trial ends in ${d} days`,
+          });
+        }
+      } else if (r === "trial_expired") {
+        const ago = -(calendarDaysUntil(u.trial_end_date) ?? -999);
+        if (ago <= 14) {
+          items.push({
+            user: u,
+            tone: "neutral",
+            text: `Trial ended ${ago <= 0 ? "today" : ago === 1 ? "yesterday" : `${ago} days ago`} and they haven't subscribed`,
+          });
+        }
+      } else if (!u.email_verified && (daysUntil(u.joined) ?? 0) < -1) {
+        items.push({ user: u, tone: "neutral", text: "Signed up but never verified their email" });
+      }
+    }
+    const order = { error: 0, warning: 1, neutral: 2 };
+    return items.sort((a, b) => order[a.tone] - order[b.tone]);
+  }, [users]);
+
+  const counts = useMemo(
+    () => ({
+      all: users.length,
+      can_use: users.filter((u) => u.access.level !== "locked").length,
+      locked: users.filter((u) => u.access.level === "locked").length,
+      trial: users.filter((u) => u.access.level === "trial").length,
+      problems: users.filter((u) => PROBLEM_REASONS.has(u.access.reason)).length,
+    }),
+    [users]
+  );
+
   const filteredUsers = useMemo(() => {
     let list = users;
-
-    if (planFilter !== "all") {
-      list = list.filter((u) => u.plan === planFilter);
-    }
+    if (filter === "can_use") list = list.filter((u) => u.access.level !== "locked");
+    else if (filter === "locked") list = list.filter((u) => u.access.level === "locked");
+    else if (filter === "trial") list = list.filter((u) => u.access.level === "trial");
+    else if (filter === "problems") list = list.filter((u) => PROBLEM_REASONS.has(u.access.reason));
 
     const q = search.trim().toLowerCase();
     if (q) {
@@ -491,712 +594,577 @@ export default function AdminPage() {
       );
     }
 
-    const sorted = [...list].sort((a, b) => {
-      let cmp = 0;
-      switch (sortKey) {
-        case "name":
-          cmp = a.name.localeCompare(b.name);
-          break;
-        case "health":
-          cmp = (a.health_score ?? -1) - (b.health_score ?? -1);
-          break;
-        case "plan":
-          cmp = a.plan.localeCompare(b.plan);
-          break;
-        case "joined":
-        default:
-          cmp =
-            new Date(a.joined || 0).getTime() - new Date(b.joined || 0).getTime();
-          break;
+    return [...list].sort((a, b) => {
+      if (sortKey === "name") return displayName(a).localeCompare(displayName(b));
+      if (sortKey === "ending") {
+        const end = (u: AdminUser) =>
+          u.access.level === "locked" || u.access.reason === "lifetime"
+            ? Infinity
+            : new Date(u.access.until ?? 0).getTime();
+        return end(a) - end(b);
       }
-      return sortAsc ? cmp : -cmp;
+      return new Date(b.joined || 0).getTime() - new Date(a.joined || 0).getTime();
     });
+  }, [users, search, filter, sortKey]);
 
-    return sorted;
-  }, [users, search, planFilter, sortKey, sortAsc]);
+  const detailUser = users.find((u) => u.id === detailUserId) ?? null;
 
-  function toggleSort(key: SortKey) {
-    if (sortKey === key) {
-      setSortAsc(!sortAsc);
-    } else {
-      setSortKey(key);
-      setSortAsc(key === "name");
-    }
+  function exportUsersCsv() {
+    const header = [
+      "Name",
+      "Email",
+      "Business",
+      "Can use the app",
+      "Status",
+      "Access until",
+      "Billing status",
+      "Billing interval",
+      "Free days",
+      "Last payment",
+      "Last payment date",
+      "Health score",
+      "Months of numbers",
+      "Email verified",
+      "Joined",
+    ];
+    const rows = filteredUsers.map((u) => [
+      u.name === "—" ? "" : u.name,
+      u.email,
+      u.business_name ?? "",
+      u.access.level === "locked" ? "No" : "Yes",
+      ACCESS_REASON_LABELS[u.access.reason],
+      u.access.reason === "lifetime" ? "For life" : u.access.until?.slice(0, 10) ?? "",
+      u.plan,
+      u.billing_interval ?? "",
+      u.comp_days,
+      u.last_payment_amount ?? "",
+      u.last_payment_date?.slice(0, 10) ?? "",
+      u.health_score ?? "",
+      u.data_periods,
+      u.email_verified ? "Yes" : "No",
+      u.joined?.slice(0, 10) ?? "",
+    ]);
+    // BOM so Excel reads accented names as UTF-8
+    const csv = "\uFEFF" + [header, ...rows].map((r) => r.map(csvField).join(",")).join("\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `myprofitpulse-people-${localISODate()}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    // Revoking immediately can cancel the download in Safari.
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
   }
 
-  function SortHeader({
-    label,
-    sort,
-    align = "left",
-  }: {
-    label: string;
-    sort: SortKey;
-    align?: "left" | "center";
-  }) {
-    const active = sortKey === sort;
-    return (
-      <button
-        onClick={() => toggleSort(sort)}
-        className={`inline-flex items-center gap-1 text-[12px] uppercase tracking-wider font-semibold transition-colors ${
-          active ? "text-[#E65100]" : "text-[#8B8B8B] hover:text-[#4B4B4B]"
-        } ${align === "center" ? "justify-center" : ""}`}
-      >
-        {label}
-        <Icon
-          icon={active && sortAsc ? "ph:caret-up-bold" : "ph:caret-down-bold"}
-          className={`w-3 h-3 ${active ? "" : "opacity-0"}`}
-        />
-      </button>
-    );
-  }
+  // ─── Gates ─────────────────────────────────────────────────────────────────
 
-  const planFilters: { value: PlanFilter; label: string }[] = [
-    { value: "all", label: "All" },
-    { value: "active", label: "Active" },
-    { value: "trial", label: "Trial" },
-    { value: "past_due", label: "Past Due" },
-    { value: "canceled", label: "Canceled" },
-    { value: "none", label: "None" },
-  ];
-
-  // Loading state
   if (authLoading || checkingAdmin) {
     return (
       <AppLayout>
-        <div className="max-w-7xl mx-auto px-4 py-8">
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <div className="w-8 h-8 border-2 border-[#E65100] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-              <p className="text-[14px] text-[#8B8B8B]">Loading...</p>
-            </div>
-          </div>
+        <div className="flex items-center justify-center h-[60vh]">
+          <div className="w-8 h-8 border-2 border-orange border-t-transparent rounded-full animate-spin" />
         </div>
       </AppLayout>
     );
   }
 
-  // Access denied
   if (!isAdmin) {
     return (
       <AppLayout>
-        <div className="max-w-7xl mx-auto px-4 py-8">
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <div className="w-16 h-16 rounded-full bg-[#FEF2F2] flex items-center justify-center mx-auto mb-4">
-                <Icon icon="ph:shield-warning-bold" className="w-8 h-8 text-[#DC2626]" />
-              </div>
-              <h2 className="text-[20px] font-bold text-[#111111] mb-2">Access Denied</h2>
-              <p className="text-[14px] text-[#8B8B8B]">
-                You don&apos;t have permission to access the admin panel.
-              </p>
-            </div>
-          </div>
+        <div className="max-w-md mx-auto text-center py-24 px-4">
+          <Icon icon="ph:lock-simple" className="w-10 h-10 text-text-muted mx-auto" />
+          <h1 className="font-display text-display-sm text-text-primary mt-4">This page is for admins</h1>
+          <p className="text-body text-text-secondary mt-2">
+            Sign in with an admin account to manage people and billing.
+          </p>
         </div>
       </AppLayout>
     );
   }
 
+  const firstName = user?.name?.split(" ")[0];
+  const visibleAttention = showAllAttention ? attention : attention.slice(0, 5);
+
+  // ─── Page ──────────────────────────────────────────────────────────────────
+
   return (
     <AppLayout>
-      <div className="max-w-7xl mx-auto space-y-6 px-4 py-8">
-        {/* Header */}
-        <div className="flex items-start justify-between flex-wrap gap-3">
-          <div>
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-lg bg-[#FFF7ED] flex items-center justify-center">
-                <Icon icon="ph:shield-check-bold" className="w-5 h-5 text-[#E65100]" />
-              </div>
-              <h1 className="text-[28px] font-bold text-[#111111] tracking-tight">
-                Admin Panel
-              </h1>
-            </div>
-            <p className="text-[14px] text-[#8B8B8B] mt-1.5">
-              Manage users, subscriptions, and view platform metrics
+      <div className="max-w-content-wide mx-auto px-1 sm:px-2 py-2">
+        {/* Desk headline */}
+        <header className="flex items-start justify-between gap-6">
+          <div className="max-w-3xl">
+            <p className="text-[15px] text-text-muted">
+              {greeting()}
+              {firstName ? `, ${firstName}` : ""}.
             </p>
+            {stats ? (
+              <h1 className="font-display text-[28px] sm:text-[34px] leading-[1.15] text-text-primary mt-1">
+                {plural(stats.totalUsers, "person", "people")}{" "}
+                {stats.totalUsers === 1 ? "has an account" : "have accounts"}.{" "}
+                <span className="text-text-muted">
+                  {stats.withAccess} can use the app right now: {stats.activeSubscribers} paying,{" "}
+                  {stats.freeAccess} free, and {stats.trialUsers} on trial.
+                </span>
+              </h1>
+            ) : (
+              <div className="h-16 mt-1 rounded-lg bg-surface-inset animate-pulse max-w-2xl" />
+            )}
           </div>
           <button
             onClick={loadData}
             disabled={loadingData}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg border border-[#E4E4E7] bg-white text-[13px] font-medium text-[#4B4B4B] hover:border-[#E65100] hover:text-[#E65100] disabled:opacity-50 transition-colors"
+            aria-label="Refresh"
+            title="Refresh"
+            className="p-2.5 rounded-full text-text-muted hover:text-orange hover:bg-orange-subtle disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange/40 flex-shrink-0"
           >
-            <Icon
-              icon="ph:arrows-clockwise-bold"
-              className={`w-4 h-4 ${loadingData ? "animate-spin" : ""}`}
-            />
-            Refresh
+            <Icon icon="ph:arrows-clockwise" className={`w-5 h-5 ${loadingData ? "animate-spin" : ""}`} />
           </button>
+        </header>
+
+        {/* Needs you + money */}
+        <div className="grid lg:grid-cols-[1fr_300px] items-start gap-4 mt-6">
+          <section className="bg-surface rounded-2xl shadow-card px-5 py-4">
+            <div className="flex items-baseline justify-between">
+              <h2 className="text-[16px] font-semibold text-text-primary">Needs you</h2>
+              {attention.length > 0 && (
+                <span className="text-[13px] text-text-muted">
+                  {plural(attention.length, "person", "people")}
+                </span>
+              )}
+            </div>
+            {loadingData && users.length === 0 ? (
+              <div className="space-y-3 mt-4">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-11 rounded-lg bg-surface-inset animate-pulse" />
+                ))}
+              </div>
+            ) : attention.length === 0 ? (
+              <p className="text-[15px] text-text-secondary mt-4 flex items-center gap-2">
+                <Icon icon="ph:check-circle" className="w-5 h-5 text-success" />
+                Nobody needs attention. Every payment and trial is on track.
+              </p>
+            ) : (
+              <>
+                <ul className="mt-2 -mx-3">
+                  {visibleAttention.map((item) => (
+                    <li key={item.user.id}>
+                      <button
+                        onClick={() => setDetailUserId(item.user.id)}
+                        className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange/40"
+                      >
+                        <span
+                          className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                            item.tone === "error"
+                              ? "bg-error"
+                              : item.tone === "warning"
+                              ? "bg-warning"
+                              : "bg-border-strong"
+                          }`}
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="text-[15px] font-medium text-text-primary">
+                            {displayName(item.user)}
+                          </span>
+                          <span className="block text-[13px] text-text-secondary truncate">{item.text}</span>
+                        </span>
+                        <Icon icon="ph:caret-right" className="w-4 h-4 text-text-muted" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                {attention.length > 5 && (
+                  <button
+                    onClick={() => setShowAllAttention((v) => !v)}
+                    className="mt-2 text-[13px] font-medium text-orange hover:underline"
+                  >
+                    {showAllAttention ? "Show fewer" : `Show all ${attention.length}`}
+                  </button>
+                )}
+              </>
+            )}
+          </section>
+
+          <section className="bg-surface-dark text-white rounded-2xl px-5 py-4 flex flex-col">
+            <h2 className="text-[16px] font-semibold">This month</h2>
+            {stats ? (
+              <>
+                <p className="font-display text-metric-sm sm:text-[36px] mt-3 leading-none">{formatMoney(stats.mrr)}</p>
+                <p className="text-[13px] text-white/60 mt-1">Monthly recurring revenue</p>
+                <dl className="mt-4 space-y-2 text-[14px]">
+                  <div className="flex justify-between">
+                    <dt className="text-white/60">Collected so far</dt>
+                    <dd>{formatMoney(stats.grossReceiptsMTD)}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-white/60">Declined payments</dt>
+                    <dd className={stats.failedPaymentsMTD > 0 ? "text-[#FCA5A5]" : ""}>
+                      {stats.failedPaymentsMTD}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-white/60">New sign-ups, last 7 days</dt>
+                    <dd>{stats.newSignups7d}</dd>
+                  </div>
+                </dl>
+              </>
+            ) : (
+              <div className="h-20 mt-3 rounded-lg bg-white/10 animate-pulse" />
+            )}
+          </section>
         </div>
 
-        {/* KPI Cards */}
-        {loadingData && !stats ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div
-                key={i}
-                className="bg-white rounded-xl border border-[#F0F0F2] shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)] p-5"
-              >
-                <div className="h-4 bg-[#F4F4F5] rounded animate-pulse mb-3 w-20" />
-                <div className="h-8 bg-[#F4F4F5] rounded animate-pulse w-14" />
-              </div>
-            ))}
-          </div>
-        ) : stats ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4">
-            <StatCard
-              icon="ph:users-bold"
-              iconColor="text-[#8B8B8B]"
-              label="Total Users"
-              value={String(stats.totalUsers)}
-              sub={`+${stats.newSignups7d} in last 7 days`}
-            />
-            <StatCard
-              icon="ph:check-circle-bold"
-              iconColor="text-[#16A34A]"
-              label="Active Subs"
-              value={String(stats.activeSubscribers)}
-            />
-            <StatCard
-              icon="ph:hourglass-bold"
-              iconColor="text-[#EA580C]"
-              label="Trials"
-              value={String(stats.trialUsers)}
-            />
-            <StatCard
-              icon="ph:warning-bold"
-              iconColor={stats.pastDue > 0 ? "text-[#DC2626]" : "text-[#8B8B8B]"}
-              label="Past Due"
-              value={String(stats.pastDue)}
-              sub={
-                stats.failedPaymentsMTD > 0
-                  ? `${stats.failedPaymentsMTD} failed payment${stats.failedPaymentsMTD === 1 ? "" : "s"} MTD`
-                  : undefined
-              }
-            />
-            <StatCard
-              icon="ph:chart-line-up-bold"
-              iconColor="text-[#16A34A]"
-              label="MRR"
-              value={formatMoney(stats.mrr)}
-              sub="Active subs × monthly equivalent"
-            />
-            <StatCard
-              icon="ph:currency-dollar-bold"
-              iconColor="text-[#16A34A]"
-              label="Receipts (MTD)"
-              value={formatMoney(stats.grossReceiptsMTD)}
-              sub="Successful payments this month"
-            />
-          </div>
-        ) : null}
-
         {/* Tabs */}
-        <div className="flex items-center gap-1 border-b border-[#F0F0F2]">
+        <nav className="flex gap-6 mt-8 border-b border-border overflow-x-auto" aria-label="Admin sections">
           {(
             [
-              { key: "users", label: "Users", icon: "ph:users-bold", count: users.length },
-              { key: "payments", label: "Payments", icon: "ph:receipt-bold", count: payments.length },
-              { key: "comped", label: "Comped", icon: "ph:gift-bold", count: compedEmails.length },
-            ] as { key: Tab; label: string; icon: string; count: number }[]
+              { key: "people", label: "People", count: users.length },
+              { key: "payments", label: "Payments", count: payments.length },
+              { key: "comped", label: "Free access list", count: compedEmails.length },
+              { key: "activity", label: "Activity", count: actions.length },
+            ] as { key: Tab; label: string; count: number }[]
           ).map((t) => (
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className={`inline-flex items-center gap-2 px-4 py-2.5 text-[14px] font-medium border-b-2 -mb-px transition-colors ${
+              aria-current={tab === t.key ? "page" : undefined}
+              className={`pb-3 -mb-px border-b-2 text-[15px] font-medium whitespace-nowrap transition-colors ${
                 tab === t.key
-                  ? "border-[#E65100] text-[#E65100]"
-                  : "border-transparent text-[#8B8B8B] hover:text-[#4B4B4B]"
+                  ? "border-orange text-text-primary"
+                  : "border-transparent text-text-muted hover:text-text-secondary"
               }`}
             >
-              <Icon icon={t.icon} className="w-4 h-4" />
               {t.label}
-              <span
-                className={`px-1.5 py-0.5 rounded-full text-[11px] font-semibold ${
-                  tab === t.key ? "bg-[#FFF7ED] text-[#E65100]" : "bg-[#F4F4F5] text-[#8B8B8B]"
-                }`}
-              >
-                {t.count}
-              </span>
+              <span className="ml-1.5 text-[13px] text-text-muted">{t.count}</span>
             </button>
           ))}
-        </div>
+        </nav>
 
-        {/* Users tab */}
-        {tab === "users" && (
-          <div className="bg-white rounded-xl border border-[#F0F0F2] shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)]">
-            <div className="p-5 border-b border-[#F0F0F2] flex flex-wrap items-center gap-3">
-              <div className="relative flex-1 min-w-[220px]">
+        {/* People */}
+        {tab === "people" && (
+          <section className="mt-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative flex-1 min-w-[220px] max-w-sm">
                 <Icon
-                  icon="ph:magnifying-glass-bold"
-                  className="w-4 h-4 text-[#8B8B8B] absolute left-3 top-1/2 -translate-y-1/2"
+                  icon="ph:magnifying-glass"
+                  className="w-4 h-4 text-text-muted absolute left-3.5 top-1/2 -translate-y-1/2"
                 />
                 <input
-                  type="text"
+                  type="search"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search by name, email, or business..."
-                  className="w-full pl-9 pr-3 py-2 rounded-lg border border-[#E4E4E7] text-[14px] text-[#111111] placeholder:text-[#9A948E] focus:outline-none focus:border-[#E65100] focus:ring-1 focus:ring-[#E65100] transition-colors"
+                  placeholder="Find someone by name, email, or business"
+                  className="w-full pl-10 pr-3 py-2 rounded-full border border-border bg-surface text-[14px] text-text-primary placeholder:text-text-muted focus:outline-none focus:border-orange focus:ring-2 focus:ring-orange/20"
                 />
               </div>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {planFilters.map((f) => (
-                  <button
-                    key={f.value}
-                    onClick={() => setPlanFilter(f.value)}
-                    className={`px-3 py-1.5 rounded-full text-[12px] font-medium transition-colors ${
-                      planFilter === f.value
-                        ? "bg-[#E65100] text-white"
-                        : "bg-[#F4F4F5] text-[#4B4B4B] hover:bg-[#E4E4E7]"
-                    }`}
-                  >
-                    {f.label}
-                  </button>
-                ))}
-              </div>
+              <select
+                value={sortKey}
+                onChange={(e) => setSortKey(e.target.value as SortKey)}
+                aria-label="Sort people"
+                className="px-3.5 py-2 rounded-full border border-border bg-surface text-[14px] text-text-secondary focus:outline-none focus:border-orange"
+              >
+                <option value="newest">Newest first</option>
+                <option value="name">By name</option>
+                <option value="ending">Access ending soonest</option>
+              </select>
+              <button
+                onClick={exportUsersCsv}
+                disabled={filteredUsers.length === 0}
+                className="ml-auto inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[14px] font-medium text-text-secondary hover:text-orange hover:bg-orange-subtle disabled:opacity-40"
+              >
+                <Icon icon="ph:download-simple" className="w-4 h-4" />
+                Download spreadsheet
+              </button>
             </div>
 
-            {loadingData ? (
-              <div className="p-6">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-12 bg-[#F4F4F5] rounded animate-pulse mb-3" />
-                ))}
-              </div>
-            ) : filteredUsers.length === 0 ? (
-              <div className="text-center py-16">
-                <Icon icon="ph:users-duotone" className="w-12 h-12 text-[#E4E4E7] mx-auto mb-3" />
-                <p className="text-[13px] text-[#8B8B8B]">
-                  {users.length === 0 ? "No users found" : "No users match your search"}
+            <div className="flex flex-wrap gap-2 mt-3" role="group" aria-label="Filter people">
+              {(
+                [
+                  { key: "all", label: "Everyone" },
+                  { key: "can_use", label: "Can use the app" },
+                  { key: "trial", label: "On trial" },
+                  { key: "locked", label: "Locked out" },
+                  { key: "problems", label: "Payment problems" },
+                ] as { key: PeopleFilter; label: string }[]
+              ).map((f) => (
+                <button
+                  key={f.key}
+                  onClick={() => setFilter(f.key)}
+                  aria-pressed={filter === f.key}
+                  className={`px-3.5 py-1.5 rounded-full text-[13px] font-medium transition-colors ${
+                    filter === f.key
+                      ? "bg-text-primary text-white"
+                      : "bg-surface text-text-secondary border border-border hover:border-border-strong"
+                  }`}
+                >
+                  {f.label}
+                  <span className={`ml-1.5 ${filter === f.key ? "text-white/60" : "text-text-muted"}`}>
+                    {counts[f.key]}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            <div className="bg-surface rounded-2xl shadow-card mt-3 overflow-hidden">
+              {loadingData && users.length === 0 ? (
+                <div className="p-6 space-y-3">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="h-12 rounded-lg bg-surface-inset animate-pulse" />
+                  ))}
+                </div>
+              ) : filteredUsers.length === 0 ? (
+                <p className="text-center text-[15px] text-text-muted py-16">
+                  {users.length === 0
+                    ? "No one has signed up yet."
+                    : "No one matches that. Try a different search or filter."}
                 </p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-[14px]">
-                  <thead>
-                    <tr className="border-b border-[#F0F0F2]">
-                      <th className="text-left py-3 px-6">
-                        <SortHeader label="Name" sort="name" />
-                      </th>
-                      <th className="text-left text-[12px] uppercase tracking-wider font-semibold text-[#8B8B8B] py-3 px-4">
-                        Email
-                      </th>
-                      <th className="text-left py-3 px-4">
-                        <SortHeader label="Plan" sort="plan" />
-                      </th>
-                      <th className="text-left text-[12px] uppercase tracking-wider font-semibold text-[#8B8B8B] py-3 px-4">
-                        Last Payment
-                      </th>
-                      <th className="text-center py-3 px-4">
-                        <SortHeader label="Health" sort="health" align="center" />
-                      </th>
-                      <th className="text-center text-[12px] uppercase tracking-wider font-semibold text-[#8B8B8B] py-3 px-4">
-                        Periods
-                      </th>
-                      <th className="text-left py-3 px-4">
-                        <SortHeader label="Joined" sort="joined" />
-                      </th>
-                      <th className="text-right text-[12px] uppercase tracking-wider font-semibold text-[#8B8B8B] py-3 px-6">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredUsers.map((u) => {
-                      const daysLeft = u.plan === "trial" ? trialDaysLeft(u.trial_end_date) : null;
-                      return (
-                        <tr
-                          key={u.id}
-                          className="border-b border-[#F0F0F2] last:border-b-0 hover:bg-[#FAFAFA] transition-colors"
-                        >
-                          <td className="py-3 px-6">
-                            <div>
-                              <p className="font-medium text-[#111111]">{u.name}</p>
-                              {u.business_name && (
-                                <p className="text-[12px] text-[#8B8B8B]">{u.business_name}</p>
-                              )}
-                            </div>
-                          </td>
-                          <td className="py-3 px-4 text-[#4B4B4B]">{u.email}</td>
-                          <td className="py-3 px-4">
-                            <div className="flex flex-col gap-1 items-start">
-                              <div className="flex items-center gap-2">
-                                <PlanBadge plan={u.plan} />
-                                {u.billing_interval && u.plan === "active" && (
-                                  <span className="text-[11px] text-[#8B8B8B]">
-                                    {u.billing_interval}
-                                  </span>
-                                )}
-                                {u.pricing_promo === "launch" && (
-                                  <span
-                                    title="Locked launch pricing"
-                                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#F3E8FD] text-[#7B1FA2]"
-                                  >
-                                    <Icon icon="ph:lock-simple-bold" className="w-2.5 h-2.5" />
-                                    Launch
-                                  </span>
-                                )}
-                                {u.comp_days > 0 && (
-                                  <span
-                                    title="Free days added after the paid period ends"
-                                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#EFF6FF] text-[#2563EB]"
-                                  >
-                                    <Icon icon="ph:gift-bold" className="w-2.5 h-2.5" />
-                                    +{u.comp_days}d comp
-                                  </span>
-                                )}
-                              </div>
-                              {daysLeft !== null && (
-                                <span
-                                  className={`text-[11px] font-medium ${
-                                    daysLeft <= 0
-                                      ? "text-[#DC2626]"
-                                      : daysLeft <= 2
-                                      ? "text-[#EA580C]"
-                                      : "text-[#8B8B8B]"
-                                  }`}
-                                >
-                                  {daysLeft <= 0
-                                    ? "Trial expired"
-                                    : `${daysLeft} day${daysLeft === 1 ? "" : "s"} left`}
-                                </span>
-                              )}
-                              {u.plan === "active" && u.current_period_end && (
-                                <span className="text-[11px] text-[#8B8B8B]">
-                                  {isLifetime(u.current_period_end)
-                                    ? "Lifetime"
-                                    : `until ${formatDate(u.current_period_end)}`}
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          <td className="py-3 px-4">
-                            {u.last_payment_date ? (
-                              <div>
-                                <p
-                                  className={`font-medium ${
-                                    u.last_payment_status === "failed"
-                                      ? "text-[#DC2626]"
-                                      : "text-[#111111]"
-                                  }`}
-                                >
-                                  {u.last_payment_amount !== null
-                                    ? formatMoney(Number(u.last_payment_amount))
-                                    : "—"}
-                                </p>
-                                <p className="text-[12px] text-[#8B8B8B]">
-                                  {formatDate(u.last_payment_date)}
-                                </p>
-                              </div>
-                            ) : (
-                              <span className="text-[#8B8B8B]">—</span>
-                            )}
-                          </td>
-                          <td className="py-3 px-4 text-center">
-                            {u.health_score !== null ? (
-                              <span
-                                className={`font-semibold ${
-                                  u.health_score >= 70
-                                    ? "text-[#16A34A]"
-                                    : u.health_score >= 40
-                                    ? "text-[#EA580C]"
-                                    : "text-[#DC2626]"
-                                }`}
-                              >
-                                {u.health_score}
-                              </span>
-                            ) : (
-                              <span className="text-[#8B8B8B]">—</span>
-                            )}
-                          </td>
-                          <td className="py-3 px-4 text-center text-[#4B4B4B]">
-                            {u.data_periods}
-                          </td>
-                          <td className="py-3 px-4 text-[#4B4B4B]">{formatDate(u.joined)}</td>
-                          <td className="py-3 px-6">
-                            <div className="flex items-center justify-end gap-2">
-                              <div className="relative">
-                                <button
-                                  onClick={() =>
-                                    setGrantMenuFor(grantMenuFor === u.id ? null : u.id)
-                                  }
-                                  disabled={actionLoading === `grant-${u.id}` || u.plan === "active"}
-                                  title="Grant Pro subscription"
-                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[#E4E4E7] text-[12px] font-medium text-[#4B4B4B] hover:border-[#16A34A] hover:text-[#16A34A] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                                >
-                                  <Icon icon="ph:crown-bold" className="w-3.5 h-3.5" />
-                                  {actionLoading === `grant-${u.id}` ? "..." : "Grant Pro"}
-                                  <Icon icon="ph:caret-down-bold" className="w-3 h-3" />
-                                </button>
-                                {grantMenuFor === u.id && (
-                                  <>
-                                    <div
-                                      className="fixed inset-0 z-30"
-                                      onClick={() => setGrantMenuFor(null)}
-                                    />
-                                    <div className="absolute right-0 top-full mt-1 z-40 bg-white rounded-lg border border-[#E4E4E7] shadow-lg overflow-hidden min-w-[150px]">
-                                      {GRANT_OPTIONS.map((opt) => (
-                                        <button
-                                          key={opt.value}
-                                          onClick={() => confirmGrantPro(u, opt.value)}
-                                          className="w-full flex items-center gap-2 px-3 py-2 text-[12px] font-medium text-[#4B4B4B] hover:bg-[#FAFAFA] hover:text-[#16A34A] transition-colors text-left"
-                                        >
-                                          <Icon icon={opt.icon} className="w-3.5 h-3.5" />
-                                          {opt.label}
-                                        </button>
-                                      ))}
-                                    </div>
-                                  </>
-                                )}
-                              </div>
-                              <div className="relative">
-                                <button
-                                  onClick={() =>
-                                    setCompMenuFor(compMenuFor === u.id ? null : u.id)
-                                  }
-                                  disabled={actionLoading === `comp-${u.id}`}
-                                  title="Give free days after the paid period ends (billing unaffected)"
-                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[#E4E4E7] text-[12px] font-medium text-[#4B4B4B] hover:border-[#2563EB] hover:text-[#2563EB] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                                >
-                                  <Icon icon="ph:gift-bold" className="w-3.5 h-3.5" />
-                                  {actionLoading === `comp-${u.id}` ? "..." : "Comp"}
-                                  <Icon icon="ph:caret-down-bold" className="w-3 h-3" />
-                                </button>
-                                {compMenuFor === u.id && (
-                                  <>
-                                    <div
-                                      className="fixed inset-0 z-30"
-                                      onClick={() => setCompMenuFor(null)}
-                                    />
-                                    <div className="absolute right-0 top-full mt-1 z-40 bg-white rounded-lg border border-[#E4E4E7] shadow-lg overflow-hidden min-w-[150px]">
-                                      {COMP_OPTIONS.map((opt) => (
-                                        <button
-                                          key={opt.days}
-                                          onClick={() => confirmCompDays(u, opt.days, opt.label)}
-                                          className="w-full flex items-center gap-2 px-3 py-2 text-[12px] font-medium text-[#4B4B4B] hover:bg-[#FAFAFA] hover:text-[#2563EB] transition-colors text-left"
-                                        >
-                                          <Icon icon="ph:gift-bold" className="w-3.5 h-3.5" />
-                                          {opt.label}
-                                        </button>
-                                      ))}
-                                    </div>
-                                  </>
-                                )}
-                              </div>
-                              <button
-                                onClick={() => confirmExtendTrial(u)}
-                                disabled={actionLoading === `trial-${u.id}`}
-                                title="Extend trial by 7 days"
-                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[#E4E4E7] text-[12px] font-medium text-[#4B4B4B] hover:border-[#EA580C] hover:text-[#EA580C] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                              >
-                                <Icon icon="ph:plus-bold" className="w-3.5 h-3.5" />
-                                {actionLoading === `trial-${u.id}` ? "..." : "+7 Days"}
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Payments tab */}
-        {tab === "payments" && (
-          <div className="bg-white rounded-xl border border-[#F0F0F2] shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)]">
-            <div className="p-5 border-b border-[#F0F0F2]">
-              <h2 className="text-[16px] font-semibold text-[#111111]">Recent Payments</h2>
-              <p className="text-[13px] text-[#8B8B8B] mt-0.5">
-                Last {payments.length} transactions across all users
-              </p>
-            </div>
-
-            {loadingData ? (
-              <div className="p-6">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-12 bg-[#F4F4F5] rounded animate-pulse mb-3" />
-                ))}
-              </div>
-            ) : payments.length === 0 ? (
-              <div className="text-center py-16">
-                <Icon icon="ph:receipt-duotone" className="w-12 h-12 text-[#E4E4E7] mx-auto mb-3" />
-                <p className="text-[13px] text-[#8B8B8B]">No payments recorded yet</p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-[14px]">
-                  <thead>
-                    <tr className="border-b border-[#F0F0F2]">
-                      <th className="text-left text-[12px] uppercase tracking-wider font-semibold text-[#8B8B8B] py-3 px-6">
-                        Date
-                      </th>
-                      <th className="text-left text-[12px] uppercase tracking-wider font-semibold text-[#8B8B8B] py-3 px-4">
-                        User
-                      </th>
-                      <th className="text-left text-[12px] uppercase tracking-wider font-semibold text-[#8B8B8B] py-3 px-4">
-                        Description
-                      </th>
-                      <th className="text-left text-[12px] uppercase tracking-wider font-semibold text-[#8B8B8B] py-3 px-4">
-                        Status
-                      </th>
-                      <th className="text-right text-[12px] uppercase tracking-wider font-semibold text-[#8B8B8B] py-3 px-6">
-                        Amount
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {payments.map((p) => (
-                      <tr
-                        key={p.id}
-                        className="border-b border-[#F0F0F2] last:border-b-0 hover:bg-[#FAFAFA] transition-colors"
+              ) : (
+                <>
+                <div className="hidden sm:grid grid-cols-[36px_minmax(0,1fr)_16px] sm:grid-cols-[36px_minmax(0,1.1fr)_minmax(0,1fr)_120px_16px] items-center gap-x-4 px-5 py-2.5 border-b border-border-light text-[12px] font-medium text-text-muted">
+                  <span />
+                  <span>Name</span>
+                  <span>Status</span>
+                  <span>Joined</span>
+                  <span />
+                </div>
+                <ul className="divide-y divide-border-light">
+                  {filteredUsers.map((u) => (
+                    <li key={u.id}>
+                      <button
+                        onClick={() => setDetailUserId(u.id)}
+                        className="w-full grid grid-cols-[36px_minmax(0,1fr)_16px] sm:grid-cols-[36px_minmax(0,1.1fr)_minmax(0,1fr)_120px_16px] items-center gap-x-4 gap-y-0.5 px-5 py-2.5 text-left hover:bg-background focus-visible:outline-none focus-visible:bg-background"
                       >
-                        <td className="py-3 px-6 text-[#4B4B4B] whitespace-nowrap">
-                          {formatDate(p.created_at)}
-                        </td>
-                        <td className="py-3 px-4 text-[#4B4B4B]">{p.email}</td>
-                        <td className="py-3 px-4">
-                          <p className="text-[#111111]">{p.description}</p>
-                          <p className="text-[12px] text-[#8B8B8B] capitalize">
-                            {p.type.replace("_", " ")}
-                            {p.billing_interval ? ` · ${p.billing_interval}` : ""}
-                          </p>
-                        </td>
-                        <td className="py-3 px-4">
-                          <PaymentStatusBadge status={p.status} />
-                        </td>
-                        <td
-                          className={`py-3 px-6 text-right font-semibold ${
-                            p.status === "failed" || p.status === "refunded"
-                              ? "text-[#DC2626]"
-                              : "text-[#111111]"
-                          }`}
-                        >
-                          {p.status === "refunded" ? "−" : ""}
-                          {formatMoney(p.amount)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+                        <span className="row-span-2 sm:row-span-1"><Avatar user={u} /></span>
+                        <span className="min-w-0">
+                          <span className="block text-[15px] font-medium text-text-primary truncate">
+                            {displayName(u)}
+                          </span>
+                          <span className="block text-[13px] text-text-muted truncate">
+                            {u.business_name || u.email}
+                          </span>
+                        </span>
+                        <span className="row-start-2 col-start-2 sm:row-start-auto sm:col-start-auto flex items-center gap-2 text-[14px] text-text-secondary min-w-0">
+                          <span className={`w-2 h-2 rounded-full flex-shrink-0 ${statusDot(u.access)}`} />
+                          <span className="truncate">{accessLine(u.access)}</span>
+                          {(u.access.reason === "lifetime" || u.access.reason === "comped" || u.access.reason === "granted") && (
+                            <span className="px-1.5 py-0.5 rounded-md bg-insight-subtle text-insight text-[11px] font-semibold flex-shrink-0">
+                              Free
+                            </span>
+                          )}
+                        </span>
+                        <span className="hidden sm:block text-[13px] text-text-muted whitespace-nowrap">
+                          {formatDate(u.joined)}
+                        </span>
+                        <Icon
+                          icon="ph:caret-right"
+                          className="row-start-1 col-start-3 sm:row-start-auto sm:col-start-auto w-4 h-4 text-text-muted"
+                        />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                </>
+              )}
+            </div>
+          </section>
         )}
 
-        {/* Comped tab */}
+        {/* Payments */}
+        {tab === "payments" && (
+          <section className="bg-surface rounded-2xl shadow-card mt-4 overflow-hidden">
+            {payments.length === 0 ? (
+              <p className="text-center text-[15px] text-text-muted py-16">No payments yet.</p>
+            ) : (
+              <ul className="divide-y divide-border-light">
+                {payments.map((p) => (
+                  <li key={p.id} className="flex items-center gap-4 px-5 py-3">
+                    <span
+                      className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                        p.status === "success"
+                          ? "bg-success"
+                          : p.status === "failed"
+                          ? "bg-error"
+                          : "bg-border-strong"
+                      }`}
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[15px] text-text-primary truncate">{p.email}</span>
+                      <span className="block text-[13px] text-text-muted truncate">
+                        {p.status === "failed"
+                          ? "Declined. "
+                          : p.status === "refunded"
+                          ? "Refunded. "
+                          : p.status === "voided"
+                          ? "Voided. "
+                          : ""}
+                        {p.description}
+                      </span>
+                    </span>
+                    <span className="hidden sm:block text-[13px] text-text-muted whitespace-nowrap">
+                      {formatDate(p.created_at)}
+                    </span>
+                    <span
+                      className={`font-display text-[22px] whitespace-nowrap ${
+                        p.status === "success" ? "text-text-primary" : "text-error"
+                      }`}
+                    >
+                      {p.status === "refunded" ? "−" : ""}
+                      {formatMoney(p.amount)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        )}
+
+        {/* Free access list */}
         {tab === "comped" && (
-          <div className="bg-white rounded-xl border border-[#F0F0F2] shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)]">
-            <div className="p-5 border-b border-[#F0F0F2]">
-              <h2 className="text-[16px] font-semibold text-[#111111]">Comped Emails</h2>
-              <p className="text-[13px] text-[#8B8B8B] mt-0.5">
-                Anyone on this list gets free lifetime Pro automatically when they sign
-                up — no trial, no card. They must register with the exact email listed.
+          <section className="mt-4 space-y-4">
+            <form
+              className="bg-surface rounded-2xl shadow-card px-5 py-4"
+              onSubmit={(e) => {
+                e.preventDefault();
+                addCompedEmail();
+              }}
+            >
+              <h2 className="text-[17px] font-semibold text-text-primary">
+                Give someone free access before they sign up
+              </h2>
+              <p className="text-[14px] text-text-secondary mt-1 max-w-2xl">
+                When they sign up with this exact email, they skip the trial and get free Pro for the time
+                you choose, counted from the day they join. No card needed.
               </p>
-              <div className="flex flex-wrap items-center gap-2 mt-4">
+              <div className="flex flex-wrap gap-3 mt-5">
                 <input
                   type="email"
+                  required
                   value={newCompEmail}
                   onChange={(e) => setNewCompEmail(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && addCompedEmail()}
-                  placeholder="email@example.com"
-                  className="flex-1 min-w-[200px] px-3 py-2 rounded-lg border border-[#E4E4E7] text-[14px] text-[#111111] placeholder:text-[#9A948E] focus:outline-none focus:border-[#E65100] focus:ring-1 focus:ring-[#E65100] transition-colors"
+                  placeholder="Their email"
+                  aria-label="Email"
+                  className="flex-1 min-w-[220px] px-3.5 py-2.5 rounded-lg border border-border bg-surface text-[14px] text-text-primary placeholder:text-text-muted focus:outline-none focus:border-orange focus:ring-2 focus:ring-orange/20"
                 />
                 <input
                   type="text"
                   value={newCompNote}
                   onChange={(e) => setNewCompNote(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && addCompedEmail()}
-                  placeholder="Note (name / business)"
-                  className="flex-1 min-w-[200px] px-3 py-2 rounded-lg border border-[#E4E4E7] text-[14px] text-[#111111] placeholder:text-[#9A948E] focus:outline-none focus:border-[#E65100] focus:ring-1 focus:ring-[#E65100] transition-colors"
+                  placeholder="Note, like their name or business"
+                  aria-label="Note"
+                  className="flex-1 min-w-[220px] px-3.5 py-2.5 rounded-lg border border-border bg-surface text-[14px] text-text-primary placeholder:text-text-muted focus:outline-none focus:border-orange focus:ring-2 focus:ring-orange/20"
                 />
-                <button
-                  onClick={addCompedEmail}
-                  disabled={addingComp || !newCompEmail.trim()}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#E65100] text-[13px] font-medium text-white hover:bg-[#D44A00] disabled:opacity-50 transition-colors"
+                <select
+                  value={newCompMonths ?? ""}
+                  onChange={(e) => setNewCompMonths(e.target.value ? Number(e.target.value) : null)}
+                  aria-label="How long their free access lasts"
+                  className="px-3.5 py-2.5 rounded-lg border border-border bg-surface text-[14px] text-text-primary focus:outline-none focus:border-orange"
                 >
-                  <Icon icon="ph:plus-bold" className="w-3.5 h-3.5" />
-                  {addingComp ? "Adding..." : "Add"}
+                  {COMPED_LENGTHS.map((l) => (
+                    <option key={l.label} value={l.months ?? ""}>
+                      Free {l.months ? `for ${l.label}` : "for life"}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="submit"
+                  disabled={addingComp || !newCompEmail.trim()}
+                  className="px-5 py-2.5 rounded-lg bg-orange text-[14px] font-medium text-white hover:bg-[#D44A00] disabled:opacity-40"
+                >
+                  {addingComp ? "Adding…" : "Add to list"}
                 </button>
               </div>
-            </div>
+            </form>
 
-            {loadingData ? (
-              <div className="p-6">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-12 bg-[#F4F4F5] rounded animate-pulse mb-3" />
-                ))}
-              </div>
-            ) : compedEmails.length === 0 ? (
-              <div className="text-center py-16">
-                <Icon icon="ph:gift-duotone" className="w-12 h-12 text-[#E4E4E7] mx-auto mb-3" />
-                <p className="text-[13px] text-[#8B8B8B]">No comped emails yet</p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-[14px]">
-                  <thead>
-                    <tr className="border-b border-[#F0F0F2]">
-                      <th className="text-left text-[12px] uppercase tracking-wider font-semibold text-[#8B8B8B] py-3 px-6">
-                        Email
-                      </th>
-                      <th className="text-left text-[12px] uppercase tracking-wider font-semibold text-[#8B8B8B] py-3 px-4">
-                        Note
-                      </th>
-                      <th className="text-left text-[12px] uppercase tracking-wider font-semibold text-[#8B8B8B] py-3 px-4">
-                        Status
-                      </th>
-                      <th className="text-left text-[12px] uppercase tracking-wider font-semibold text-[#8B8B8B] py-3 px-4">
-                        Added
-                      </th>
-                      <th className="text-right text-[12px] uppercase tracking-wider font-semibold text-[#8B8B8B] py-3 px-6">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {compedEmails.map((c) => (
-                      <tr
-                        key={c.email}
-                        className="border-b border-[#F0F0F2] last:border-b-0 hover:bg-[#FAFAFA] transition-colors"
+            <div className="bg-surface rounded-2xl shadow-card overflow-hidden">
+              {compedEmails.length === 0 ? (
+                <p className="text-center text-[15px] text-text-muted py-16">
+                  No one on the list yet. Add an email above.
+                </p>
+              ) : (
+                <ul className="divide-y divide-border-light">
+                  {compedEmails.map((c) => (
+                    <li key={c.email} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3">
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[15px] text-text-primary truncate">{c.email}</span>
+                        <span className="block text-[13px] text-text-muted truncate">
+                          {c.note ? `${c.note}. ` : ""}Free{" "}
+                          {c.access_months ? `for ${c.access_months} months` : "for life"}
+                        </span>
+                      </span>
+                      <span className="flex items-center gap-2 text-[13px] text-text-secondary">
+                        <span
+                          className={`w-2 h-2 rounded-full ${c.claimed_at ? "bg-success" : "bg-border-strong"}`}
+                        />
+                        {c.claimed_at ? `Joined ${formatDate(c.claimed_at)}` : "Hasn't signed up yet"}
+                      </span>
+                      <button
+                        onClick={() => removeCompedEmail(c)}
+                        disabled={busy}
+                        className="px-3 py-1.5 rounded-full text-[13px] font-medium text-text-muted hover:text-error hover:bg-error-subtle disabled:opacity-40"
                       >
-                        <td className="py-3 px-6 font-medium text-[#111111]">{c.email}</td>
-                        <td className="py-3 px-4 text-[#4B4B4B]">{c.note || "—"}</td>
-                        <td className="py-3 px-4">
-                          {c.claimed_at ? (
-                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#F0FDF4] text-[#16A34A]">
-                              <span className="w-1.5 h-1.5 rounded-full bg-[#16A34A]" />
-                              Signed up {formatDate(c.claimed_at)}
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#FFF7ED] text-[#EA580C]">
-                              <span className="w-1.5 h-1.5 rounded-full bg-[#EA580C]" />
-                              Pending signup
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-3 px-4 text-[#4B4B4B]">{formatDate(c.created_at)}</td>
-                        <td className="py-3 px-6 text-right">
+                        Remove
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* Activity */}
+        {tab === "activity" && (
+          <section className="bg-surface rounded-2xl shadow-card mt-4 p-5 sm:p-6">
+            {actions.length === 0 ? (
+              <p className="text-center text-[15px] text-text-muted py-10">
+                Nothing yet. Every trial extension, free access grant, and support email you send shows
+                up here.
+              </p>
+            ) : (
+              <ol className="relative border-l border-border ml-1.5 space-y-4">
+                {actions.map((a) => {
+                  const target = users.find((u) => u.id === a.target_user_id) ?? null;
+                  return (
+                    <li key={a.id} className="pl-6 relative">
+                      <span className="absolute -left-[5px] top-1.5 w-2.5 h-2.5 rounded-full bg-surface border-2 border-orange" />
+                      <p className="text-[15px] text-text-primary">
+                        {target ? (
                           <button
-                            onClick={() => confirmRemoveComped(c)}
-                            disabled={actionLoading === `comped-${c.email}`}
-                            title="Remove from comp list"
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[#E4E4E7] text-[12px] font-medium text-[#4B4B4B] hover:border-[#DC2626] hover:text-[#DC2626] disabled:opacity-40 transition-colors"
+                            onClick={() => setDetailUserId(target.id)}
+                            className="font-medium hover:text-orange hover:underline"
                           >
-                            <Icon icon="ph:trash-bold" className="w-3.5 h-3.5" />
-                            {actionLoading === `comped-${c.email}` ? "..." : "Remove"}
+                            {displayName(target)}
                           </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                        ) : (
+                          <span className="font-medium">{a.target_email ?? "Someone"}</span>
+                        )}
+                        <span className="text-text-secondary">: {describeAction(a)}</span>
+                      </p>
+                      <p className="text-[13px] text-text-muted mt-0.5">
+                        {formatDate(a.created_at)} by {a.admin_email}
+                      </p>
+                    </li>
+                  );
+                })}
+              </ol>
             )}
-          </div>
+          </section>
         )}
       </div>
 
+      {detailUser && (
+        <UserDetailDrawer
+          user={detailUser}
+          version={detailVersion}
+          busy={busy}
+          onClose={() => setDetailUserId(null)}
+          onGrant={grantPro}
+          onComp={addFreeDays}
+          onTrial={extendTrial}
+        />
+      )}
       {confirm && <ConfirmDialog confirm={confirm} onCancel={() => setConfirm(null)} />}
+      {prompt && <PromptDialog prompt={prompt} onCancel={() => setPrompt(null)} />}
     </AppLayout>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useEffect, useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { Button, Input, useToast } from "@/components/ui";
@@ -14,6 +14,15 @@ export default function ForgotPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
   const [sent, setSent] = useState(false);
+
+  // /forgot-password?email=…&step=code opens straight at the code step — used
+  // when an admin has already emailed the customer a reset code.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const presetEmail = params.get("email");
+    if (presetEmail) setEmail(presetEmail);
+    if (presetEmail && params.get("step") === "code") setSent(true);
+  }, []);
 
   async function handleSendEmail(e: FormEvent) {
     e.preventDefault();

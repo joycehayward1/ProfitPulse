@@ -1,20 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@insforge/sdk";
+import { getInsForgeAdmin } from "@/lib/insforge";
 import { requireAdmin } from "@/lib/admin-auth";
-
-const MONTHLY_PRICE = 59.99;
-const ANNUAL_PRICE = 599.88;
+import { adminSql } from "@/lib/admin-log";
+import { getAccessSummary } from "@/lib/feature-gate";
+import { getDisplayMonthlyRate, type PricingPromo } from "@/lib/plan-amounts";
+import type { Subscription } from "@/lib/database.types";
 
 /**
  * GET /api/admin/stats
  *
- * Returns dashboard statistics: total users, active subscribers,
- * trial users, new signups (7d), gross receipts MTD, failed payments MTD,
- * and calculated MRR.
+ * Dashboard statistics. Counts come from auth.users (every account, whether
+ * or not it has a profile row). Access counts use the same rules as the
+ * in-app feature gate. "Paying" means an Authorize.net subscription with a
+ * current paid period — admin grants and comps have access but are never
+ * counted in MRR.
  *
  * Admin-only — identity verified via Bearer token (requireAdmin).
- * Subscriptions without a matching profile (orphan rows) are excluded
- * from user-counting metrics.
  */
 export async function GET(request: NextRequest) {
   const admin = await requireAdmin(request);
@@ -22,52 +23,52 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
 
-  const client = createClient({
-    baseUrl: process.env.NEXT_PUBLIC_INSFORGE_URL!,
-    anonKey: process.env.INSFORGE_API_KEY || process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY!,
-  });
-
-  const { data: profiles } = await client.database
-    .from("profiles")
-    .select("user_id, created_at");
-
-  const profileIds = new Set<string>(
-    (profiles || []).map((p: { user_id: string }) => p.user_id)
+  const authUsers = await adminSql<{ id: string; created_at: string }>(
+    `SELECT id, created_at FROM auth.users
+     WHERE email NOT LIKE '%@deleted.invalid' AND COALESCE(is_anonymous, false) = false
+       AND COALESCE(is_project_admin, false) = false`
   );
-  const totalUsers = profileIds.size;
+  if (!authUsers) {
+    return NextResponse.json({ error: "Failed to fetch users" }, { status: 500 });
+  }
+
+  const userIds = new Set(authUsers.map((u) => u.id));
+  const totalUsers = userIds.size;
 
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-  const newSignups7d = (profiles || []).filter(
-    (p: { created_at?: string }) =>
-      p.created_at && new Date(p.created_at) >= sevenDaysAgo
-  ).length;
+  const newSignups7d = authUsers.filter((u) => new Date(u.created_at) >= sevenDaysAgo).length;
 
-  const { data: subscriptions } = await client.database
-    .from("subscriptions")
-    .select("user_id, subscription_status, billing_interval");
+  const client = getInsForgeAdmin();
+  const { data: subscriptions } = await client.database.from("subscriptions").select("*");
 
+  let withAccess = 0;
   let activeSubscribers = 0;
+  let freeAccess = 0;
   let trialUsers = 0;
   let pastDue = 0;
   let mrr = 0;
 
-  if (subscriptions) {
-    for (const sub of subscriptions) {
-      if (!profileIds.has(sub.user_id)) continue;
+  for (const row of subscriptions ?? []) {
+    const sub = row as Subscription;
+    if (!userIds.has(sub.user_id)) continue;
 
-      if (sub.subscription_status === "active") {
-        activeSubscribers++;
-        if (sub.billing_interval === "annual") {
-          mrr += ANNUAL_PRICE / 12;
-        } else {
-          mrr += MONTHLY_PRICE;
-        }
-      } else if (sub.subscription_status === "trial") {
-        trialUsers++;
-      } else if (sub.subscription_status === "past_due") {
-        pastDue++;
-      }
+    const access = getAccessSummary(sub);
+    if (access.level !== "locked") withAccess++;
+    if (access.level === "trial") trialUsers++;
+    if (sub.subscription_status === "past_due") pastDue++;
+
+    // MRR: a live ARB whose paid period is current (lapsed renewals don't count).
+    if (access.reason === "paid") {
+      const promo: PricingPromo = sub.pricing_promo === "launch" ? "launch" : "standard";
+      mrr += getDisplayMonthlyRate(sub.billing_interval === "annual" ? "annual" : "monthly", promo);
+    }
+    // Headline: anyone using paid-for time (incl. canceled with time left, and
+    // failed-payment grace) is "paying"; granted/comped access is "free".
+    if (access.reason === "paid" || access.reason === "grace" || access.reason === "canceled_in_period") {
+      activeSubscribers++;
+    } else if (access.level === "full") {
+      freeAccess++;
     }
   }
 
@@ -81,26 +82,24 @@ export async function GET(request: NextRequest) {
 
   let grossReceiptsMTD = 0;
   let failedPaymentsMTD = 0;
-  if (payments) {
-    for (const p of payments) {
-      if (p.status === "success") {
-        grossReceiptsMTD += parseFloat(p.amount) || 0;
-      } else if (p.status === "failed") {
-        failedPaymentsMTD++;
-      }
+  for (const p of payments ?? []) {
+    if (p.status === "success") {
+      grossReceiptsMTD += parseFloat(p.amount) || 0;
+    } else if (p.status === "failed") {
+      failedPaymentsMTD++;
     }
   }
 
   return NextResponse.json({
     totalUsers,
+    withAccess,
     activeSubscribers,
+    freeAccess,
     trialUsers,
     pastDue,
     newSignups7d,
     grossReceiptsMTD,
     failedPaymentsMTD,
-    mrr,
-    // Kept for backwards compatibility with any older client cache
-    monthlyRevenue: grossReceiptsMTD,
+    mrr: Math.round(mrr * 100) / 100,
   });
 }

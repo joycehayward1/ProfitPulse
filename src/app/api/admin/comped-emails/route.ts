@@ -1,23 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@insforge/sdk";
+import { getInsForgeAdmin } from "@/lib/insforge";
 import { requireAdmin } from "@/lib/admin-auth";
+import { adminSql, logAdminAction } from "@/lib/admin-log";
 
 /**
  * Admin management of the comped-emails allowlist. Emails on this list get
- * lifetime Pro automatically when they sign up (see /api/auth/start-trial).
+ * free Pro automatically when they sign up (see /api/auth/start-trial) —
+ * lifetime by default, or for `access_months` months from signup.
  *
  *   GET    — list all allowlisted emails
- *   POST   — add one: { email: string, note?: string }
+ *   POST   — add one: { email: string, note?: string, accessMonths?: number | null }
  *   DELETE — remove one: { email: string } (does not revoke already-granted access)
  *
  * Admin-only — identity verified via Bearer token (requireAdmin).
  */
 
 function getClient() {
-  return createClient({
-    baseUrl: process.env.NEXT_PUBLIC_INSFORGE_URL!,
-    anonKey: process.env.INSFORGE_API_KEY || process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY!,
-  });
+  return getInsForgeAdmin();
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -46,7 +45,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
 
-  let body: { email?: string; note?: string };
+  let body: { email?: string; note?: string; accessMonths?: number | null };
   try {
     body = await request.json();
   } catch {
@@ -56,6 +55,32 @@ export async function POST(request: NextRequest) {
   const email = body.email?.trim().toLowerCase();
   if (!email || !EMAIL_RE.test(email)) {
     return NextResponse.json({ error: "Valid email required" }, { status: 400 });
+  }
+
+  const accessMonths = body.accessMonths ?? null;
+  if (
+    accessMonths !== null &&
+    (!Number.isInteger(accessMonths) || accessMonths < 1 || accessMonths > 120)
+  ) {
+    return NextResponse.json(
+      { error: "accessMonths must be a whole number between 1 and 120, or empty for lifetime" },
+      { status: 400 }
+    );
+  }
+
+  // The list only applies at signup; an existing account would never claim it.
+  const accounts = await adminSql<{ id: string }>(
+    "SELECT id FROM auth.users WHERE lower(email) = $1",
+    [email]
+  );
+  if (accounts && accounts.length > 0) {
+    return NextResponse.json(
+      {
+        error:
+          "They already have an account. Find them under People and use Give free Pro instead.",
+      },
+      { status: 409 }
+    );
   }
 
   const client = getClient();
@@ -75,13 +100,18 @@ export async function POST(request: NextRequest) {
 
   const { data, error } = await client.database
     .from("comped_emails")
-    .insert({ email, note: body.note?.trim() || null })
+    .insert([{ email, note: body.note?.trim() || null, access_months: accessMonths }])
     .select()
     .single();
 
   if (error) {
     return NextResponse.json({ error: "Failed to add email" }, { status: 500 });
   }
+
+  await logAdminAction(admin, "comped_email_add", { email }, {
+    access_months: accessMonths,
+    note: body.note?.trim() || null,
+  });
 
   return NextResponse.json({ success: true, compedEmail: data });
 }
@@ -112,6 +142,8 @@ export async function DELETE(request: NextRequest) {
   if (error) {
     return NextResponse.json({ error: "Failed to remove email" }, { status: 500 });
   }
+
+  await logAdminAction(admin, "comped_email_remove", { email });
 
   return NextResponse.json({ success: true });
 }

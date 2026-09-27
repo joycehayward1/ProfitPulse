@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@insforge/sdk";
 import { requireAdmin } from "@/lib/admin-auth";
+import { logAdminAction } from "@/lib/admin-log";
 
 /**
  * POST /api/admin/comp-days
@@ -53,21 +54,33 @@ export async function POST(request: NextRequest) {
     .eq("user_id", userId)
     .maybeSingle();
 
-  if (!existing) {
+  if (!existing || existing.subscription_status === "trial" || !existing.current_period_end) {
     return NextResponse.json(
-      { error: "User has no subscription row" },
-      { status: 404 }
+      {
+        error:
+          "Free days are added after paid time, and they haven't paid yet. Use Extend their trial or Give free Pro instead.",
+      },
+      { status: 409 }
     );
   }
 
-  const newCompDays = (existing.comp_days ?? 0) + days;
+  // Comp days count from the end of paid time. If that (plus any earlier comp)
+  // is already in the past, start the free days from today instead so they
+  // actually restore access.
+  const effectiveEnd = new Date(existing.current_period_end);
+  effectiveEnd.setDate(effectiveEnd.getDate() + (existing.comp_days ?? 0));
+  const expired = effectiveEnd <= new Date();
+
+  const newCompDays = expired ? days : (existing.comp_days ?? 0) + days;
+  const update: Record<string, unknown> = {
+    comp_days: newCompDays,
+    updated_at: new Date().toISOString(),
+  };
+  if (expired) update.current_period_end = new Date().toISOString();
 
   const { error } = await client.database
     .from("subscriptions")
-    .update({
-      comp_days: newCompDays,
-      updated_at: new Date().toISOString(),
-    })
+    .update(update)
     .eq("user_id", userId);
 
   if (error) {
@@ -76,6 +89,12 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+
+  await logAdminAction(admin, "comp_days", { userId }, {
+    days,
+    total_comp_days: newCompDays,
+    started_today: expired,
+  });
 
   return NextResponse.json({ success: true, comp_days: newCompDays });
 }

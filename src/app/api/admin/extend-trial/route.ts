@@ -1,13 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@insforge/sdk";
+import { getInsForgeAdmin } from "@/lib/insforge";
 import { requireAdmin } from "@/lib/admin-auth";
+import { logAdminAction } from "@/lib/admin-log";
+import { getAccessSummary } from "@/lib/feature-gate";
+import type { Subscription } from "@/lib/database.types";
+
+const MAX_DAYS = 365;
 
 /**
  * POST /api/admin/extend-trial
- * Body: { userId: string }
+ * Body: { userId: string, days?: number }  (default 7, max 365)
  *
- * Extends a user's trial by 7 days from their current trial_end_date
- * (or from now if no trial exists).
+ * Extends a user's trial by `days`, counted from the current trial end if it
+ * is still running, otherwise from now. Refuses users who already have full
+ * access (paid, granted, comped) so a paying customer is never flipped back
+ * to "trial".
  * Admin-only — identity verified via Bearer token (requireAdmin).
  */
 export async function POST(request: NextRequest) {
@@ -16,7 +23,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
 
-  let body: { userId?: string };
+  let body: { userId?: string; days?: number };
   try {
     body = await request.json();
   } catch {
@@ -24,37 +31,40 @@ export async function POST(request: NextRequest) {
   }
 
   const { userId } = body;
+  const days = body.days ?? 7;
 
   if (!userId) {
     return NextResponse.json({ error: "userId required" }, { status: 400 });
   }
+  if (!Number.isInteger(days) || days < 1 || days > MAX_DAYS) {
+    return NextResponse.json(
+      { error: `days must be a whole number between 1 and ${MAX_DAYS}` },
+      { status: 400 }
+    );
+  }
 
-  const client = createClient({
-    baseUrl: process.env.NEXT_PUBLIC_INSFORGE_URL!,
-    anonKey: process.env.INSFORGE_API_KEY || process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY!,
-  });
+  const client = getInsForgeAdmin();
 
-  // Get existing subscription
   const { data: existing } = await client.database
     .from("subscriptions")
     .select("*")
     .eq("user_id", userId)
     .maybeSingle();
 
-  const now = new Date();
-  let newTrialEnd: Date;
-
-  if (existing?.trial_end_date) {
-    // Extend from current trial end
-    const currentEnd = new Date(existing.trial_end_date);
-    // If trial already expired, extend from now
-    newTrialEnd = currentEnd > now ? currentEnd : now;
-    newTrialEnd.setDate(newTrialEnd.getDate() + 7);
-  } else {
-    // No trial exists, start one from now
-    newTrialEnd = new Date(now);
-    newTrialEnd.setDate(newTrialEnd.getDate() + 7);
+  if (existing && getAccessSummary(existing as Subscription).level === "full") {
+    return NextResponse.json(
+      {
+        error:
+          "This user already has full access (paid, granted, or comped). Use Comp to add free time instead.",
+      },
+      { status: 409 }
+    );
   }
+
+  const now = new Date();
+  const currentEnd = existing?.trial_end_date ? new Date(existing.trial_end_date) : null;
+  const newTrialEnd = new Date(currentEnd && currentEnd > now ? currentEnd : now);
+  newTrialEnd.setDate(newTrialEnd.getDate() + days);
 
   const trialData = {
     subscription_status: "trial",
@@ -62,37 +72,22 @@ export async function POST(request: NextRequest) {
     trial_end_date: newTrialEnd.toISOString(),
   };
 
-  if (existing) {
-    const { error } = await client.database
-      .from("subscriptions")
-      .update(trialData)
-      .eq("user_id", userId);
+  const { error } = existing
+    ? await client.database.from("subscriptions").update(trialData).eq("user_id", userId)
+    : await client.database
+        .from("subscriptions")
+        .insert([{ user_id: userId, plan: "none", ...trialData }]);
 
-    if (error) {
-      return NextResponse.json(
-        { error: "Failed to extend trial" },
-        { status: 500 }
-      );
-    }
-  } else {
-    const { error } = await client.database
-      .from("subscriptions")
-      .insert({
-        user_id: userId,
-        plan: "none",
-        ...trialData,
-      });
-
-    if (error) {
-      return NextResponse.json(
-        { error: "Failed to create trial" },
-        { status: 500 }
-      );
-    }
+  if (error) {
+    console.error("[admin/extend-trial] write failed", { userId, error });
+    return NextResponse.json({ error: "Failed to extend trial" }, { status: 500 });
   }
 
-  return NextResponse.json({
-    success: true,
-    trial_end_date: newTrialEnd.toISOString(),
+  await logAdminAction(admin, "extend_trial", { userId }, {
+    days,
+    previous_trial_end: existing?.trial_end_date ?? null,
+    new_trial_end: newTrialEnd.toISOString(),
   });
+
+  return NextResponse.json({ success: true, trial_end_date: newTrialEnd.toISOString() });
 }

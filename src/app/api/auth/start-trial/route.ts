@@ -30,17 +30,22 @@ async function rawSql(
 
 /**
  * If the user's signup email is on the comped_emails allowlist, returns the
- * matching allowlist email (lowercase). Fails open to a normal trial.
+ * matching allowlist email (lowercase) and its free-access length in months
+ * (null = lifetime). Fails open to a normal trial.
  */
-async function findCompedEmail(userId: string): Promise<string | null> {
+async function findCompedEmail(
+  userId: string
+): Promise<{ email: string; accessMonths: number | null } | null> {
   const rows = await rawSql(
-    `SELECT c.email FROM comped_emails c
+    `SELECT c.email, c.access_months FROM comped_emails c
      JOIN auth.users u ON lower(u.email) = c.email
      WHERE u.id = $1 AND c.claimed_at IS NULL`,
     [userId]
   );
   const email = rows?.[0]?.email;
-  return typeof email === "string" ? email : null;
+  if (typeof email !== "string") return null;
+  const months = rows?.[0]?.access_months;
+  return { email, accessMonths: typeof months === "number" ? months : null };
 }
 
 /**
@@ -82,11 +87,17 @@ export async function POST(request: NextRequest) {
 
   const now = new Date();
 
-  // Allowlisted emails skip the trial entirely and get lifetime Pro.
-  const compedEmail = await findCompedEmail(userId);
-  if (compedEmail) {
+  // Allowlisted emails skip the trial and get free Pro — lifetime, or for
+  // the number of months set on their allowlist entry.
+  const comped = await findCompedEmail(userId);
+  if (comped) {
+    const compedEmail = comped.email;
     const periodEnd = new Date(now);
-    periodEnd.setFullYear(periodEnd.getFullYear() + 100);
+    if (comped.accessMonths) {
+      periodEnd.setMonth(periodEnd.getMonth() + comped.accessMonths);
+    } else {
+      periodEnd.setFullYear(periodEnd.getFullYear() + 100);
+    }
 
     const { data, error } = await client.database
       .from("subscriptions")
@@ -113,7 +124,7 @@ export async function POST(request: NextRequest) {
       "UPDATE comped_emails SET claimed_at = NOW(), claimed_by = $1 WHERE email = $2",
       [userId, compedEmail]
     );
-    console.log(`[start-trial] comped signup: ${compedEmail} → lifetime Pro`);
+    console.log(`[start-trial] comped signup: ${compedEmail} → ${comped.accessMonths ? `${comped.accessMonths} months` : "lifetime"} Pro`);
 
     return NextResponse.json({ subscription: data, created: true, comped: true });
   }

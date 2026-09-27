@@ -115,3 +115,90 @@ export function hasFullAccess(subscription: Subscription | null): boolean {
 export function isLocked(subscription: Subscription | null): boolean {
   return getUserAccessLevel(subscription) === "locked";
 }
+
+export type AccessReason =
+  | "paid"
+  | "lifetime"
+  | "granted"
+  | "canceled_in_period"
+  | "comped"
+  | "grace"
+  | "trial"
+  | "trial_expired"
+  | "canceled"
+  | "past_due"
+  | "lapsed"
+  | "grant_ended"
+  | "none";
+
+export interface AccessSummary {
+  level: AccessLevel;
+  reason: AccessReason;
+  /** When access ends (ISO), or null when locked. */
+  until: string | null;
+}
+
+/** Period ends more than 50 years out are admin-granted lifetime access. */
+function isLifetimeEnd(end: Date): boolean {
+  return end.getFullYear() - new Date().getFullYear() > 50;
+}
+
+/**
+ * Why a user has (or lacks) access, and until when — for the admin panel.
+ * Follows the same branches, in the same order, as getUserAccessLevel.
+ */
+export function getAccessSummary(subscription: Subscription | null): AccessSummary {
+  if (!subscription) return { level: "locked", reason: "none", until: null };
+
+  const now = new Date();
+  const periodEnd = effectivePeriodEnd(subscription);
+  const status = subscription.subscription_status;
+
+  // No recurring billing behind an active Pro row = access an admin granted
+  // (or a comped signup); a live ARB means they're paying.
+  const billed = Boolean(subscription.anet_subscription_id);
+
+  if (status === "active" && subscription.plan === "pro" && periodEnd && periodEnd > now) {
+    return {
+      level: "full",
+      reason: isLifetimeEnd(periodEnd) ? "lifetime" : billed ? "paid" : "granted",
+      until: periodEnd.toISOString(),
+    };
+  }
+
+  if (status === "canceled" && periodEnd && periodEnd > now) {
+    return { level: "full", reason: "canceled_in_period", until: periodEnd.toISOString() };
+  }
+
+  if (subscription.comp_days > 0 && periodEnd && periodEnd > now) {
+    return { level: "full", reason: "comped", until: periodEnd.toISOString() };
+  }
+
+  if (
+    status === "past_due" &&
+    subscription.last_payment_date &&
+    daysSince(subscription.last_payment_date) <= 3
+  ) {
+    const graceEnd = new Date(subscription.last_payment_date);
+    graceEnd.setDate(graceEnd.getDate() + 4);
+    return { level: "full", reason: "grace", until: graceEnd.toISOString() };
+  }
+
+  if (status === "trial" && subscription.trial_end_date && new Date(subscription.trial_end_date) > now) {
+    return { level: "trial", reason: "trial", until: subscription.trial_end_date };
+  }
+
+  const lockedReason: AccessReason =
+    status === "trial"
+      ? "trial_expired"
+      : status === "canceled"
+      ? "canceled"
+      : status === "past_due"
+      ? "past_due"
+      : status === "active" && periodEnd && billed
+      ? "lapsed" // marked active, but the paid period ended with no renewal recorded
+      : status === "active" && periodEnd
+      ? "grant_ended" // free access an admin granted has run out
+      : "none";
+  return { level: "locked", reason: lockedReason, until: null };
+}

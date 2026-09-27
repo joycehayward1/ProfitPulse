@@ -68,7 +68,12 @@ export async function GET(request: NextRequest) {
 
   const records = (payments || []).map((p: Record<string, unknown>) => ({
     id: p.id,
-    email: emailMap.get(p.user_id as string) || "—",
+    // Payment history is kept after an account is deleted (tombstoned login).
+    email: (() => {
+      const email = emailMap.get(p.user_id as string);
+      if (!email) return "—";
+      return email.endsWith("@deleted.invalid") ? "Deleted account" : email;
+    })(),
     type: p.type,
     amount: parseFloat(String(p.amount)) || 0,
     status: p.status,
