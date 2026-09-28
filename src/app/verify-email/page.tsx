@@ -80,7 +80,7 @@ function VerifyEmailContent() {
       }
 
       sessionStorage.setItem(resendSessionKey(email), String(Date.now()));
-      setInfo("We sent a new 6-digit code to your email.");
+      setInfo("We sent a new code to your email.");
       setCooldownSeconds(RESEND_COOLDOWN_SECONDS);
     } catch {
       setBannerError(
@@ -127,8 +127,8 @@ function VerifyEmailContent() {
       return;
     }
 
-    if (code.length !== 6) {
-      setCodeError("Code must be 6 digits");
+    if (code.length < 6 || code.length > 8) {
+      setCodeError("Enter the full code from your email");
       return;
     }
 
@@ -173,7 +173,7 @@ function VerifyEmailContent() {
   return (
     <AuthLayout
       heading="Verify your email"
-      subheading={`Enter the 6-digit code sent to ${email || "your email"}. If you don't see it, check spam or resend below.`}
+      subheading={`Enter the code sent to ${email || "your email"}. If you don't see it, check spam or resend below.`}
       footerText="Wrong email?"
       footerLinkText="Go back"
       footerLinkHref="/signup"
@@ -196,14 +196,14 @@ function VerifyEmailContent() {
           placeholder="000000"
           value={code}
           onChange={(e) => {
-            const value = e.target.value.replace(/\D/g, "").slice(0, 6);
+            const value = e.target.value.replace(/\D/g, "").slice(0, 8);
             setCode(value);
             if (codeError) setCodeError("");
           }}
           error={codeError}
           required
           autoComplete="one-time-code"
-          maxLength={6}
+          maxLength={8}
           autoFocus
         />
 

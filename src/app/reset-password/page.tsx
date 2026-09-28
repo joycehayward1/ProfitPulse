@@ -145,7 +145,7 @@ function ResetPasswordForm() {
     return (
       <AuthLayout
         heading="Reset session expired"
-        subheading="Start again from the forgot password page and enter the 6-digit code from your email."
+        subheading="Start again from the forgot password page and enter the code from your email."
         footerText="Remember your password?"
         footerLinkText="Log in"
         footerLinkHref="/login"

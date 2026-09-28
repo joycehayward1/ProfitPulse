@@ -92,8 +92,8 @@ export default function ForgotPasswordPage() {
       setError("Please enter the reset code");
       return;
     }
-    if (code.length !== 6) {
-      setError("Code must be 6 digits");
+    if (code.length < 6 || code.length > 8) {
+      setError("Enter the full code from your email");
       return;
     }
 
@@ -126,7 +126,7 @@ export default function ForgotPasswordPage() {
     return (
       <AuthLayout
         heading="Enter your reset code"
-        subheading={`We sent a 6-digit code to ${email}. Enter it below to choose a new password.`}
+        subheading={`We sent a code to ${email}. Enter it below to choose a new password.`}
         footerText="Remember your password?"
         footerLinkText="Log in"
         footerLinkHref="/login"
@@ -144,13 +144,13 @@ export default function ForgotPasswordPage() {
             placeholder="000000"
             value={code}
             onChange={(e) => {
-              const value = e.target.value.replace(/\D/g, "").slice(0, 6);
+              const value = e.target.value.replace(/\D/g, "").slice(0, 8);
               setCode(value);
               if (error) setError("");
             }}
             required
             autoComplete="one-time-code"
-            maxLength={6}
+            maxLength={8}
             autoFocus
           />
 
@@ -190,7 +190,7 @@ export default function ForgotPasswordPage() {
   return (
     <AuthLayout
       heading="Reset your password"
-      subheading="Enter your email and we'll send you a 6-digit code to get back in."
+      subheading="Enter your email and we'll send you a code to get back in."
       footerText="Remember your password?"
       footerLinkText="Log in"
       footerLinkHref="/login"

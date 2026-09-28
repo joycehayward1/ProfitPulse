@@ -1098,7 +1098,7 @@ function SettingsContent() {
                             });
                             if (!res.ok) throw new Error("Failed");
                             setPasswordStep("code");
-                            showToast("success", "Check your email for a 6-digit code");
+                            showToast("success", "Check your email for a code");
                           } catch {
                             showToast("error", "Failed to send reset code. Try again.");
                           } finally {
@@ -1115,20 +1115,20 @@ function SettingsContent() {
 
                   {passwordStep === "code" && (
                     <div className="py-4 border-b border-[#F0F0F2] space-y-4">
-                      <h4 className="text-[14px] font-medium text-[#111111]">Enter the 6-digit code from your email</h4>
+                      <h4 className="text-[14px] font-medium text-[#111111]">Enter the code from your email</h4>
                       <input
                         type="text"
                         value={resetCode}
-                        onChange={(e) => setResetCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                        onChange={(e) => setResetCode(e.target.value.replace(/\D/g, "").slice(0, 8))}
                         placeholder="000000"
-                        maxLength={6}
+                        maxLength={8}
                         className="w-48 h-12 px-4 rounded-lg border border-[#E4E4E7] bg-white text-[20px] text-center tracking-[0.3em] text-[#111111] placeholder:text-[#E4E4E7] focus:border-[#E65100] focus:ring-2 focus:ring-[#E65100]/15 focus:outline-none transition-colors"
                       />
                       {passwordError && <p className="text-[13px] text-[#DC2626]">{passwordError}</p>}
                       <div className="flex gap-3">
                         <button
                           onClick={async () => {
-                            if (resetCode.length !== 6 || !user?.email) return;
+                            if (resetCode.length < 6 || !user?.email) return;
                             setSavingPassword(true);
                             setPasswordError("");
                             try {
@@ -1147,7 +1147,7 @@ function SettingsContent() {
                               setSavingPassword(false);
                             }
                           }}
-                          disabled={savingPassword || resetCode.length !== 6}
+                          disabled={savingPassword || resetCode.length < 6}
                           className="bg-[#E65100] text-white rounded-lg px-5 py-2 text-[13px] font-medium hover:bg-[#D84900] disabled:opacity-50 transition-colors"
                         >
                           {savingPassword ? "Verifying..." : "Verify Code"}

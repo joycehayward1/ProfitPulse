@@ -341,7 +341,7 @@ export function UserDetailDrawer({
             hint={
               resetSentTo
                 ? undefined
-                : "Emails come from MyProfitPulse with a 6-digit code."
+                : "Emails come from MyProfitPulse with a sign-in code."
             }
           >
             {pendingSupport ? (
