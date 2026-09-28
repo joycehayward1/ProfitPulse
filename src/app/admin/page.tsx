@@ -5,7 +5,7 @@ import { Icon } from "@iconify/react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { useToast } from "@/components/ui";
-import { UserDetailDrawer, statusDot } from "./UserDetailDrawer";
+import { UserDetailDrawer, statusDot, type BillingRequest } from "./UserDetailDrawer";
 import {
   ACCESS_REASON_LABELS,
   accessLine,
@@ -444,6 +444,20 @@ export default function AdminPage() {
       message: describe(`${days} days`),
       confirmLabel: "Extend trial",
       onConfirm: () => run(days),
+    });
+  }
+
+  function billingAction(u: AdminUser, request: BillingRequest) {
+    setConfirm({
+      title: request.title,
+      message: request.message,
+      confirmLabel: request.confirmLabel,
+      onConfirm: () =>
+        runAction(
+          "/api/admin/billing",
+          { userId: u.id, action: request.body.action, target: request.body.target ?? null, paymentId: request.body.paymentId ?? null },
+          request.successMessage
+        ),
     });
   }
 
@@ -1161,6 +1175,7 @@ export default function AdminPage() {
           onGrant={grantPro}
           onComp={addFreeDays}
           onTrial={extendTrial}
+          onBilling={billingAction}
         />
       )}
       {confirm && <ConfirmDialog confirm={confirm} onCancel={() => setConfirm(null)} />}

@@ -813,6 +813,9 @@ interface GetTransactionDetailsResponse {
     customer?: {
       email?: string;
     };
+    payment?: {
+      creditCard?: { cardNumber?: string; expirationDate?: string; cardType?: string };
+    };
   };
   messages: AnetMessages;
 }
@@ -826,6 +829,10 @@ export interface TransactionDetails {
   /** 1 = approved, 2 = declined, 3 = error, 4 = held for review */
   responseCode: number | null;
   submitTimeUTC: string | null;
+  /** e.g. capturedPendingSettlement, settledSuccessfully, voided, refundSettledSuccessfully */
+  transactionStatus: string | null;
+  /** Last four digits of the card (masked number from Authorize.net) */
+  cardLast4: string | null;
 }
 
 /**
@@ -858,6 +865,8 @@ export async function getTransactionDetails(
     customerEmail: result.transaction.customer?.email ?? null,
     responseCode: Number.isFinite(code) ? code : null,
     submitTimeUTC: result.transaction.submitTimeUTC ?? null,
+    transactionStatus: result.transaction.transactionStatus ?? null,
+    cardLast4: result.transaction.payment?.creditCard?.cardNumber?.slice(-4) ?? null,
   };
 }
 
@@ -1032,4 +1041,113 @@ export function computePeriodEnd(
   // math overflows into the next month instead, so clamp back.
   if (end.getDate() !== day) end.setDate(0);
   return end;
+}
+
+// ─── Saved card lookup (masked) ──────────────────────────────────────────────
+
+interface GetCustomerPaymentProfileResponse {
+  paymentProfile?: {
+    billTo?: { firstName?: string; lastName?: string; zip?: string };
+    payment?: {
+      creditCard?: { cardNumber?: string; expirationDate?: string; cardType?: string };
+    };
+  };
+  messages: AnetMessages;
+}
+
+/** A saved card as Authorize.net reports it — never the full number. */
+export interface MaskedCard {
+  cardType: string | null;
+  last4: string | null;
+  /** YYYY-MM */
+  expiration: string | null;
+  billingName: string | null;
+  billingZip: string | null;
+}
+
+/**
+ * The card on file for a payment profile. Authorize.net only ever returns a
+ * masked number ("XXXX4304"); full card numbers never leave Authorize.net.
+ */
+export async function getMaskedCard(
+  customerProfileId: string,
+  customerPaymentProfileId: string
+): Promise<MaskedCard> {
+  const result = await callAnet<GetCustomerPaymentProfileResponse>({
+    getCustomerPaymentProfileRequest: {
+      merchantAuthentication: merchantAuth(),
+      customerProfileId,
+      customerPaymentProfileId,
+      unmaskExpirationDate: true,
+    },
+  });
+  assertOk(result, "getCustomerPaymentProfile");
+
+  const card = result.paymentProfile?.payment?.creditCard;
+  const bill = result.paymentProfile?.billTo;
+  const name = [bill?.firstName, bill?.lastName].filter(Boolean).join(" ");
+  const expiration = card?.expirationDate && /^\d{4}-\d{2}$/.test(card.expirationDate)
+    ? card.expirationDate
+    : null;
+  return {
+    cardType: card?.cardType ?? null,
+    last4: card?.cardNumber?.slice(-4) ?? null,
+    expiration,
+    billingName: name || null,
+    billingZip: bill?.zip ?? null,
+  };
+}
+
+// ─── Void / refund ───────────────────────────────────────────────────────────
+
+function throwIfNotApproved(result: CreateTransactionResponse, context: string): string {
+  if (result.messages?.resultCode !== "Ok") assertOk(result, context);
+  const tx = result.transactionResponse;
+  if (!tx || tx.responseCode !== "1") {
+    const reason =
+      tx?.errors?.error?.[0]?.errorText ??
+      tx?.messages?.message?.[0]?.description ??
+      "Authorize.net didn't approve it";
+    throw new Error(reason);
+  }
+  return tx.transId;
+}
+
+/** Cancel a charge that hasn't settled yet. The customer is never billed. */
+export async function voidTransaction(transId: string): Promise<string> {
+  const result = await callAnet<CreateTransactionResponse>({
+    createTransactionRequest: {
+      merchantAuthentication: merchantAuth(),
+      transactionRequest: {
+        transactionType: "voidTransaction",
+        refTransId: transId,
+      },
+    },
+  });
+  return throwIfNotApproved(result, "voidTransaction");
+}
+
+/**
+ * Refund a settled charge back to the card it was made on. Authorize.net only
+ * needs the last four digits of that card, never the full number.
+ */
+export async function refundTransaction(args: {
+  transId: string;
+  amount: number;
+  cardLast4: string;
+}): Promise<string> {
+  const result = await callAnet<CreateTransactionResponse>({
+    createTransactionRequest: {
+      merchantAuthentication: merchantAuth(),
+      transactionRequest: {
+        transactionType: "refundTransaction",
+        amount: args.amount.toFixed(2),
+        payment: {
+          creditCard: { cardNumber: args.cardLast4, expirationDate: "XXXX" },
+        },
+        refTransId: args.transId,
+      },
+    },
+  });
+  return throwIfNotApproved(result, "refundTransaction");
 }

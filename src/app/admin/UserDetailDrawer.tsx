@@ -35,6 +35,14 @@ interface UserDetail {
   subscription: Subscription | null;
   access: AccessSummary;
   arb: { id: string; status: string; lastChargeAt: string | null; error?: string } | null;
+  card: {
+    cardType: string | null;
+    last4: string | null;
+    expiration: string | null;
+    billingName: string | null;
+    billingZip: string | null;
+    error?: string;
+  } | null;
   payments: {
     id: string;
     anet_transaction_id: string | null;
@@ -55,6 +63,36 @@ interface UserDetail {
 }
 
 type SupportAction = "password_reset" | "resend_verification";
+
+export type BillingActionName =
+  | "retry_payment"
+  | "cancel_subscription"
+  | "switch_plan"
+  | "refund_payment"
+  | "send_update_card_link";
+
+/** A billing action for the page to confirm and run against /api/admin/billing. */
+export interface BillingRequest {
+  title: string;
+  message: string;
+  confirmLabel: string;
+  successMessage: string;
+  body: { action: BillingActionName; target?: string; paymentId?: string };
+}
+
+/** "Visa ending 4304" from Authorize.net's masked card. */
+function cardLabel(card: UserDetail["card"]): string {
+  if (!card?.last4) return "their card on file";
+  return `${card.cardType ?? "Card"} ending ${card.last4}`;
+}
+
+/** Months until a YYYY-MM card expiry (negative once it has expired). */
+function monthsUntilExpiry(expiration: string | null): number | null {
+  if (!expiration) return null;
+  const [y, m] = expiration.split("-").map(Number);
+  const now = new Date();
+  return (y - now.getFullYear()) * 12 + (m - (now.getMonth() + 1));
+}
 
 /** Green = can use the app, amber = trial, red = payment problem, grey = otherwise locked. */
 export function statusDot(access: AccessSummary): string {
@@ -121,6 +159,7 @@ interface DrawerProps {
   onGrant: (u: AdminUser, duration: GrantDuration) => void;
   onComp: (u: AdminUser, days: number, label: string) => void;
   onTrial: (u: AdminUser, days: number | "custom") => void;
+  onBilling: (u: AdminUser, request: BillingRequest) => void;
 }
 
 export function UserDetailDrawer({
@@ -131,6 +170,7 @@ export function UserDetailDrawer({
   onGrant,
   onComp,
   onTrial,
+  onBilling,
 }: DrawerProps) {
   const { showToast } = useToast();
   const [detail, setDetail] = useState<UserDetail | null>(null);
@@ -407,6 +447,133 @@ export function UserDetailDrawer({
             </div>
           ) : detail ? (
             <>
+              <Block title="Card on file" hint="Shown masked by Authorize.net. The full number is never stored or shown.">
+                {!detail.card ? (
+                  <p className="text-[14px] text-text-muted">No card on file.</p>
+                ) : detail.card.error ? (
+                  <p className="text-[14px] text-text-muted">Couldn&apos;t load card details right now.</p>
+                ) : (
+                  <div className="flex items-center gap-4 rounded-xl border border-border p-4">
+                    <Icon icon="ph:credit-card" className="w-7 h-7 text-text-muted flex-shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[15px] font-medium text-text-primary">
+                        {detail.card.cardType ?? "Card"} •••• {detail.card.last4 ?? "????"}
+                      </p>
+                      <p className="text-[13px] text-text-muted">
+                        {detail.card.billingName ?? "No name on card"}
+                        {detail.card.billingZip ? `, ${detail.card.billingZip}` : ""}
+                      </p>
+                    </div>
+                    {detail.card.expiration && (() => {
+                      const left = monthsUntilExpiry(detail.card.expiration);
+                      const [y, m] = detail.card.expiration.split("-");
+                      const tone =
+                        left !== null && left < 0
+                          ? "text-error"
+                          : left !== null && left <= 2
+                          ? "text-warning"
+                          : "text-text-secondary";
+                      return (
+                        <p className={`text-[13px] text-right ${tone}`}>
+                          {left !== null && left < 0 ? "Expired" : "Expires"} {m}/{y}
+                        </p>
+                      );
+                    })()}
+                  </div>
+                )}
+              </Block>
+
+              {sub?.anet_customer_profile_id && (
+                <Block
+                  title="Billing actions"
+                  hint="Charges only ever go to the card on file. For a new card, email them the update link."
+                >
+                  <div className="flex flex-wrap gap-2">
+                    {sub.last_payment_status === "failed" && sub.anet_subscription_id && (
+                      <Choice
+                        disabled={busy}
+                        onClick={() =>
+                          onBilling(user, {
+                            title: "Charge the missed payment?",
+                            message: `This charges ${formatMoney(Number(sub.last_payment_amount) || 0)} to ${cardLabel(
+                              detail.card
+                            )} for their declined renewal. If it goes through, they can use the app again right away.`,
+                            confirmLabel: "Charge card",
+                            successMessage: `Missed payment collected from ${displayName(user)}`,
+                            body: { action: "retry_payment" },
+                          })
+                        }
+                      >
+                        Charge missed payment
+                      </Choice>
+                    )}
+                    {sub.anet_subscription_id && sub.subscription_status === "active" && sub.billing_interval && !sub.pending_switch_to && (
+                      <Choice
+                        disabled={busy}
+                        onClick={() =>
+                          onBilling(
+                            user,
+                            sub.billing_interval === "monthly"
+                              ? {
+                                  title: "Switch them to annual?",
+                                  message: `This charges ${cardLabel(detail.card)} the annual price today, minus credit for the unused days of this month, and stops their monthly billing.`,
+                                  confirmLabel: "Switch and charge",
+                                  successMessage: `${displayName(user)} is now on the annual plan`,
+                                  body: { action: "switch_plan", target: "annual" },
+                                }
+                              : {
+                                  title: "Switch them to monthly?",
+                                  message: `Nothing is charged today. Their annual plan runs until ${formatDate(
+                                    sub.current_period_end
+                                  )}, then monthly billing starts on ${cardLabel(detail.card)}.`,
+                                  confirmLabel: "Switch to monthly",
+                                  successMessage: `${displayName(user)} switches to monthly on ${formatDate(sub.current_period_end)}`,
+                                  body: { action: "switch_plan", target: "monthly" },
+                                }
+                          )
+                        }
+                      >
+                        {sub.billing_interval === "monthly" ? "Switch to annual" : "Switch to monthly"}
+                      </Choice>
+                    )}
+                    <Choice
+                      disabled={busy}
+                      onClick={() =>
+                        onBilling(user, {
+                          title: "Email them the update-card link?",
+                          message: `${user.email} gets an email with a button to update their card. They enter it themselves, and it goes straight to Authorize.net.`,
+                          confirmLabel: "Send email",
+                          successMessage: `Update-card link sent to ${user.email}`,
+                          body: { action: "send_update_card_link" },
+                        })
+                      }
+                    >
+                      Email update-card link
+                    </Choice>
+                    {sub.anet_subscription_id && (
+                      <Choice
+                        disabled={busy}
+                        onClick={() =>
+                          onBilling(user, {
+                            title: "Cancel their subscription?",
+                            message: `Their card won't be charged again.${
+                              sub.current_period_end
+                                ? ` They keep access until ${formatDate(sub.current_period_end)}.`
+                                : ""
+                            } To come back later, they subscribe again from the app.`,
+                            confirmLabel: "Cancel subscription",
+                            successMessage: `${displayName(user)}'s subscription is canceled`,
+                            body: { action: "cancel_subscription" },
+                          })
+                        }
+                      >
+                        Cancel subscription
+                      </Choice>
+                    )}
+                  </div>
+                </Block>
+              )}
+
               <Block title="Billing">
                 <dl className="divide-y divide-border-light">
                   <Fact label="Plan">
@@ -477,17 +644,46 @@ export function UserDetailDrawer({
                       <li key={p.id} className="py-2.5 flex items-baseline justify-between gap-4">
                         <div className="min-w-0">
                           <p className="text-[14px] text-text-primary">
-                            {p.status === "success" ? "Paid" : p.status === "failed" ? "Declined" : p.status}
+                            {p.status === "success"
+                              ? "Paid"
+                              : p.status === "failed"
+                              ? "Declined"
+                              : p.status === "refunded"
+                              ? "Refunded"
+                              : p.status === "voided"
+                              ? "Voided"
+                              : p.status}
                             {p.type === "renewal" ? " renewal" : p.type === "subscription" ? ", first payment" : ""}
                           </p>
                           <p className="text-[12px] text-text-muted">{formatDate(p.created_at)}</p>
                         </div>
-                        <span
-                          className={`font-display text-[20px] ${
-                            p.status === "success" ? "text-text-primary" : "text-error"
-                          }`}
-                        >
-                          {formatMoney(Number(p.amount))}
+                        <span className="flex items-center gap-3">
+                          {p.status === "success" && p.anet_transaction_id && (
+                            <button
+                              disabled={busy}
+                              onClick={() =>
+                                onBilling(user, {
+                                  title: `Refund ${formatMoney(Number(p.amount))}?`,
+                                  message: `The money goes back to the card it was charged on (${formatDate(
+                                    p.created_at
+                                  )}). If the payment hasn't settled yet, it's voided instead and never shows on their statement. Their access doesn't change; cancel their subscription separately if you need to.`,
+                                  confirmLabel: "Refund payment",
+                                  successMessage: `Refunded ${formatMoney(Number(p.amount))} to ${displayName(user)}`,
+                                  body: { action: "refund_payment", paymentId: p.id },
+                                })
+                              }
+                              className="text-[12px] font-medium text-text-muted hover:text-error disabled:opacity-40"
+                            >
+                              Refund
+                            </button>
+                          )}
+                          <span
+                            className={`font-display text-[20px] ${
+                              p.status === "success" ? "text-text-primary" : "text-error"
+                            }`}
+                          >
+                            {formatMoney(Number(p.amount))}
+                          </span>
                         </span>
                       </li>
                     ))}

@@ -33,7 +33,12 @@ export type AdminActionType =
   | "comped_email_add"
   | "comped_email_remove"
   | "send_password_reset"
-  | "resend_verification";
+  | "resend_verification"
+  | "retry_payment"
+  | "cancel_subscription"
+  | "switch_plan"
+  | "refund_payment"
+  | "send_update_card_link";
 
 /**
  * Record an admin action in the audit log. Never throws — a logging failure

@@ -3,7 +3,7 @@ import { getInsForgeAdmin } from "@/lib/insforge";
 import { requireAdmin } from "@/lib/admin-auth";
 import { adminSql } from "@/lib/admin-log";
 import { getAccessSummary } from "@/lib/feature-gate";
-import { getARBSubscription } from "@/lib/authorize-net";
+import { getARBSubscription, getMaskedCard, type MaskedCard } from "@/lib/authorize-net";
 import type { Subscription } from "@/lib/database.types";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -93,6 +93,26 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     }
   }
 
+  // Card on file, masked by Authorize.net (type, last four, expiry only).
+  let card: (MaskedCard & { error?: string }) | null = null;
+  if (subscription?.anet_customer_profile_id && subscription.anet_payment_profile_id) {
+    try {
+      card = await getMaskedCard(
+        subscription.anet_customer_profile_id,
+        subscription.anet_payment_profile_id
+      );
+    } catch (err) {
+      card = {
+        cardType: null,
+        last4: null,
+        expiration: null,
+        billingName: null,
+        billingZip: null,
+        error: err instanceof Error ? err.message : "Lookup failed",
+      };
+    }
+  }
+
   const periods = ((snapshotsRes.data ?? []) as { period_date: string }[])
     .map((s) => s.period_date)
     .sort();
@@ -111,6 +131,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     subscription,
     access: getAccessSummary(subscription),
     arb,
+    card,
     payments: paymentsRes.data ?? [],
     actions: actionsRes.data ?? [],
     onboarding: {

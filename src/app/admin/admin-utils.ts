@@ -87,6 +87,20 @@ export function describeAction(a: AdminAction): string {
       return "Sent password reset email";
     case "resend_verification":
       return "Resent verification email";
+    case "retry_payment":
+      return d.declined
+        ? `Tried their card for the missed payment: declined (${d.declined})`
+        : `Charged the missed payment of ${formatMoney(Number(d.amount))} to their card`;
+    case "cancel_subscription":
+      return d.access_until
+        ? `Canceled their subscription (access until ${formatDate(d.access_until as string)})`
+        : "Canceled their subscription";
+    case "switch_plan":
+      return `Switched their plan from ${d.from ?? "?"} to ${d.to}`;
+    case "refund_payment":
+      return `${d.outcome === "voided" ? "Voided" : "Refunded"} a ${formatMoney(Number(d.amount))} payment`;
+    case "send_update_card_link":
+      return "Emailed them a link to update their card";
     default:
       return a.action;
   }
