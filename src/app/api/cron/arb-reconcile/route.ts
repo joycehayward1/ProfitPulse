@@ -7,6 +7,7 @@ import {
   getPlanAmount,
 } from "@/lib/authorize-net";
 import { getResend, FROM_EMAIL } from "@/lib/resend";
+import { notifyPaymentDeclined, sendTrialEmails } from "@/lib/lifecycle-emails";
 import type { PricingPromo } from "@/lib/plan-amounts";
 import type { BillingInterval } from "@/components/payments/PricingCards";
 
@@ -28,6 +29,7 @@ import type { BillingInterval } from "@/components/payments/PricingCards";
  *        FIRST payment fails; later declines leave it "active".
  *      - active otherwise → active
  * 3. If anything changed or failed, the admins get an email summary.
+ * 4. Trial reminder emails go out (ends in 2 days / ended), once each.
  *
  * Runs daily (vercel.json). Secured by CRON_SECRET — Vercel cron sends the
  * header automatically; manual calls need `Authorization: Bearer <CRON_SECRET>`.
@@ -162,6 +164,7 @@ export async function GET(request: NextRequest) {
           ]);
 
           latestOutcome = "failed";
+          await notifyPaymentDeclined(sub.user_id, attempt.transId, amount);
           results.push({
             userId: sub.user_id,
             subscriptionId,
@@ -214,7 +217,11 @@ export async function GET(request: NextRequest) {
     await emailAdmins(results);
   }
 
-  return NextResponse.json({ processed: subs?.length ?? 0, actions: results });
+  // Also daily: trial ending / trial ended emails (each sent once).
+  const trialEmails = await sendTrialEmails();
+  console.log(`[arb-reconcile] trial emails sent`, JSON.stringify(trialEmails));
+
+  return NextResponse.json({ processed: subs?.length ?? 0, actions: results, trialEmails });
 }
 
 /** Tell the admins what the nightly job changed or couldn't do. Never throws. */

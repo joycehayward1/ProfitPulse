@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { getInsForgeAdmin } from "@/lib/insforge";
+import { notifyPaymentDeclined } from "@/lib/lifecycle-emails";
 import {
   getTransactionDetailsWithRetry,
   computePeriodEnd,
@@ -221,6 +222,7 @@ async function processEvent(event: WebhookEvent): Promise<void> {
             description: `MyProfitPulse Pro ${sub.billing_interval} — renewal declined (payNum ${details.payNum})`,
           },
         ]);
+        await notifyPaymentDeclined(sub.user_id, transId, failedAmount);
         return;
       }
       if (details.responseCode !== null && details.responseCode !== 1) {
@@ -298,7 +300,7 @@ async function processEvent(event: WebhookEvent): Promise<void> {
       const now = new Date();
       // Set last_payment_date to now so the 3-day grace period window in
       // feature-gate.ts starts counting from the failure.
-      const { error } = await client.database
+      const { data: suspended, error } = await client.database
         .from("subscriptions")
         .update({
           subscription_status: "past_due",
@@ -306,10 +308,20 @@ async function processEvent(event: WebhookEvent): Promise<void> {
           last_payment_date: now.toISOString(),
           updated_at: now.toISOString(),
         })
-        .eq("anet_subscription_id", subscriptionId);
+        .eq("anet_subscription_id", subscriptionId)
+        .select("user_id, last_payment_amount");
 
       if (error) {
         console.error("[webhook] failed to mark past_due:", error);
+        return;
+      }
+      for (const row of (suspended ?? []) as { user_id: string; last_payment_amount: number | null }[]) {
+        // One email per suspension (keyed on the subscription and the day)
+        await notifyPaymentDeclined(
+          row.user_id,
+          `suspended-${subscriptionId}-${now.toISOString().slice(0, 10)}`,
+          null
+        );
       }
       return;
     }

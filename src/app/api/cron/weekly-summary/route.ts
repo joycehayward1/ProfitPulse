@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getInsForgeAdmin } from "@/lib/insforge";
 import { getResend, FROM_EMAIL, REPLY_TO_EMAIL } from "@/lib/resend";
 import { buildWeeklySummaryEmail } from "@/lib/email-templates";
+import { adminSql } from "@/lib/admin-log";
+import { getUserAccessLevel } from "@/lib/feature-gate";
+import type { Subscription } from "@/lib/database.types";
 
 function isAuthorized(request: NextRequest): boolean {
   const cronSecret = request.headers.get("authorization");
@@ -17,19 +20,36 @@ export async function GET(request: NextRequest) {
 
   const client = getInsForgeAdmin();
 
-  // Get all users who have weekly_summary enabled (email stored in preferences)
-  const { data: prefs, error: prefsError } = await client.database
-    .from("notification_preferences")
-    .select("user_id, email")
-    .eq("weekly_summary", true);
+  // Everyone who can use the app gets the summary unless they turned it off
+  // in Settings (a notification_preferences row only exists once they save).
+  const accounts = await adminSql<{ id: string; email: string; name: string | null }>(
+    `SELECT id, email, profile->>'name' AS name FROM auth.users
+     WHERE email NOT LIKE '%@deleted.invalid'
+       AND COALESCE(is_anonymous, false) = false
+       AND COALESCE(is_project_admin, false) = false`
+  );
+  const [{ data: subscriptions }, { data: prefRows, error: prefsError }] = await Promise.all([
+    client.database.from("subscriptions").select("*"),
+    client.database.from("notification_preferences").select("user_id, weekly_summary"),
+  ]);
 
-  if (prefsError) {
-    console.error("Failed to fetch notification preferences:", prefsError);
-    return NextResponse.json({ error: "Failed to fetch preferences" }, { status: 500 });
+  if (!accounts || prefsError) {
+    console.error("Failed to load weekly summary recipients:", prefsError);
+    return NextResponse.json({ error: "Failed to load recipients" }, { status: 500 });
   }
 
-  if (!prefs || prefs.length === 0) {
-    return NextResponse.json({ message: "No users with weekly summary enabled", sent: 0 });
+  const optedOut = new Set(
+    (prefRows ?? []).filter((p) => p.weekly_summary === false).map((p) => String(p.user_id))
+  );
+  const subByUser = new Map((subscriptions ?? []).map((sub) => [String(sub.user_id), sub as Subscription]));
+
+  const prefs = accounts
+    .filter((a) => !optedOut.has(a.id))
+    .filter((a) => getUserAccessLevel(subByUser.get(a.id) ?? null) !== "locked")
+    .map((a) => ({ user_id: a.id, email: a.email, name: a.name }));
+
+  if (prefs.length === 0) {
+    return NextResponse.json({ message: "No one to send the weekly summary to", sent: 0 });
   }
 
   const results: { userId: string; success: boolean; error?: string }[] = [];
@@ -41,13 +61,6 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-      // Get user name from profiles (optional)
-      const { data: profile } = await client.database
-        .from("profiles")
-        .select("name")
-        .eq("user_id", pref.user_id)
-        .single();
-
       // Get latest health assessment
       const { data: assessment } = await client.database
         .from("health_assessments")
@@ -55,7 +68,7 @@ export async function GET(request: NextRequest) {
         .eq("user_id", pref.user_id)
         .order("created_at", { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (!assessment) {
         results.push({ userId: pref.user_id, success: false, error: "No assessment data" });
@@ -69,7 +82,7 @@ export async function GET(request: NextRequest) {
       const runwayMonths = expenses > 0 ? (assessment.cash_on_hand || 0) / expenses : 0;
 
       const html = buildWeeklySummaryEmail({
-        userName: profile?.name || "there",
+        userName: pref.name?.trim().split(/\s+/)[0] || "there",
         healthScore: assessment.health_score || 0,
         cashOnHand: assessment.cash_on_hand || 0,
         monthlyRevenue: revenue,
