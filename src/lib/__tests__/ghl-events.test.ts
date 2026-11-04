@@ -1,12 +1,46 @@
 const mockAdminSql = jest.fn();
+const mockClaimInsert = jest.fn();
+const mockClaimDelete = jest.fn();
+let claimError: unknown = null;
 
 jest.mock("../admin-log", () => ({
   adminSql: (...args: unknown[]) => mockAdminSql(...args),
 }));
 
+jest.mock("../insforge", () => ({
+  getInsForgeAdmin: () => ({
+    database: {
+      from: (table: string) => ({
+        insert: (rows: unknown) => {
+          mockClaimInsert(table, rows);
+          return Promise.resolve({ error: claimError });
+        },
+        delete: () => {
+          const filters: Record<string, unknown> = {};
+          const chain = {
+            eq: (col: string, val: unknown) => {
+              filters[col] = val;
+              if (Object.keys(filters).length === 3) {
+                mockClaimDelete(table, filters);
+                return Promise.resolve({ error: null });
+              }
+              return chain;
+            },
+          };
+          return chain;
+        },
+      }),
+    },
+  }),
+}));
+
 import {
+  claimGhlCancel,
   getSignupTrialEndDate,
+  releaseGhlCancelClaim,
+  reportAuthnetCancel,
   sendGhlCancelEvent,
+  suppressGhlCancel,
   sendGhlPurchaseEvent,
   sendGhlTrialUpdatedEvent,
 } from "../ghl-events";
@@ -33,6 +67,9 @@ describe("GHL lifecycle events", () => {
     fetchMock = jest.fn().mockResolvedValue({ ok: true, status: 200 });
     global.fetch = fetchMock as unknown as typeof fetch;
     mockAdminSql.mockReset();
+    mockClaimInsert.mockReset();
+    mockClaimDelete.mockReset();
+    claimError = null;
     URL_VARS.forEach((v) => delete process.env[v]);
     jest.spyOn(console, "error").mockImplementation(() => {});
     jest.spyOn(console, "warn").mockImplementation(() => {});
@@ -48,8 +85,11 @@ describe("GHL lifecycle events", () => {
     it("does nothing at all: no lookup, no request, no log", async () => {
       await sendGhlPurchaseEvent("u1", purchase);
       await sendGhlTrialUpdatedEvent("u1", new Date());
-      await sendGhlCancelEvent("u1", "sub_1", new Date());
+      await sendGhlCancelEvent("u1", "sub_1", new Date(), "user_cancel");
+      await reportAuthnetCancel("u1", "sub_1", "authnet_cancel", new Date());
+      await expect(suppressGhlCancel("u1", "sub_1")).resolves.toBe(false);
 
+      expect(mockClaimInsert).not.toHaveBeenCalled();
       expect(mockAdminSql).not.toHaveBeenCalled();
       expect(fetchMock).not.toHaveBeenCalled();
       expect(console.error).not.toHaveBeenCalled();
@@ -108,14 +148,55 @@ describe("GHL lifecycle events", () => {
     });
 
     it("sends subscription_cancelled to the cancel URL", async () => {
-      await sendGhlCancelEvent("u1", "sub_1", new Date("2026-11-05T01:02:03Z"));
+      await sendGhlCancelEvent("u1", "sub_1", new Date("2026-11-05T01:02:03Z"), "admin_cancel");
 
       const [url, init] = fetchMock.mock.calls[0];
       expect(url).toBe("https://hooks.example.com/cancel/TOKEN");
       expect(JSON.parse(init.body)).toMatchObject({
         subscription_id: "sub_1",
         cancelled_at: "2026-11-05T01:02:03.000Z",
+        reason: "admin_cancel",
         event: "subscription_cancelled",
+      });
+    });
+
+    describe("Authorize.net cancel dedupe", () => {
+      it("claims the subscription in email_log, then reports it with the authnet reason", async () => {
+        await reportAuthnetCancel("u1", "sub_1", "authnet_terminated", new Date("2026-11-05T01:02:03Z"));
+
+        expect(mockClaimInsert).toHaveBeenCalledWith("email_log", [
+          { user_id: "u1", kind: "ghl_subscription_cancelled", ref: "sub_1" },
+        ]);
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({
+          subscription_id: "sub_1",
+          reason: "authnet_terminated",
+          event: "subscription_cancelled",
+        });
+      });
+
+      it("sends nothing when the subscription was already claimed (our own cancel, a switch, or a redelivery)", async () => {
+        claimError = { code: "23505" };
+        await reportAuthnetCancel("u1", "sub_1", "authnet_cancel", new Date());
+        expect(fetchMock).not.toHaveBeenCalled();
+      });
+
+      it("suppress claims without sending, and release removes the claim", async () => {
+        await expect(suppressGhlCancel("u1", "sub_1")).resolves.toBe(true);
+        expect(mockClaimInsert).toHaveBeenCalledTimes(1);
+        expect(fetchMock).not.toHaveBeenCalled();
+
+        await releaseGhlCancelClaim("u1", "sub_1");
+        expect(mockClaimDelete).toHaveBeenCalledWith("email_log", {
+          user_id: "u1",
+          kind: "ghl_subscription_cancelled",
+          ref: "sub_1",
+        });
+      });
+
+      it("claimGhlCancel is false when the log is unavailable, so nothing is sent", async () => {
+        claimError = { message: "relation does not exist" };
+        await expect(claimGhlCancel("u1", "sub_1")).resolves.toBe(false);
       });
     });
 
@@ -139,7 +220,7 @@ describe("GHL lifecycle events", () => {
 
       mockAdminSql.mockResolvedValue([{ email: "jane@business.com", name: "Jane" }]);
       fetchMock.mockRejectedValue(new Error("network down"));
-      await expect(sendGhlCancelEvent("u1", "sub_1", new Date())).resolves.toBeUndefined();
+      await expect(sendGhlCancelEvent("u1", "sub_1", new Date(), "user_cancel")).resolves.toBeUndefined();
       fetchMock.mockResolvedValue({ ok: false, status: 502 });
       await expect(sendGhlTrialUpdatedEvent("u1", new Date())).resolves.toBeUndefined();
     });

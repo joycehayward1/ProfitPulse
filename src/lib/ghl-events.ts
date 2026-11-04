@@ -1,4 +1,5 @@
 import { adminSql } from "@/lib/admin-log";
+import { getInsForgeAdmin } from "@/lib/insforge";
 import { TRIAL_DAYS } from "@/lib/trial";
 import {
   buildGhlCancelPayload,
@@ -6,6 +7,7 @@ import {
   buildGhlTrialUpdatedPayload,
   isGhlWebhookConfigured,
   postGhlEvent,
+  type GhlCancelReason,
   type GhlContact,
   type GhlPurchaseInput,
 } from "@/lib/ghl";
@@ -73,15 +75,81 @@ export function sendGhlTrialUpdatedEvent(
   );
 }
 
-/** A subscription was cancelled by the user or an admin. */
+/**
+ * Cancellation dedupe. Authorize.net's cancel/terminate webhook does not say
+ * who cancelled, and it also fires when our own code cancels a subscription
+ * (user cancel, admin cancel, plan switch). So every cancel is claimed once per
+ * Authorize.net subscription id in email_log (unique on user, kind, ref):
+ * whoever claims first decides what happens, and the webhook only reports a
+ * cancel nobody claimed. Our own flows claim BEFORE they call Authorize.net,
+ * so the webhook can never win the race against them.
+ */
+const CANCEL_CLAIM_KIND = "ghl_subscription_cancelled";
+
+/** True if this call claimed the subscription id; false if already claimed or the log is unavailable. */
+export async function claimGhlCancel(userId: string, subscriptionId: string): Promise<boolean> {
+  try {
+    const { error } = await getInsForgeAdmin()
+      .database.from("email_log")
+      .insert([{ user_id: userId, kind: CANCEL_CLAIM_KIND, ref: subscriptionId }]);
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+/** Undo a claim so a later event for the same subscription can still be reported. */
+export async function releaseGhlCancelClaim(userId: string, subscriptionId: string): Promise<void> {
+  try {
+    await getInsForgeAdmin()
+      .database.from("email_log")
+      .delete()
+      .eq("user_id", userId)
+      .eq("kind", CANCEL_CLAIM_KIND)
+      .eq("ref", subscriptionId);
+  } catch (error) {
+    const reason = error instanceof Error ? error.name : "unknown error";
+    console.error(`[ghl] could not release cancellation claim (${reason})`);
+  }
+}
+
+/**
+ * Claim `subscriptionId` without reporting it: used when our own code cancels a
+ * subscription that is being replaced (plan switch), so the webhook stays quiet.
+ * Skipped when GHL_CANCEL_WEBHOOK_URL is unset. Returns true if a claim was made
+ * (the caller should release it if the cancel then fails).
+ */
+export async function suppressGhlCancel(userId: string, subscriptionId: string): Promise<boolean> {
+  if (!isGhlWebhookConfigured("GHL_CANCEL_WEBHOOK_URL")) return false;
+  return claimGhlCancel(userId, subscriptionId);
+}
+
+/** Send subscription_cancelled for a claim this caller already holds. */
 export function sendGhlCancelEvent(
   userId: string,
   subscriptionId: string,
-  cancelledAt: Date | string
+  cancelledAt: Date | string,
+  reason: GhlCancelReason
 ): Promise<void> {
   return sendEvent("GHL_CANCEL_WEBHOOK_URL", "cancellation", userId, "", (contact) =>
-    buildGhlCancelPayload({ ...contact, subscriptionId, cancelledAt })
+    buildGhlCancelPayload({ ...contact, subscriptionId, cancelledAt, reason })
   );
+}
+
+/**
+ * Report a cancel seen by the Authorize.net webhook, unless our own flow
+ * already claimed it (user/admin cancel, plan switch) or it was reported before
+ * (webhook redelivery, cancelled-then-terminated).
+ */
+export async function reportAuthnetCancel(
+  userId: string,
+  subscriptionId: string,
+  reason: Extract<GhlCancelReason, "authnet_cancel" | "authnet_terminated">,
+  cancelledAt: Date | string
+): Promise<void> {
+  if (!isGhlWebhookConfigured("GHL_CANCEL_WEBHOOK_URL")) return;
+  if (!(await claimGhlCancel(userId, subscriptionId))) return;
+  await sendGhlCancelEvent(userId, subscriptionId, cancelledAt, reason);
 }
 
 /**

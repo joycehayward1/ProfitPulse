@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getInsForgeAdmin } from "@/lib/insforge";
 import { getAuthenticatedUserId } from "@/lib/server-auth";
 import { TRIAL_DAYS } from "@/lib/trial";
+import { sendGhlTrialUpdatedEvent } from "@/lib/ghl-events";
 
 async function rawSql(
   query: string,
@@ -150,6 +151,10 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+
+  // The row is unique per user and only created here, so this fires once per
+  // user. The sign-up webhook only had an estimate; this carries the real date.
+  await sendGhlTrialUpdatedEvent(userId, trialEnd);
 
   return NextResponse.json({ subscription: data, created: true });
 }

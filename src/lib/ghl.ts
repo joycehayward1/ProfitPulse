@@ -139,18 +139,33 @@ export function buildGhlTrialUpdatedPayload(
   };
 }
 
+/**
+ * Who ended the subscription. The first two are our own cancel flows; the
+ * last two come from Authorize.net webhook events for cancels we did not make.
+ */
+export type GhlCancelReason =
+  | "user_cancel"
+  | "admin_cancel"
+  | "authnet_cancel"
+  | "authnet_terminated";
+
 export interface GhlCancelPayload {
   email: string;
   first_name: string;
   last_name: string;
   subscription_id: string;
   cancelled_at: string;
+  reason: GhlCancelReason;
   event: "subscription_cancelled";
   source: string;
 }
 
 export function buildGhlCancelPayload(
-  input: GhlContact & { subscriptionId: string; cancelledAt: Date | string }
+  input: GhlContact & {
+    subscriptionId: string;
+    cancelledAt: Date | string;
+    reason: GhlCancelReason;
+  }
 ): GhlCancelPayload {
   const { firstName, lastName } = splitFullName(input.fullName);
 
@@ -160,6 +175,7 @@ export function buildGhlCancelPayload(
     last_name: lastName,
     subscription_id: input.subscriptionId,
     cancelled_at: new Date(input.cancelledAt).toISOString(),
+    reason: input.reason,
     event: "subscription_cancelled",
     source: GHL_EVENT_SOURCE,
   };

@@ -137,6 +137,7 @@ describe("buildGhlCancelPayload", () => {
         fullName: "Jane Smith",
         subscriptionId: "12345678",
         cancelledAt: new Date("2026-11-05T01:02:03Z"),
+        reason: "authnet_cancel",
       })
     ).toEqual({
       email: "jane@business.com",
@@ -144,6 +145,7 @@ describe("buildGhlCancelPayload", () => {
       last_name: "Smith",
       subscription_id: "12345678",
       cancelled_at: "2026-11-05T01:02:03.000Z",
+      reason: "authnet_cancel",
       event: "subscription_cancelled",
       source: "myprofitpulse-app",
     });
