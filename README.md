@@ -154,8 +154,8 @@ Every URL is optional. An unset variable skips that event silently, and a failed
 ```env
 GHL_SIGNUP_WEBHOOK_URL=...             # new sign-ups (includes trial_end_date)
 GHL_PURCHASE_WEBHOOK_URL=...           # successful subscription payment (/api/payments/subscribe)
-GHL_TRIAL_UPDATE_WEBHOOK_URL=...       # admin extends a trial (/api/admin/extend-trial)
-GHL_CANCEL_WEBHOOK_URL=...             # subscription cancelled by the user or an admin
+GHL_TRIAL_UPDATE_WEBHOOK_URL=...       # trial started (real end date) or extended by an admin
+GHL_CANCEL_WEBHOOK_URL=...             # subscription cancelled (user, admin, or Authorize.net)
 ```
 
 ### Cron + admin
