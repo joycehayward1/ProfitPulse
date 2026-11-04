@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getInsForgeAdmin } from "@/lib/insforge";
 import { getAuthenticatedUserId } from "@/lib/server-auth";
-
-const TRIAL_DAYS = 7;
+import { TRIAL_DAYS } from "@/lib/trial";
 
 async function rawSql(
   query: string,

@@ -3,6 +3,7 @@ import { getInsForgeAdmin } from "@/lib/insforge";
 import { requireAdmin } from "@/lib/admin-auth";
 import { logAdminAction } from "@/lib/admin-log";
 import { getAccessSummary } from "@/lib/feature-gate";
+import { sendGhlTrialUpdatedEvent } from "@/lib/ghl-events";
 import type { Subscription } from "@/lib/database.types";
 
 const MAX_DAYS = 365;
@@ -88,6 +89,8 @@ export async function POST(request: NextRequest) {
     previous_trial_end: existing?.trial_end_date ?? null,
     new_trial_end: newTrialEnd.toISOString(),
   });
+
+  await sendGhlTrialUpdatedEvent(userId, newTrialEnd);
 
   return NextResponse.json({ success: true, trial_end_date: newTrialEnd.toISOString() });
 }

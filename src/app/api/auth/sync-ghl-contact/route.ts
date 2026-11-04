@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { syncSignupContactToGhl } from "@/lib/ghl";
+import { getSignupTrialEndDate } from "@/lib/ghl-events";
 
 /**
  * POST /api/auth/sync-ghl-contact
@@ -60,7 +61,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unknown signup" }, { status: 403 });
   }
 
-  const error = await syncSignupContactToGhl({ email, fullName });
+  const trialEndDate = await getSignupTrialEndDate(email);
+  const error = await syncSignupContactToGhl({ email, fullName, trialEndDate });
 
   if (error) {
     return NextResponse.json({ synced: false, error }, { status: 502 });

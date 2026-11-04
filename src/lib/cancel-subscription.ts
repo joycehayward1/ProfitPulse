@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getInsForgeAdmin } from "@/lib/insforge";
 import { cancelARBSubscription } from "@/lib/authorize-net";
+import { sendGhlCancelEvent } from "@/lib/ghl-events";
 
 /**
  * Cancel a subscriber's recurring billing. Used by the customer
@@ -75,6 +76,8 @@ export async function cancelSubscription(userId: string): Promise<NextResponse> 
       { status: 500 }
     );
   }
+
+  await sendGhlCancelEvent(userId, sub.anet_subscription_id, now);
 
   return NextResponse.json({
     success: true,
