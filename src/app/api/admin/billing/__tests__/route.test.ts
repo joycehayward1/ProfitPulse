@@ -1,5 +1,5 @@
 /** @jest-environment node */
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 const mockRequireAdmin = jest.fn();
 const mockAdminSql = jest.fn();
@@ -8,6 +8,7 @@ const mockGetTx = jest.fn();
 const mockVoid = jest.fn();
 const mockRefund = jest.fn();
 const mockSettle = jest.fn();
+const mockCancelSubscription = jest.fn();
 const mockPaymentUpdate = jest.fn();
 
 let subscriptionRow: Record<string, unknown> | null = null;
@@ -27,7 +28,9 @@ jest.mock("@/lib/missed-renewal", () => {
   const actual = jest.requireActual("@/lib/missed-renewal");
   return { owesMissedRenewal: actual.owesMissedRenewal, settleMissedRenewal: (...a: unknown[]) => mockSettle(...a) };
 });
-jest.mock("@/lib/cancel-subscription", () => ({ cancelSubscription: jest.fn() }));
+jest.mock("@/lib/cancel-subscription", () => ({
+  cancelSubscription: (...a: unknown[]) => mockCancelSubscription(...a),
+}));
 jest.mock("@/lib/plan-switch", () => ({ switchPlan: jest.fn() }));
 jest.mock("@/lib/resend", () => ({ getResend: jest.fn(), FROM_EMAIL: "", REPLY_TO_EMAIL: "" }));
 jest.mock("@/lib/insforge", () => ({
@@ -124,5 +127,12 @@ describe("POST /api/admin/billing", () => {
     const res = await POST(req({ userId: "u1", action: "retry_payment" }));
     expect(res.status).toBe(409);
     expect(mockSettle).not.toHaveBeenCalled();
+  });
+
+  it("cancels on the customer's behalf tagged as an admin cancel", async () => {
+    mockCancelSubscription.mockResolvedValue(NextResponse.json({ success: true }));
+    const res = await POST(req({ userId: "u1", action: "cancel_subscription" }));
+    expect(res.status).toBe(200);
+    expect(mockCancelSubscription).toHaveBeenCalledWith("u1", "admin_cancel");
   });
 });

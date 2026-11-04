@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { getInsForgeAdmin } from "@/lib/insforge";
 import { notifyPaymentDeclined } from "@/lib/lifecycle-emails";
+import { reportAuthnetCancel } from "@/lib/ghl-events";
 import {
   getTransactionDetailsWithRetry,
   computePeriodEnd,
@@ -84,6 +85,12 @@ function verifySignature(rawBody: string, header: string | null): boolean {
   } catch {
     return false;
   }
+}
+
+/** When Authorize.net says the event happened; now if it is missing or unparseable. */
+function eventTime(event: WebhookEvent): Date {
+  const parsed = event.eventDate ? new Date(event.eventDate) : null;
+  return parsed && !Number.isNaN(parsed.getTime()) ? parsed : new Date();
 }
 
 function getInsForgeClient() {
@@ -330,16 +337,21 @@ async function processEvent(event: WebhookEvent): Promise<void> {
       const subscriptionId = payload.id;
       if (!subscriptionId) return;
 
-      const { error } = await client.database
+      const { data: terminated, error } = await client.database
         .from("subscriptions")
         .update({
           subscription_status: "terminated",
           updated_at: new Date().toISOString(),
         })
-        .eq("anet_subscription_id", subscriptionId);
+        .eq("anet_subscription_id", subscriptionId)
+        .select("user_id");
 
       if (error) {
         console.error("[webhook] failed to mark terminated:", error);
+        return;
+      }
+      for (const row of (terminated ?? []) as { user_id: string }[]) {
+        await reportAuthnetCancel(row.user_id, subscriptionId, "authnet_terminated", eventTime(event));
       }
       return;
     }
@@ -348,16 +360,23 @@ async function processEvent(event: WebhookEvent): Promise<void> {
       const subscriptionId = payload.id;
       if (!subscriptionId) return;
 
-      const { error } = await client.database
+      const { data: canceled, error } = await client.database
         .from("subscriptions")
         .update({
           subscription_status: "canceled",
           updated_at: new Date().toISOString(),
         })
-        .eq("anet_subscription_id", subscriptionId);
+        .eq("anet_subscription_id", subscriptionId)
+        .select("user_id");
 
       if (error) {
         console.error("[webhook] failed to mark canceled:", error);
+        return;
+      }
+      // Our own cancels and plan switches have already claimed this id (and our
+      // cancel flow nulls it on the row), so only portal cancels get reported.
+      for (const row of (canceled ?? []) as { user_id: string }[]) {
+        await reportAuthnetCancel(row.user_id, subscriptionId, "authnet_cancel", eventTime(event));
       }
       return;
     }

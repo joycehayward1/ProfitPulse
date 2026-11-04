@@ -147,6 +147,17 @@ Transactional email sends from **`hello@contact.myprofitpulse.app`** (domain `co
 RESEND_API_KEY=re_...
 ```
 
+### Go High Level (optional CRM sync)
+
+Every URL is optional. An unset variable skips that event silently, and a failed or slow webhook never blocks or fails the request that triggered it. The URLs contain tokens and are never logged.
+
+```env
+GHL_SIGNUP_WEBHOOK_URL=...             # new sign-ups (includes trial_end_date)
+GHL_PURCHASE_WEBHOOK_URL=...           # successful subscription payment (/api/payments/subscribe)
+GHL_TRIAL_UPDATE_WEBHOOK_URL=...       # trial started (real end date) or extended by an admin
+GHL_CANCEL_WEBHOOK_URL=...             # subscription cancelled (user, admin, or Authorize.net)
+```
+
 ### Cron + admin
 
 ```env

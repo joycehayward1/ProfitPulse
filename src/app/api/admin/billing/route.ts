@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
     }
 
     case "cancel_subscription": {
-      const res = await cancelSubscription(userId);
+      const res = await cancelSubscription(userId, "admin_cancel");
       if (res.ok) {
         await logAdminAction(admin, "cancel_subscription", { userId, email }, {
           access_until: sub?.current_period_end ?? null,

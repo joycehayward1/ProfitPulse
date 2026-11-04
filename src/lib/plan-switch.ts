@@ -8,6 +8,7 @@ import {
   getCustomerProfile,
   anetInvoiceNumber,
 } from "@/lib/authorize-net";
+import { releaseGhlCancelClaim, suppressGhlCancel } from "@/lib/ghl-events";
 import { getPlanAmount, isLiveTestPricing } from "@/lib/plan-amounts";
 import type { BillingInterval } from "@/components/payments/PricingCards";
 
@@ -127,6 +128,22 @@ export async function switchPlan(userId: string, target: BillingInterval): Promi
   return NextResponse.json({ error: "Unsupported switch" }, { status: 400 });
 }
 
+/**
+ * Cancel the subscription a plan switch replaces. Authorize.net's cancel
+ * webhook fires for it, but it is not a customer cancelling, so it is claimed
+ * first to keep the GHL cancellation event from firing. Released if the cancel
+ * fails, since the subscription is then still live.
+ */
+async function cancelReplacedArb(userId: string, subscriptionId: string): Promise<void> {
+  const claimed = await suppressGhlCancel(userId, subscriptionId);
+  try {
+    await cancelARBSubscription(subscriptionId);
+  } catch (err) {
+    if (claimed) await releaseGhlCancelClaim(userId, subscriptionId);
+    throw err;
+  }
+}
+
 // ─── Flow 4: Monthly → Annual ────────────────────────────────────────────────
 
 interface SwitchArgs {
@@ -217,7 +234,7 @@ async function handleMonthlyToAnnual(args: SwitchArgs & { currentPeriodEnd?: Dat
 
   // Step 2: Cancel current monthly ARB
   try {
-    await cancelARBSubscription(oldSubscriptionId);
+    await cancelReplacedArb(userId, oldSubscriptionId);
   } catch (err) {
     console.error("[switch-plan] cancel failed after charge:", err);
     return NextResponse.json(
@@ -320,7 +337,7 @@ async function handleAnnualToMonthly(
 
   // Step 1: Cancel current annual ARB
   try {
-    await cancelARBSubscription(oldSubscriptionId);
+    await cancelReplacedArb(userId, oldSubscriptionId);
   } catch (err) {
     console.error("[switch-plan] cancel annual failed:", err);
     return NextResponse.json(

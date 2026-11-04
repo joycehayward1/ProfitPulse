@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getInsForgeAdmin } from "@/lib/insforge";
 import { getAuthenticatedUserId } from "@/lib/server-auth";
+import { sendGhlPurchaseEvent } from "@/lib/ghl-events";
 import {
   ensureCustomerProfileWithPayment,
   createCustomerPaymentProfile,
@@ -253,8 +254,24 @@ export async function POST(request: NextRequest) {
         { onConflict: "user_id" }
       );
 
+    // Money was taken and the ARB exists, so this is a completed purchase even
+    // if the bookkeeping below fails. Never throws; capped at a few seconds.
+    const notifyGhlPurchase = () =>
+      sendGhlPurchaseEvent(
+        body.userId,
+        {
+          billingInterval: body.billingInterval,
+          amount,
+          purchasedAt: now,
+          subscriptionId: arb.subscriptionId,
+          transactionId,
+        },
+        [body.customer?.firstName, body.customer?.lastName].filter(Boolean).join(" ")
+      );
+
     if (upsertError) {
       console.error("[subscribe] Failed to update subscription:", upsertError);
+      await notifyGhlPurchase();
       return NextResponse.json(
         {
           warning:
@@ -283,6 +300,8 @@ export async function POST(request: NextRequest) {
     if (paymentError) {
       console.error("[subscribe] Failed to insert payment record:", paymentError);
     }
+
+    await notifyGhlPurchase();
 
     return NextResponse.json({
       success: true,
