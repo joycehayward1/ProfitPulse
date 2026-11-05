@@ -247,8 +247,8 @@ export default function BalanceSheetPage() {
   const chartData = useMemo(() => {
     return monthly.months.slice(-12).map(({ month, snapshot }) => ({
       month: monthLabel(month, "short"),
-      currentRatio: snapshot.current_ratio ?? 0,
-      workingCapital: snapshot.working_capital ?? 0,
+      currentRatio: snapshot.current_ratio ?? null,
+      workingCapital: snapshot.working_capital ?? null,
     }));
   }, [monthly]);
 
@@ -566,7 +566,7 @@ export default function BalanceSheetPage() {
                     {chartData.map((entry, index) => (
                       <Cell
                         key={`cell-${index}`}
-                        fill={entry.workingCapital >= 0 ? "#E65100" : "#DC2626"}
+                        fill={(entry.workingCapital ?? 0) >= 0 ? "#E65100" : "#DC2626"}
                       />
                     ))}
                   </Bar>

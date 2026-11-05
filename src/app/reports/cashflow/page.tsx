@@ -51,7 +51,7 @@ function formatCompactCurrency(value: number): string {
     return `$${(value / 1_000_000).toFixed(1)}M`;
   }
   if (Math.abs(value) >= 1_000) {
-    return `$${(value / 1_000).toFixed(0)}K`;
+    return `${value < 0 ? "-" : ""}$${Number((Math.abs(value) / 1_000).toFixed(1))}K`;
   }
   return formatCurrency(value);
 }
