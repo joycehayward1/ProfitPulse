@@ -6,6 +6,23 @@ import { InfoTooltip } from "@/components/ui/MetricTooltip";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import type { FinancialSnapshot } from "@/lib/database.types";
+import { ChangeBadge } from "@/components/reporting/ChangeBadge";
+import {
+  addMonths,
+  balanceAsOf,
+  flowValue,
+  latestMonth,
+  listMonths,
+  monthLabel,
+  monthRange,
+  normalizeMonthly,
+  percentChange,
+  previousMonth,
+  recordFor,
+  sameMonthLastYear,
+  yearOf,
+  yearToDate,
+} from "@/lib/financial-periods";
 import {
   ResponsiveContainer,
   LineChart,
@@ -39,57 +56,21 @@ function formatCompactCurrency(value: number): string {
   return formatCurrency(value);
 }
 
-function formatMonthLabel(dateStr: string): string {
-  const d = new Date(dateStr + "T00:00:00");
-  return d.toLocaleDateString("en-US", { month: "short", year: "2-digit" });
-}
-
-function formatPeriodLabel(dateStr: string): string {
-  const d = new Date(dateStr + "T00:00:00");
-  return d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
-}
-
 function safeNum(v: number | null | undefined): number {
   return v ?? 0;
 }
 
 // ─── Variance display ────────────────────────────────────────────────────────
 
-interface VarianceProps {
-  current: number;
-  prior: number;
-}
-
-function Variance({ current, prior }: VarianceProps) {
-  if (prior === 0 && current === 0) {
-    return <span className="text-text-muted text-[12px]">--</span>;
-  }
-  const diff = current - prior;
-  const pct = prior !== 0 ? (diff / Math.abs(prior)) * 100 : current !== 0 ? 100 : 0;
-  const isPositive = diff >= 0;
-
-  return (
-    <span
-      className={`inline-flex items-center gap-0.5 text-[12px] font-medium ${
-        isPositive ? "text-success" : "text-error"
-      }`}
-    >
-      {isPositive ? "\u25B2" : "\u25BC"} {Math.abs(pct).toFixed(1)}%
-    </span>
-  );
-}
-
-// ─── Period selector options ─────────────────────────────────────────────────
-
-function buildPeriodOptions(snapshots: FinancialSnapshot[]): string[] {
-  return snapshots.map((s) => s.period_date);
+function Variance({ current, prior }: { current: number | null; prior: number | null }) {
+  return <ChangeBadge change={percentChange(current, prior)} higherIsBetter className="text-[12px]" />;
 }
 
 // ─── Custom recharts tooltip ─────────────────────────────────────────────────
 
 interface TooltipPayloadItem {
   value: number;
-  payload: { month: string; net_cash_flow: number };
+  payload: { month: string; net_cash_flow: number | null };
 }
 
 function CustomTooltip({
@@ -122,7 +103,7 @@ interface KpiCardProps {
   icon: string;
   iconColor: string;
   value: number;
-  priorValue: number;
+  priorValue: number | null;
   negative?: boolean;
   tooltip?: string;
 }
@@ -184,9 +165,6 @@ export default function CashFlowPage() {
           setSnapshots([]);
         } else {
           setSnapshots(data as FinancialSnapshot[]);
-          if (data.length > 0) {
-            setSelectedPeriod(data[0].period_date);
-          }
         }
       } catch (err) {
         console.error("Error fetching snapshots:", err);
@@ -199,38 +177,45 @@ export default function CashFlowPage() {
     fetchSnapshots();
   }, [user]);
 
+  const monthly = useMemo(() => normalizeMonthly(snapshots), [snapshots]);
+  const selectedMonth = selectedPeriod || latestMonth(monthly)?.month || "";
+
   // Derived data
   const currentSnapshot = useMemo(
-    () => snapshots.find((s) => s.period_date === selectedPeriod) ?? null,
-    [snapshots, selectedPeriod]
+    () => (selectedMonth ? recordFor(monthly, selectedMonth)?.snapshot ?? null : null),
+    [monthly, selectedMonth]
   );
 
-  const priorMonthSnapshot = useMemo(() => {
-    if (!currentSnapshot) return null;
-    const idx = snapshots.findIndex((s) => s.period_date === selectedPeriod);
-    return idx >= 0 && idx + 1 < snapshots.length ? snapshots[idx + 1] : null;
-  }, [snapshots, selectedPeriod, currentSnapshot]);
+  const priorMonthSnapshot = useMemo(
+    () => (selectedMonth ? previousMonth(monthly, selectedMonth).record?.snapshot ?? null : null),
+    [monthly, selectedMonth]
+  );
 
-  const priorYearSnapshot = useMemo(() => {
-    if (!currentSnapshot) return null;
-    const currentDate = new Date(selectedPeriod + "T00:00:00");
-    const priorYearDate = new Date(currentDate);
-    priorYearDate.setFullYear(priorYearDate.getFullYear() - 1);
-    const priorYearStr = priorYearDate.toISOString().slice(0, 10);
-    return snapshots.find((s) => s.period_date === priorYearStr) ?? null;
-  }, [snapshots, selectedPeriod, currentSnapshot]);
+  const priorYearSnapshot = useMemo(
+    () => (selectedMonth ? sameMonthLastYear(monthly, selectedMonth).record?.snapshot ?? null : null),
+    [monthly, selectedMonth]
+  );
 
-  // Chart data — chronological order (oldest → newest)
+  // Twelve consecutive months ending at the selected one; unsaved months are gaps
   const chartData = useMemo(() => {
-    return [...snapshots]
-      .reverse()
-      .map((s) => ({
-        month: formatMonthLabel(s.period_date),
-        net_cash_flow: safeNum(s.net_cash_flow),
-      }));
-  }, [snapshots]);
+    if (!selectedMonth) return [];
+    return monthRange(addMonths(selectedMonth, -11), selectedMonth).map((m) => {
+      const s = recordFor(monthly, m)?.snapshot;
+      return { month: monthLabel(m, "short"), net_cash_flow: s ? flowValue(s, "net_cash_flow") : null };
+    });
+  }, [monthly, selectedMonth]);
+  const chartPoints = chartData.filter((d) => d.net_cash_flow !== null).length;
 
-  const periodOptions = useMemo(() => buildPeriodOptions(snapshots), [snapshots]);
+  const periodOptions = useMemo(() => monthly.months.map((m) => m.month).reverse(), [monthly]);
+
+  const ytd = useMemo(
+    () => (selectedMonth ? yearToDate(monthly, yearOf(selectedMonth), selectedMonth) : null),
+    [monthly, selectedMonth]
+  );
+  const cashAsOf = useMemo(
+    () => (selectedMonth ? balanceAsOf(monthly, "current_assets", selectedMonth) : null),
+    [monthly, selectedMonth]
+  );
 
   // Summary table rows
   const summaryRows = useMemo(() => {
@@ -308,9 +293,9 @@ export default function CashFlowPage() {
             </p>
           </div>
 
-          {!isLoading && snapshots.length > 0 && (
+          {!isLoading && monthly.months.length > 0 && (
             <select
-              value={selectedPeriod}
+              value={selectedMonth}
               onChange={(e) => setSelectedPeriod(e.target.value)}
               className="h-9 px-3 pr-10 rounded-lg border border-border bg-surface text-[13px] text-text-primary appearance-none cursor-pointer hover:border-orange/40 focus:border-orange focus:ring-2 focus:ring-orange/20 focus:outline-none transition-colors"
               style={{
@@ -320,9 +305,9 @@ export default function CashFlowPage() {
                 backgroundSize: "16px",
               }}
             >
-              {periodOptions.map((pd) => (
-                <option key={pd} value={pd}>
-                  {formatPeriodLabel(pd)}
+              {periodOptions.map((m) => (
+                <option key={m} value={m}>
+                  {monthLabel(m)}
                 </option>
               ))}
             </select>
@@ -342,7 +327,7 @@ export default function CashFlowPage() {
         )}
 
         {/* Empty state */}
-        {!isLoading && snapshots.length === 0 && (
+        {!isLoading && monthly.months.length === 0 && (
           <div className="bg-surface rounded-xl border border-border-light shadow-card p-2xl text-center">
             <div className="max-w-md mx-auto space-y-lg">
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-orange/[0.08] text-orange mx-auto">
@@ -381,7 +366,7 @@ export default function CashFlowPage() {
                 icon="ph:buildings-bold"
                 iconColor="#E65100"
                 value={safeNum(currentSnapshot.operating_activities)}
-                priorValue={safeNum(priorMonthSnapshot?.operating_activities)}
+                priorValue={priorMonthSnapshot ? safeNum(priorMonthSnapshot.operating_activities) : null}
                 tooltip="Cash generated from your core business operations — sales, services, and day-to-day activities."
               />
               <KpiCard
@@ -389,7 +374,7 @@ export default function CashFlowPage() {
                 icon="ph:chart-pie-slice-bold"
                 iconColor="#7B1FA2"
                 value={safeNum(currentSnapshot.investing_activities)}
-                priorValue={safeNum(priorMonthSnapshot?.investing_activities)}
+                priorValue={priorMonthSnapshot ? safeNum(priorMonthSnapshot.investing_activities) : null}
                 tooltip="Cash spent on or received from long-term investments like equipment, property, or other assets."
               />
               <KpiCard
@@ -397,7 +382,7 @@ export default function CashFlowPage() {
                 icon="ph:arrows-left-right-bold"
                 iconColor={safeNum(currentSnapshot.net_cash_flow) >= 0 ? "#16A34A" : "#DC2626"}
                 value={safeNum(currentSnapshot.net_cash_flow)}
-                priorValue={safeNum(priorMonthSnapshot?.net_cash_flow)}
+                priorValue={priorMonthSnapshot ? safeNum(priorMonthSnapshot.net_cash_flow) : null}
                 negative
                 tooltip="The total change in cash for the period. Positive means more cash came in than went out."
               />
@@ -407,10 +392,12 @@ export default function CashFlowPage() {
             <div className="bg-surface rounded-xl p-lg border border-border-light shadow-card">
               <div className="mb-md">
                 <h2 className="text-[20px] font-semibold text-text-primary">Net Cash Flow Trend</h2>
-                <p className="text-[13px] text-text-muted mt-0.5">Monthly net cash flow over time</p>
+                <p className="text-[13px] text-text-muted mt-0.5">
+                  {chartData.length > 0 ? `${chartData[0].month} to ${chartData[chartData.length - 1].month}` : ""}, month by month. Gaps are months with nothing saved.
+                </p>
               </div>
 
-              {chartData.length > 1 ? (
+              {chartPoints > 1 ? (
                 <div className="h-[300px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
@@ -433,6 +420,7 @@ export default function CashFlowPage() {
                       <Line
                         type="monotone"
                         dataKey="net_cash_flow"
+                        connectNulls={false}
                         stroke="#E65100"
                         strokeWidth={2.5}
                         dot={{ r: 4, fill: "#E65100", stroke: "#fff", strokeWidth: 2 }}
@@ -455,7 +443,7 @@ export default function CashFlowPage() {
               <div className="px-lg py-md border-b border-border">
                 <h2 className="text-[20px] font-semibold text-text-primary">Cash Flow Summary</h2>
                 <p className="text-[13px] text-text-muted mt-0.5">
-                  {currentSnapshot ? formatPeriodLabel(currentSnapshot.period_date) : ""}
+                  {selectedMonth ? `${monthLabel(selectedMonth)}, compared with ${monthLabel(addMonths(selectedMonth, -12))} and ${monthLabel(addMonths(selectedMonth, -1))}` : ""}
                 </p>
               </div>
 
@@ -467,16 +455,16 @@ export default function CashFlowPage() {
                         Category
                       </th>
                       <th className="text-right px-lg py-2.5 text-[12px] font-semibold tracking-wider uppercase text-text-muted">
-                        Current
+                        {selectedMonth ? monthLabel(selectedMonth, "short") : "Current"}
                       </th>
                       <th className="text-right px-lg py-2.5 text-[12px] font-semibold tracking-wider uppercase text-text-muted">
-                        Prior Year
+                        {selectedMonth ? monthLabel(addMonths(selectedMonth, -12), "short") : "Prior Year"}
                       </th>
                       <th className="text-right px-lg py-2.5 text-[12px] font-semibold tracking-wider uppercase text-text-muted">
                         Var
                       </th>
                       <th className="text-right px-lg py-2.5 text-[12px] font-semibold tracking-wider uppercase text-text-muted">
-                        Prior Month
+                        {selectedMonth ? monthLabel(addMonths(selectedMonth, -1), "short") : "Prior Month"}
                       </th>
                       <th className="text-right px-lg py-2.5 text-[12px] font-semibold tracking-wider uppercase text-text-muted">
                         Var
@@ -538,6 +526,36 @@ export default function CashFlowPage() {
                 </table>
               </div>
             </div>
+
+            {ytd && (
+              <div className="bg-surface rounded-xl p-lg border border-border-light shadow-card" data-testid="cashflow-ytd">
+                <h2 className="text-[20px] font-semibold text-text-primary">Year to date</h2>
+                <p className="text-[13px] text-text-muted mt-0.5">
+                  {ytd.label} · {ytd.monthsWithData.length} of {ytd.monthsInRange.length} months saved
+                  {ytd.missingMonths.length > 0 ? ` · not saved: ${listMonths(ytd.missingMonths)}` : ""}
+                </p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-md mt-md">
+                  {([
+                    ["Operating", ytd.totals.operating_activities],
+                    ["Investing", ytd.totals.investing_activities],
+                    ["Financing", ytd.totals.financing_activities],
+                    ["Net cash flow", ytd.totals.net_cash_flow],
+                  ] as const).map(([label, value]) => (
+                    <div key={label} className="rounded-lg bg-surface-inset/60 p-md">
+                      <p className="text-[12px] text-text-muted">{label}</p>
+                      <p className={`text-[18px] font-semibold tabular-nums ${(value ?? 0) < 0 ? "text-error" : "text-text-primary"}`}>
+                        {value === null ? "—" : formatCurrency(value)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+                {cashAsOf?.month && (
+                  <p className="text-[13px] text-text-secondary mt-md" data-testid="cashflow-cash-asof">
+                    Cash on hand as of {monthLabel(cashAsOf.month)}: <span className="font-semibold text-text-primary">{formatCurrency(cashAsOf.value)}</span> (a balance, so it is not added up across months)
+                  </p>
+                )}
+              </div>
+            )}
           </>
         )}
       </div>

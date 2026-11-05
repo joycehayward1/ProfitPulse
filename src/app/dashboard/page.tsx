@@ -19,6 +19,9 @@ import { FocusAreasCard } from "@/components/FocusAreasCard";
 import type { FinancialContext, SelfAssessment } from "@/lib/self-assessment";
 import { InfoTooltip } from "@/components/ui/MetricTooltip";
 import { SampleDashboardPreview } from "@/components/onboarding/SampleDashboardPreview";
+import { LatestMonthCard } from "@/components/reporting/LatestMonthCard";
+import { YearToDateCard } from "@/components/reporting/YearToDateCard";
+import { latestMonth, monthlyTrend, monthRangeLabel, normalizeMonthly } from "@/lib/financial-periods";
 import { ProductTour } from "@/components/onboarding/ProductTour";
 import { useProductTour } from "@/components/onboarding/useProductTour";
 import {
@@ -342,7 +345,7 @@ export default function DashboardPage() {
           .select("*")
           .eq("user_id", user.id)
           .order("period_date", { ascending: false })
-          .limit(7);
+          .limit(120);
 
         if (!error && data) {
           setSnapshots(data as FinancialSnapshot[]);
@@ -378,40 +381,24 @@ export default function DashboardPage() {
     fetchSelfAssessment();
   }, [user]);
 
-  const latestSnapshot = snapshots[0] ?? null;
-  const priorMonthSnapshot = snapshots[1] ?? null;
+  const monthly = useMemo(() => normalizeMonthly(snapshots), [snapshots]);
+  const latestSnapshot = latestMonth(monthly)?.snapshot ?? null;
 
-  const plRows = useMemo(() => {
-    if (!latestSnapshot) return [];
-    const c = latestSnapshot;
-    const p = priorMonthSnapshot;
+  const trend = useMemo(() => {
+    const latest = latestMonth(monthly);
+    return latest ? monthlyTrend(monthly, latest.month, 12) : [];
+  }, [monthly]);
 
-    function pctVar(curr: number | null | undefined, prior: number | null | undefined): number | null {
-      const cv = curr ?? 0;
-      const pv = prior ?? 0;
-      if (pv === 0) return cv === 0 ? 0 : null;
-      return ((cv - pv) / Math.abs(pv)) * 100;
-    }
+  const incomeChartData = useMemo(
+    () => trend.map((p) => ({ month: p.label, Income: p.income, Expenses: p.expenses })),
+    [trend]
+  );
+  const trendMonthsWithData = trend.filter((p) => p.income !== null || p.expenses !== null).length;
 
-    return [
-      { label: "Total Income", value: c.total_income ?? 0, change: pctVar(c.total_income, p?.total_income), isNetProfit: false, tooltip: "All revenue your business earned before any expenses are deducted." },
-      { label: "Gross Profit", value: c.gross_profit ?? 0, change: pctVar(c.gross_profit, p?.gross_profit), isNetProfit: false, tooltip: "Revenue minus the direct costs of delivering your services. Shows how efficiently you deliver." },
-      { label: "Total Expenses", value: c.total_expenses ?? 0, change: pctVar(c.total_expenses, p?.total_expenses), isNetProfit: false, tooltip: "All business costs including payroll, rent, software, marketing, and overhead." },
-      { label: "Net Profit", value: c.net_profit ?? 0, change: pctVar(c.net_profit, p?.net_profit), isNetProfit: true, tooltip: "The bottom line — what's left after all expenses. This is the true measure of profitability." },
-    ];
-  }, [latestSnapshot, priorMonthSnapshot]);
-
-  const chartSnapshots = useMemo(() => {
-    return [...snapshots].slice(0, 6).reverse();
-  }, [snapshots]);
-
-  const incomeChartData = useMemo(() => {
-    return chartSnapshots.map((s) => ({
-      month: new Date(s.period_date + "T00:00:00").toLocaleDateString("en-US", { month: "short", year: "2-digit" }),
-      Income: s.total_income ?? 0,
-      Expenses: s.total_expenses ?? 0,
-    }));
-  }, [chartSnapshots]);
+  const recentIncome = useMemo(
+    () => monthly.months.slice(-6).map((m) => m.snapshot.total_income ?? 0),
+    [monthly]
+  );
 
   const focusContext = useMemo((): FinancialContext | null => {
     if (!assessment) return null;
@@ -425,10 +412,10 @@ export default function DashboardPage() {
       totalLiabilities: hasLiabilities
         ? (latestSnapshot?.current_liabilities ?? 0) + (latestSnapshot?.long_term_liabilities ?? 0)
         : null,
-      incomeHistory: chartSnapshots.map((s) => s.total_income ?? 0),
+      incomeHistory: recentIncome,
       runwayLocked: trialMode,
     };
-  }, [assessment, latestSnapshot, chartSnapshots, trialMode]);
+  }, [assessment, latestSnapshot, recentIncome, trialMode]);
 
   const tour = useProductTour({
     userId: user?.id,
@@ -662,7 +649,7 @@ export default function DashboardPage() {
               icon="ph:chart-line-bold"
               iconColor="#E65100"
               animateCurrency={latestSnapshot?.net_profit != null}
-              tooltip="Your net profit after all expenses are deducted from revenue. A positive number means your business is making money."
+              tooltip="Net profit for your latest saved month, after all expenses are deducted from revenue. A positive number means your business is making money."
             />
 
             {/* Cash Flow Card */}
@@ -675,7 +662,7 @@ export default function DashboardPage() {
               icon="ph:wallet-bold"
               iconColor="#43A047"
               animateCurrency={latestSnapshot?.net_cash_flow != null}
-              tooltip="The net amount of cash moving in and out of your business. Positive cash flow means more money is coming in than going out."
+              tooltip="Net cash flow for your latest saved month. Positive cash flow means more money came in than went out."
             />
 
             {/* Runway Card */}
@@ -831,76 +818,24 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* P&L Snapshot */}
-        {!loading && (
-          latestSnapshot ? (
-            <div className="bg-surface rounded-xl p-lg border border-border-light shadow-card">
-              <h2 className="text-heading font-semibold text-text-primary mb-sm">
-                P&L Snapshot{" "}
-                <span className="ml-1 normal-case tracking-normal text-text-secondary">
-                  — {new Date(latestSnapshot.period_date + "T00:00:00").toLocaleDateString("en-US", { month: "long", year: "numeric" })}
-                </span>
-              </h2>
-
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-border-light">
-                      <th className="text-left py-2 pr-lg text-label uppercase tracking-wider text-text-muted">
-                        Metric
-                      </th>
-                      <th className="text-right py-2 px-lg text-label uppercase tracking-wider text-text-muted">
-                        Current Period
-                      </th>
-                      <th className="text-right py-2 pl-lg text-label uppercase tracking-wider text-text-muted">
-                        vs Prior Month
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {plRows.map((row) => {
-                      const isNeg = row.isNetProfit && row.value < 0;
-                      const isPos = row.isNetProfit && row.value > 0;
-                      const changePos = row.change !== null && row.change > 0;
-                      const changeNeg = row.change !== null && row.change < 0;
-
-                      return (
-                        <tr key={row.label} className="border-b border-border-light last:border-b-0">
-                          <td className={`py-3 pr-lg text-body ${row.isNetProfit || row.label === "Total Income" ? "font-semibold text-text-primary" : "text-text-secondary"}`}>
-                            <span className="inline-flex items-center gap-1.5">
-                              {row.label}
-                              {row.tooltip && <InfoTooltip text={row.tooltip} />}
-                            </span>
-                          </td>
-                          <td className={`text-right py-3 px-lg text-body tabular-nums font-semibold ${isNeg ? "text-error" : isPos ? "text-success" : "text-text-primary"}`}>
-                            {formatCurrency(row.value)}
-                          </td>
-                          <td className="text-right py-3 pl-lg text-body-sm tabular-nums">
-                            {row.change !== null ? (
-                              <span className={`font-medium ${changePos ? "text-success" : changeNeg ? "text-error" : "text-text-muted"}`}>
-                                {changePos ? "▲" : changeNeg ? "▼" : ""} {Math.abs(row.change).toFixed(1)}%
-                              </span>
-                            ) : (
-                              <span className="text-text-muted">—</span>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          ) : null
+        {/* Latest saved month + year to date */}
+        {!loading && latestSnapshot && (
+          <>
+            <LatestMonthCard data={monthly} />
+            <YearToDateCard data={monthly} />
+          </>
         )}
 
         {/* Income Trend */}
         {!loading && (
-          incomeChartData.length >= 2 ? (
-            <div className="bg-surface rounded-xl p-lg border border-border-light shadow-card">
-              <h2 className="text-heading font-semibold text-text-primary mb-sm">
+          trendMonthsWithData >= 2 ? (
+            <div className="bg-surface rounded-xl p-lg border border-border-light shadow-card" data-testid="income-trend">
+              <h2 className="text-heading font-semibold text-text-primary">
                 Income Trend
               </h2>
+              <p className="text-body-sm text-text-muted mb-sm">
+                {monthRangeLabel(trend[0].month, trend[trend.length - 1].month)}, month by month. Gaps are months with nothing saved.
+              </p>
 
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={incomeChartData} barGap={4} barCategoryGap="20%">
@@ -921,7 +856,7 @@ export default function DashboardPage() {
                   />
                   <Tooltip
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    formatter={(value: any) => formatCurrency(Number(value))}
+                    formatter={(value: any) => (value == null ? "Not saved" : formatCurrency(Number(value)))}
                     contentStyle={{
                       borderRadius: "12px",
                       border: "1px solid #e5e5e5",
