@@ -165,6 +165,16 @@ CRON_SECRET=...                        # required header for /api/cron/* invocat
 ADMIN_EMAILS=joyce@fusion4business.com,...   # comma-separated allow-list for /admin
 ```
 
+Without `CRON_SECRET`, Vercel calls the cron routes without an `Authorization` header and every run is rejected with 401. To preview who the weekly summary would reach without sending anything, call `GET /api/cron/weekly-summary?dryRun=1` (optionally `&email=<address>`) with `Authorization: Bearer <CRON_SECRET>`.
+
+### Help links
+
+```env
+NEXT_PUBLIC_TUTORIALS_URL=...          # community tutorials page; the "Tutorials" nav link is hidden when unset
+```
+
+Set at build time, so redeploy after changing it. See `docs/MVP_FOLLOWUP_NOV4.md` for the community login caveats, the weekly-summary activation steps and the GHL lifecycle setup.
+
 ## Database
 
 InsForge is Postgres with RLS. The schema is documented in `tasks/prd-profitpulse.md` (US-005) and consists of five tables:

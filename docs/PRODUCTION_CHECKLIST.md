@@ -87,7 +87,10 @@ Before announcing launch:
 - [ ] Add SPF, DKIM, DMARC DNS records
 - [ ] `RESEND_API_KEY` → production key (Vercel, Production)
 - [ ] Update `FROM_EMAIL` in `src/lib/resend.ts` if domain changes
+- [ ] `CRON_SECRET` set in Vercel (Production). Without it every cron call is rejected with 401 and no weekly summary or trial email goes out.
+- [ ] Preview the weekly summary first: `GET /api/cron/weekly-summary?dryRun=1&email=<address>` with `Authorization: Bearer <CRON_SECRET>` sends nothing and reports why an account would be skipped
 - [ ] Send a test weekly summary + notification to verify deliverability
+- [ ] Full weekly-summary and GHL lifecycle steps: `docs/MVP_FOLLOWUP_NOV4.md`
 
 ## 7. Secrets rotation
 
@@ -116,6 +119,13 @@ below has a Production-scoped value and it is NOT pointing at sandbox:
 | `NEXT_PUBLIC_ANET_API_LOGIN_ID` | Live merchant |
 | `NEXT_PUBLIC_ANET_CLIENT_KEY` | Live merchant |
 | `NEXT_PUBLIC_ANET_ENVIRONMENT` | `PRODUCTION` |
+| `CRON_SECRET` | Random secret; Vercel sends it to the cron routes |
+| `ADMIN_EMAILS` | Comma-separated admin allow-list |
+| `GHL_SIGNUP_WEBHOOK_URL` | Mastermind GHL inbound webhook (sign-up) |
+| `GHL_PURCHASE_WEBHOOK_URL` | Mastermind GHL inbound webhook (purchase) |
+| `GHL_TRIAL_UPDATE_WEBHOOK_URL` | Optional: GHL inbound webhook (trial started/extended) |
+| `GHL_CANCEL_WEBHOOK_URL` | Optional: GHL inbound webhook (cancellation) |
+| `NEXT_PUBLIC_TUTORIALS_URL` | Community tutorials page (Tutorials link hidden when unset) |
 
 ## 9. Code audit
 
