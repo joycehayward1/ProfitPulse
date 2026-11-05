@@ -13,6 +13,9 @@ import { useToast } from "@/components/ui/Toast";
 import { describePainPoints, type SelfAssessment, type SelfAssessmentInsert } from "@/lib/self-assessment";
 import { SelfAssessmentStep } from "./SelfAssessmentStep";
 import { authFetch } from "@/lib/auth-fetch";
+import { lastDayOfMonth, toMonthKey } from "@/lib/financial-periods";
+import { normalizeUploadPeriods } from "@/lib/upload-periods";
+import { buildAssessmentSnapshot } from "@/lib/assessment-snapshot";
 
 type DataSource = "upload" | "quickbooks" | "manual" | null;
 type Step = "self-assessment" | "choose-source" | "upload" | "review" | "context" | "processing";
@@ -721,15 +724,8 @@ function AssessmentContent() {
             periodDate = confirmPeriod + "-01";
           }
 
-          if (periodDate) {
-            const d = new Date(periodDate);
-            if (!isNaN(d.getTime())) {
-              const y = d.getFullYear();
-              const m = d.getMonth() + 1;
-              const lastDay = new Date(y, m, 0).getDate();
-              periodDate = `${y}-${String(m).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
-            }
-          }
+          const monthKey = toMonthKey(periodDate);
+          if (monthKey) periodDate = lastDayOfMonth(monthKey);
 
           return {
             user_id: user.id,
@@ -761,7 +757,7 @@ function AssessmentContent() {
 
         const { error: snapshotError } = await client.database
           .from("financial_snapshots")
-          .upsert(snapshotRows, { onConflict: "user_id,period_date" });
+          .upsert(normalizeUploadPeriods(snapshotRows).rows, { onConflict: "user_id,period_date" });
 
         if (snapshotError) {
           console.error("Error saving financial snapshot:", snapshotError);
@@ -842,8 +838,6 @@ function AssessmentContent() {
             ? "quickbooks"
             : "manual";
 
-        const now = new Date();
-        const periodDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
 
         let { error } = await client.database
           .from("health_assessments")
@@ -871,16 +865,17 @@ function AssessmentContent() {
 
         const { error: snapshotError } = await client.database
           .from("financial_snapshots")
-          .upsert([{
-            user_id: user.id,
-            period_date: periodDate,
-            data_source: sourceForFinancialData,
-            total_income: revenue,
-            total_expenses: expenses,
-            net_profit: revenue - expenses,
-            current_assets: cash,
-            current_liabilities: payables,
-          }], { onConflict: "user_id,period_date" });
+          .upsert([buildAssessmentSnapshot({
+            userId: user.id,
+            now: new Date(),
+            source: sourceForFinancialData,
+            revenue,
+            expenses,
+            cash,
+            payables,
+            ytdRevenue,
+            ytdExpenses,
+          })], { onConflict: "user_id,period_date" });
 
         if (snapshotError) {
           console.error("Error saving financial snapshot:", snapshotError);
