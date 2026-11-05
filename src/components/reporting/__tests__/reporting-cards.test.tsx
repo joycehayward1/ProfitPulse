@@ -85,10 +85,12 @@ describe("YearToDateCard", () => {
     expect(cash).not.toHaveTextContent("$127,500");
   });
 
-  it("compares with the same months last year and flags thin coverage", () => {
+  it("doesn't show a percentage against last year when different months are saved", () => {
     render(<YearToDateCard data={data()} />);
-    expect(screen.getByTestId("ytd-prior")).toHaveTextContent("January–April 2025: 1 of 4 months saved");
-    expect(screen.getByTestId("ytd-income")).toHaveTextContent("vs 2025");
+    expect(screen.getByTestId("ytd-prior")).toHaveTextContent(
+      "Not compared with 2025: January–April 2025 has 1 of 4 months saved, not the same months as January–April 2026."
+    );
+    expect(screen.getByTestId("ytd-income")).not.toHaveTextContent("vs 2025");
   });
 
   it("switches years without mixing them", () => {

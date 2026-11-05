@@ -46,7 +46,10 @@ describe("P&L report", () => {
     choosePeriod("Last 3 Months", "Year to Date");
     const range = screen.getByTestId("pl-range");
     expect(range).toHaveTextContent("January–April 2026 (year to date) · 3 of 4 months saved");
-    expect(range).toHaveTextContent("compared with January–April 2025");
+    expect(range).toHaveTextContent(
+      "not compared with the year before: January–April 2025 has 1 of 4 months saved, not the same months as January–April 2026"
+    );
+    expect(within(kpi("Total Income")).queryByText(/%/)).not.toBeInTheDocument();
     expect(screen.getByTestId("pl-missing")).toHaveTextContent("Not saved: January 2026");
     expect(kpi("Total Income")).toHaveTextContent("$70,500");
     expect(kpi("Total Expenses")).toHaveTextContent("$57,500");

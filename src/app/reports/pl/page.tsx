@@ -25,6 +25,8 @@ import {
   percentChange,
   previousMonth,
   priorYearSamePeriod,
+  isComparablePeriod,
+  describeIncomparable,
   recordFor,
   sameMonthLastYear,
   summarizePeriod,
@@ -142,13 +144,16 @@ export default function PLPage() {
     return summarizePeriod(monthly, addMonths(latest.month, -(months - 1)), latest.month);
   }, [monthly, latest, period, selectedYear]);
 
-  const comparison = useMemo((): { summary: PeriodSummary | null; label: string } | null => {
+  const comparison = useMemo((): { summary: PeriodSummary | null; label: string; skipped: string | null } | null => {
     if (!range) return null;
     if (range.start === range.end) {
       const prev = addMonths(range.end, -1);
-      return { summary: recordFor(monthly, prev) ? summarizePeriod(monthly, prev, prev) : null, label: monthLabel(prev, "short") };
+      return { summary: recordFor(monthly, prev) ? summarizePeriod(monthly, prev, prev) : null, label: monthLabel(prev, "short"), skipped: null };
     }
-    return { summary: priorYearSamePeriod(monthly, range), label: monthRangeLabel(addMonths(range.start, -12), addMonths(range.end, -12)) };
+    const label = monthRangeLabel(addMonths(range.start, -12), addMonths(range.end, -12));
+    const prior = priorYearSamePeriod(monthly, range);
+    if (isComparablePeriod(range, prior)) return { summary: prior, label, skipped: null };
+    return { summary: null, label, skipped: describeIncomparable(range, prior, label) };
   }, [monthly, range]);
 
   // KPI cards: totals for the months on screen
@@ -384,7 +389,8 @@ export default function PLPage() {
           <p className="text-[14px] text-text-secondary">
             Showing <span className="font-semibold text-text-primary">{range.label}</span>
             {period === "ytd" ? " (year to date)" : ""} · {range.monthsWithData.length} of {range.monthsInRange.length} months saved
-            {comparison ? ` · compared with ${comparison.label}` : ""}
+            {comparison?.summary ? ` · compared with ${comparison.label}` : ""}
+            {comparison?.skipped ? ` · not compared with the year before: ${comparison.skipped}` : ""}
           </p>
           {range.missingMonths.length > 0 && (
             <p className="text-[13px] text-text-muted" data-testid="pl-missing">
@@ -423,7 +429,7 @@ export default function PLPage() {
                   </div>
                   <span className="text-[12px] flex flex-col items-end leading-tight">
                     <ChangeBadge change={kpi.change} higherIsBetter={kpi.higherIsBetter} />
-                    {comparison && kpi.change !== null && (
+                    {comparison?.summary && kpi.change !== null && (
                       <span className="text-[11px] text-text-muted">vs {comparison.label}</span>
                     )}
                   </span>

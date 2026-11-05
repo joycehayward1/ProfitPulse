@@ -319,6 +319,28 @@ export function priorYearSamePeriod(data: MonthlyData, period: PeriodSummary): P
 }
 
 /**
+ * True when every month saved in `current` has its counterpart saved in
+ * `earlier` (same position in the range), so the totals cover the same months
+ * and a percentage change between them means something.
+ */
+export function isComparablePeriod(current: PeriodSummary, earlier: PeriodSummary | null): boolean {
+  if (!earlier || current.monthsWithData.length === 0) return false;
+  if (current.monthsInRange.length !== earlier.monthsInRange.length) return false;
+  const saved = new Set(earlier.monthsWithData);
+  return current.monthsInRange.every(
+    (month, i) => !current.monthsWithData.includes(month) || saved.has(earlier.monthsInRange[i])
+  );
+}
+
+/** "only 1 of 4 months saved in January–April 2025" — why two periods weren't compared. */
+export function describeIncomparable(current: PeriodSummary, earlier: PeriodSummary | null, earlierLabel: string): string {
+  const saved = earlier?.monthsWithData.length ?? 0;
+  const total = earlier?.monthsInRange.length ?? current.monthsInRange.length;
+  if (saved === 0) return `nothing saved for ${earlierLabel}`;
+  return `${earlierLabel} has ${saved} of ${total} months saved, not the same months as ${current.label}`;
+}
+
+/**
  * Percentage change. Null when either side is missing or the earlier value is
  * zero (no meaningful percentage). Measured against the size of the earlier
  * value, so a loss shrinking from -$2,000 to -$1,000 is +50%.

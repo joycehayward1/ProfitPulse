@@ -6,6 +6,8 @@ import { ChangeBadge } from "@/components/reporting/ChangeBadge";
 import {
   availableYears,
   balanceAsOf,
+  describeIncomparable,
+  isComparablePeriod,
   listMonths,
   monthLabel,
   percentChange,
@@ -29,6 +31,7 @@ export function YearToDateCard({ data, title = "Year to date" }: { data: Monthly
   const ytd = yearToDate(data, selectedYear);
   if (!ytd) return null;
   const prior = priorYearSamePeriod(data, ytd);
+  const comparable = isComparablePeriod(ytd, prior);
   const cash = balanceAsOf(data, "current_assets", ytd.end);
 
   const tiles = [
@@ -84,7 +87,7 @@ export function YearToDateCard({ data, title = "Year to date" }: { data: Monthly
               {formatMoney(t.value)}
             </p>
             {t.key === "net" && <p className="text-body-sm text-text-muted">Margin {formatRatioPercent(ytd.netMargin)}</p>}
-            {prior && (
+            {comparable && (
               <p className="text-body-sm text-text-muted">
                 <ChangeBadge change={percentChange(t.value, t.prior)} higherIsBetter={t.higherIsBetter} /> vs {selectedYear - 1}
               </p>
@@ -100,8 +103,9 @@ export function YearToDateCard({ data, title = "Year to date" }: { data: Monthly
 
       {prior && (
         <p className="mt-sm text-body-sm text-text-muted" data-testid="ytd-prior">
-          Compared with {prior.label}: {prior.monthsWithData.length} of {prior.monthsInRange.length} months saved
-          {prior.monthsWithData.length < prior.monthsInRange.length ? ", so treat the comparison with care." : "."}
+          {comparable
+            ? `Compared with ${prior.label}, which has the same months saved.`
+            : `Not compared with ${selectedYear - 1}: ${describeIncomparable(ytd, prior, prior.label)}.`}
         </p>
       )}
       {statedDiffers && stated?.revenue != null && (

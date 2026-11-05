@@ -15,6 +15,8 @@ import {
   percentChange,
   previousMonth,
   priorYearSamePeriod,
+  isComparablePeriod,
+  describeIncomparable,
   recentMonthlyAverage,
   sameMonthLastYear,
   summarizePeriod,
@@ -140,6 +142,29 @@ describe("year to date", () => {
     expect(prior.label).toBe("January–April 2025");
     expect(prior.totals.total_income).toBe(20000);
     expect(prior.monthsWithData).toEqual(["2025-04"]);
+  });
+
+  it("only treats two periods as comparable when the same months are saved", () => {
+    const ytd = yearToDate(data, 2026)!;
+    const prior = priorYearSamePeriod(data, ytd);
+    expect(isComparablePeriod(ytd, prior)).toBe(false);
+    expect(describeIncomparable(ytd, prior, "January–April 2025")).toBe(
+      "January–April 2025 has 1 of 4 months saved, not the same months as January–April 2026"
+    );
+    expect(isComparablePeriod(ytd, null)).toBe(false);
+    expect(describeIncomparable(ytd, null, "January–April 2025")).toBe("nothing saved for January–April 2025");
+
+    const both = normalizeMonthly(
+      [
+        snapshot("2025-02-28", 15000, 12000),
+        snapshot("2025-03-31", 16000, 12500),
+        snapshot("2026-02-28", 22000, 18000),
+        snapshot("2026-03-31", 23500, 18500),
+      ],
+      NOV_5_2026
+    );
+    const current = yearToDate(both, 2026)!;
+    expect(isComparablePeriod(current, priorYearSamePeriod(both, current))).toBe(true);
   });
 
   it("reports the year-to-date figures the owner typed on the last month", () => {
