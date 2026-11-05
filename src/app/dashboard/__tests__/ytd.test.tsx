@@ -61,6 +61,15 @@ describe("Dashboard with several saved months", () => {
     expect(screen.getByTestId("ytd-cash")).toHaveTextContent("as of April 2026");
   });
 
+  it("summarises the latest month from saved figures only", async () => {
+    render(<DashboardPage />);
+    expect(await screen.findByTestId("latest-month-insight")).toHaveTextContent(
+      "In April 2026 your profit margin was 16.0%, down 5.3 points from 21.3% in March 2026. Income rose 6.4% and expenses rose 13.5% compared with March 2026."
+    );
+    expect(screen.queryByText(/improved 8%/)).not.toBeInTheDocument();
+    expect(screen.queryByText("AI Insight")).not.toBeInTheDocument();
+  });
+
   it("titles the income trend with the months it covers", async () => {
     render(<DashboardPage />);
     const trend = await screen.findByTestId("income-trend");

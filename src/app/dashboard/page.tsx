@@ -22,6 +22,7 @@ import { SampleDashboardPreview } from "@/components/onboarding/SampleDashboardP
 import { LatestMonthCard } from "@/components/reporting/LatestMonthCard";
 import { YearToDateCard } from "@/components/reporting/YearToDateCard";
 import { latestMonth, monthlyTrend, monthRangeLabel, normalizeMonthly } from "@/lib/financial-periods";
+import { buildLatestMonthInsight } from "@/lib/dashboard-insight";
 import { ProductTour } from "@/components/onboarding/ProductTour";
 import { useProductTour } from "@/components/onboarding/useProductTour";
 import {
@@ -425,6 +426,7 @@ export default function DashboardPage() {
 
   const timeOfDay = getTimeOfDay();
   const formattedDate = getFormattedDate();
+  const insight = useMemo(() => buildLatestMonthInsight(monthly), [monthly]);
   // Use actual user's name from profile, not business name
   const userName = user?.name?.split(' ')[0] || user?.email?.split('@')[0] || "there";
 
@@ -794,11 +796,10 @@ export default function DashboardPage() {
                 {/* Insight Text */}
                 <div className="flex-1">
                   <h3 className="text-body-sm font-semibold text-insight mb-1">
-                    AI Insight
+                    Latest month at a glance
                   </h3>
-                  <p className="text-body text-text-primary">
-                    Your profit margin improved 8% this month. Slow week keeping expenses steady while revenue grew.
-                    Consider setting aside extra cash to build your runway.
+                  <p className="text-body text-text-primary" data-testid="latest-month-insight">
+                    {insight}
                   </p>
                 </div>
               </div>

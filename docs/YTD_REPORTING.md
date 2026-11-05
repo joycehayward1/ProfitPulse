@@ -25,6 +25,7 @@ rewritten or deleted.
 | Margins | Worked out from the period's totals (net profit ÷ income), not by adding up monthly margins, and shown as a percentage. |
 | Monthly estimates | The calculators' "monthly" figures are the average of up to the 3 most recent saved months within the last 12, skipping gaps. They are labelled with the months used, for example "average of February–April 2026 (3 months)". A year-to-date total is never used as a monthly figure. |
 | Cash for Runway | The latest saved cash balance, labelled "as of April 2026 (a balance, not added up across months)". |
+| Dashboard insight | "Latest month at a glance" (`src/lib/dashboard-insight.ts`) only restates saved figures: the latest month's margin against the calendar month before, and how income and expenses moved. If the month before isn't saved, it says so. With nothing saved, it asks for data. (It replaced a fixed "profit margin improved 8%" sentence that every account saw.) |
 | Stated YTD | If a saved row has a typed-in year-to-date figure that differs from the sum of saved months, both are shown. The saved months are used for the totals. |
 
 ## Goal Planning
