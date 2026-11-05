@@ -144,7 +144,7 @@ export function ProductTour({ steps, step, onStepChange, onDismiss, onFinish, on
   const showMobileHint = placement.targetId === "nav-mobile-menu" && current.mobileHint;
 
   return (
-    <div className="fixed inset-0 z-[95]" onKeyDown={handleKeyDown}>
+    <div className="fixed inset-0 z-[9995]" onKeyDown={handleKeyDown}>
       {t ? (
         <div
           aria-hidden="true"
