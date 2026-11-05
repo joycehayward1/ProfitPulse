@@ -9,6 +9,7 @@ import { useToast } from "@/components/ui/Toast";
 import { generateScenarioExplanation } from "@/lib/ai-insights";
 import { ArrowLeft, TrendingUp } from "lucide-react";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
+import { formatMoney, toInputValue } from "@/lib/format-money";
 
 interface BreakEvenResult {
   breakEvenUnits: number;
@@ -27,9 +28,11 @@ export default function BreakEvenPage() {
   const [pricePerUnit, setPricePerUnit] = useState("");
   const [variableCost, setVariableCost] = useState("");
   const [currentSales, setCurrentSales] = useState("");
-  // Latest monthly revenue — used to estimate current sales (in units) when
+  // Typical monthly revenue — used to estimate current sales (in units) when
   // the field is left blank, treating all income as sales.
   const [monthlyRevenue, setMonthlyRevenue] = useState<number | null>(null);
+  const [fixedSource, setFixedSource] = useState("");
+  const [revenueSource, setRevenueSource] = useState("");
 
   // Results
   const [result, setResult] = useState<BreakEvenResult | null>(null);
@@ -44,11 +47,13 @@ export default function BreakEvenPage() {
         const { loadFinancialDefaults } = await import("@/lib/financial-defaults");
         const defaults = await loadFinancialDefaults(user.id);
 
-        if (defaults.latestMonthlyExpenses) {
-          setFixedExpenses(defaults.latestMonthlyExpenses.toString());
+        if (defaults.monthlyExpenses.value) {
+          setFixedExpenses(toInputValue(defaults.monthlyExpenses.value));
+          setFixedSource(defaults.monthlyExpenses.source);
         }
-        if (defaults.latestMonthlyRevenue) {
-          setMonthlyRevenue(defaults.latestMonthlyRevenue);
+        if (defaults.monthlyRevenue.value) {
+          setMonthlyRevenue(defaults.monthlyRevenue.value);
+          setRevenueSource(defaults.monthlyRevenue.source);
         }
       } catch (error) {
         console.error('Error loading financial data:', error);
@@ -213,7 +218,10 @@ export default function BreakEvenPage() {
                       type="number"
                       name="fixedExpenses"
                       value={fixedExpenses}
-                      onChange={(e) => setFixedExpenses(e.target.value)}
+                      onChange={(e) => {
+                        setFixedExpenses(e.target.value);
+                        setFixedSource("");
+                      }}
                       className="w-full h-10 pl-8 pr-3 rounded-lg border border-[#E4E4E7] text-[14px] text-[#111111] focus:outline-none focus:border-[#E65100] focus:ring-2 focus:ring-[#E65100]/15 transition-all"
                       placeholder="5000"
                     />
@@ -221,6 +229,11 @@ export default function BreakEvenPage() {
                   <p className="text-[12px] text-[#8B8B8B] mt-1">
                     Rent, salaries, utilities—costs that don&apos;t change with sales
                   </p>
+                  {fixedSource && (
+                    <p data-testid="fixed-source" className="text-[12px] text-[#4B4B4B] mt-1">
+                      Pre-filled with your total monthly expenses, {fixedSource}. Adjust if some of them change with sales.
+                    </p>
+                  )}
                 </div>
 
                 {/* Price Per Unit */}
@@ -289,7 +302,8 @@ export default function BreakEvenPage() {
                   </div>
                   <p className="text-[12px] text-[#8B8B8B] mt-1">
                     How many you&apos;re selling now (for comparison). Leave blank
-                    and we&apos;ll estimate it from your monthly revenue.
+                    and we&apos;ll estimate it from your monthly revenue
+                    {revenueSource && monthlyRevenue ? ` (${formatMoney(monthlyRevenue)}, ${revenueSource})` : ""}.
                   </p>
                 </div>
 

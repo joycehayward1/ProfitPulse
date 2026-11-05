@@ -1,56 +1,103 @@
 import { getInsForgeClient } from "@/lib/insforge";
 import type { FinancialSnapshot } from "@/lib/database.types";
+import {
+  balanceAsOf,
+  describeAverage,
+  latestMonth,
+  monthLabel,
+  normalizeMonthly,
+  recentMonthlyAverage,
+  type MonthlyData,
+} from "@/lib/financial-periods";
+import { buildGoalBaseline, type GoalBaseline } from "@/lib/goal-planning";
 
 /**
- * Smart defaults for the scenario calculators, derived from the user's
- * uploaded/entered financial data so they don't have to re-type numbers
- * the app already knows. Every value is a suggestion — the inputs stay
+ * Smart defaults for the scenario calculators, derived from the user's saved
+ * monthly data so they don't have to re-type numbers the app already knows.
+ * Every value is a suggestion with a plain-language source; the inputs stay
  * fully editable.
  */
-export interface FinancialDefaults {
-  /** Mean monthly revenue/expenses across the most recent snapshots (up to 12). */
-  avgMonthlyRevenue: number | null;
-  avgMonthlyExpenses: number | null;
-  /** Stored YTD figures if the user provided them, otherwise summed from this year's monthly entries. */
-  ytdRevenue: number | null;
-  ytdExpenses: number | null;
-  /** Most recent month's numbers. */
-  latestMonthlyRevenue: number | null;
-  latestMonthlyExpenses: number | null;
-  /** Cash on hand from the latest balance-sheet data. */
-  latestCash: number | null;
+export interface DefaultFigure {
+  value: number | null;
+  /** Where the number came from, e.g. "average of February–April 2026 (3 months)". */
+  source: string;
 }
 
-const EMPTY_DEFAULTS: FinancialDefaults = {
-  avgMonthlyRevenue: null,
-  avgMonthlyExpenses: null,
-  ytdRevenue: null,
-  ytdExpenses: null,
-  latestMonthlyRevenue: null,
-  latestMonthlyExpenses: null,
-  latestCash: null,
-};
+export type DefaultsSource = "saved_months" | "assessment" | "none";
 
-interface AssessmentDefaultsRow {
+export interface FinancialDefaults {
+  sourceKind: DefaultsSource;
+  /** Typical month: recent monthly average, never a year-to-date total. */
+  monthlyRevenue: DefaultFigure;
+  monthlyExpenses: DefaultFigure;
+  /** Cash on hand as of the latest month that has it (never added across months). */
+  cash: DefaultFigure;
+  /** Year-to-date baseline for Goal Planning. */
+  goal: GoalBaseline;
+  monthly: MonthlyData;
+}
+
+export interface AssessmentDefaultsRow {
   monthly_revenue: number | null;
   monthly_expenses: number | null;
-  ytd_revenue: number | null;
-  ytd_expenses: number | null;
+  ytd_revenue?: number | null;
+  ytd_expenses?: number | null;
   cash_on_hand: number | null;
+  created_at?: string | null;
 }
 
-function average(values: number[]): number | null {
-  if (values.length === 0) return null;
-  return Math.round(values.reduce((sum, v) => sum + v, 0) / values.length);
+const NONE: DefaultFigure = { value: null, source: "" };
+
+function positive(value: number | null | undefined): number | null {
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : null;
 }
 
-function positiveNumbers(values: Array<number | null>): number[] {
-  return values.filter((v): v is number => typeof v === "number" && v > 0);
+function figure(value: number | null, source: string): DefaultFigure {
+  return value === null ? NONE : { value, source };
 }
 
-export async function loadFinancialDefaults(
-  userId: string
-): Promise<FinancialDefaults> {
+export function deriveFinancialDefaults(
+  snapshots: FinancialSnapshot[],
+  assessment: AssessmentDefaultsRow | null,
+  now: Date = new Date()
+): FinancialDefaults {
+  const monthly = normalizeMonthly(snapshots, now);
+  const goal = buildGoalBaseline(monthly, now);
+
+  if (latestMonth(monthly)) {
+    const revenue = recentMonthlyAverage(monthly, "total_income");
+    const expenses = recentMonthlyAverage(monthly, "total_expenses");
+    const cash = balanceAsOf(monthly, "current_assets");
+    return {
+      sourceKind: "saved_months",
+      monthlyRevenue: figure(revenue.value, describeAverage(revenue)),
+      monthlyExpenses: figure(expenses.value, describeAverage(expenses)),
+      cash: figure(cash.value, cash.month ? `as of ${monthLabel(cash.month)}` : ""),
+      goal,
+      monthly,
+    };
+  }
+
+  if (!assessment) {
+    return { sourceKind: "none", monthlyRevenue: NONE, monthlyExpenses: NONE, cash: NONE, goal, monthly };
+  }
+
+  const label = "from your health check answers";
+  const ytdRevenue = positive(assessment.ytd_revenue);
+  return {
+    sourceKind: "assessment",
+    monthlyRevenue: figure(positive(assessment.monthly_revenue), label),
+    monthlyExpenses: figure(positive(assessment.monthly_expenses), label),
+    cash: figure(assessment.cash_on_hand ?? null, label),
+    goal:
+      ytdRevenue !== null
+        ? { ...goal, revenueSoFar: ytdRevenue, expensesSoFar: positive(assessment.ytd_expenses), source: "entered_ytd" }
+        : goal,
+    monthly,
+  };
+}
+
+export async function loadFinancialDefaults(userId: string, now: Date = new Date()): Promise<FinancialDefaults> {
   const client = getInsForgeClient();
 
   const { data: snapshots } = await client.database
@@ -58,59 +105,19 @@ export async function loadFinancialDefaults(
     .select("*")
     .eq("user_id", userId)
     .order("period_date", { ascending: false })
-    .limit(12);
+    .limit(120);
 
   const rows = (snapshots ?? []) as FinancialSnapshot[];
-
-  if (rows.length === 0) {
-    // No uploaded data yet — fall back to the health assessment questionnaire.
+  let assessment: AssessmentDefaultsRow | null = null;
+  if (!latestMonth(normalizeMonthly(rows, now))) {
     const { data: assessments } = await client.database
       .from("health_assessments")
       .select("*")
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .limit(1);
-
-    const assessment = (assessments?.[0] ?? null) as AssessmentDefaultsRow | null;
-    if (!assessment) return EMPTY_DEFAULTS;
-
-    return {
-      avgMonthlyRevenue: assessment.monthly_revenue ?? null,
-      avgMonthlyExpenses: assessment.monthly_expenses ?? null,
-      ytdRevenue: assessment.ytd_revenue ?? null,
-      ytdExpenses: assessment.ytd_expenses ?? null,
-      latestMonthlyRevenue: assessment.monthly_revenue ?? null,
-      latestMonthlyExpenses: assessment.monthly_expenses ?? null,
-      latestCash: assessment.cash_on_hand ?? null,
-    };
+    assessment = (assessments?.[0] ?? null) as AssessmentDefaultsRow | null;
   }
 
-  const latest = rows[0];
-  const incomes = positiveNumbers(rows.map((r) => r.total_income));
-  const expenses = positiveNumbers(rows.map((r) => r.total_expenses));
-
-  // YTD: prefer an explicitly entered figure on the latest entry; otherwise
-  // add up this calendar year's monthly entries.
-  const yearPrefix = `${new Date().getFullYear()}-`;
-  const thisYear = rows.filter((r) => r.period_date?.startsWith(yearPrefix));
-  const summedYtdRevenue = positiveNumbers(thisYear.map((r) => r.total_income));
-  const summedYtdExpenses = positiveNumbers(thisYear.map((r) => r.total_expenses));
-
-  return {
-    avgMonthlyRevenue: average(incomes),
-    avgMonthlyExpenses: average(expenses),
-    ytdRevenue:
-      latest.ytd_revenue ||
-      (summedYtdRevenue.length > 0
-        ? summedYtdRevenue.reduce((a, b) => a + b, 0)
-        : null),
-    ytdExpenses:
-      latest.ytd_expenses ||
-      (summedYtdExpenses.length > 0
-        ? summedYtdExpenses.reduce((a, b) => a + b, 0)
-        : null),
-    latestMonthlyRevenue: latest.total_income ?? null,
-    latestMonthlyExpenses: latest.total_expenses ?? null,
-    latestCash: latest.current_assets ?? null,
-  };
+  return deriveFinancialDefaults(rows, assessment, now);
 }
