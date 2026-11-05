@@ -13,6 +13,7 @@ import { DunningBanner } from "@/components/DunningBanner";
 import { PaywallScreen } from "@/components/PaywallScreen";
 import { BearOnboarding, hasCompletedOnboarding } from "@/components/BearOnboarding";
 import { getUserAccessLevel } from "@/lib/feature-gate";
+import { getTutorialsUrl } from "@/lib/tutorials";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -23,6 +24,10 @@ interface NavItem {
   label: string;
   href: string;
   icon: string;
+  /** Off-site link: opens in a new tab and never shows as active. */
+  external?: boolean;
+  /** Target for the onboarding tour spotlight. */
+  tourId?: string;
 }
 
 interface NavSection {
@@ -30,12 +35,12 @@ interface NavSection {
   items: NavItem[];
 }
 
-const navSections: NavSection[] = [
+const buildNavSections = (tutorialsUrl: string | null): NavSection[] => [
   {
     title: "OVERVIEW",
     items: [
       { label: "Dashboard", href: "/dashboard", icon: "ph:gauge-bold" },
-      { label: "Scenarios", href: "/scenarios", icon: "ph:calculator-bold" },
+      { label: "Scenarios", href: "/scenarios", icon: "ph:calculator-bold", tourId: "nav-scenarios" },
     ],
   },
   {
@@ -49,14 +54,25 @@ const navSections: NavSection[] = [
   {
     title: "MANAGE",
     items: [
-      { label: "Data", href: "/data", icon: "ph:database-bold" },
+      { label: "Data", href: "/data", icon: "ph:database-bold", tourId: "nav-data" },
       { label: "Settings", href: "/settings", icon: "ph:gear-six-bold" },
     ],
   },
   {
     title: "HELP",
     items: [
-      { label: "Glossary", href: "/glossary", icon: "ph:book-open-bold" },
+      { label: "Glossary", href: "/glossary", icon: "ph:book-open-bold", tourId: "nav-glossary" },
+      ...(tutorialsUrl
+        ? [
+            {
+              label: "Tutorials",
+              href: tutorialsUrl,
+              icon: "ph:play-circle-bold",
+              external: true,
+              tourId: "nav-tutorials",
+            },
+          ]
+        : []),
     ],
   },
 ];
@@ -138,6 +154,7 @@ export function AppLayout({ children, pulseMessage }: AppLayoutProps) {
     };
   }, [user?.id]);
 
+  const navSections = buildNavSections(getTutorialsUrl());
   const visibleNavSections = isAdmin ? [...navSections, adminNavSection] : navSections;
 
   const userInitials = user?.name
@@ -171,19 +188,16 @@ export function AppLayout({ children, pulseMessage }: AppLayoutProps) {
 
   const isActive = (href: string) => pathname === href || pathname?.startsWith(href + "/");
 
-  const renderNavItem = (item: NavItem) => {
-    const active = isActive(item.href);
-    return (
-      <Link
-        key={item.href}
-        href={item.href}
-        className={[
-          "group flex items-center gap-2.5 px-3 py-2 text-[13px] font-medium transition-all duration-150 rounded-lg mx-2",
-          active
-            ? "bg-orange text-white shadow-sm"
-            : "text-text-secondary hover:text-text-primary hover:bg-surface-inset",
-        ].join(" ")}
-      >
+  const renderNavItem = (item: NavItem, onNavigate?: () => void) => {
+    const active = !item.external && isActive(item.href);
+    const className = [
+      "group flex items-center gap-2.5 px-3 py-2 text-[13px] font-medium transition-all duration-150 rounded-lg mx-2",
+      active
+        ? "bg-orange text-white shadow-sm"
+        : "text-text-secondary hover:text-text-primary hover:bg-surface-inset",
+    ].join(" ");
+    const content = (
+      <>
         <Icon
           icon={item.icon}
           className={[
@@ -192,17 +206,52 @@ export function AppLayout({ children, pulseMessage }: AppLayoutProps) {
           ].join(" ")}
         />
         <span>{item.label}</span>
+      </>
+    );
+
+    if (item.external) {
+      return (
+        <a
+          key={item.href}
+          href={item.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={onNavigate}
+          className={className}
+          data-tour={item.tourId}
+        >
+          {content}
+          <Icon
+            icon="ph:arrow-square-out-bold"
+            className="ml-auto w-3.5 h-3.5 text-text-muted"
+            aria-hidden="true"
+          />
+          <span className="sr-only">(opens in a new tab)</span>
+        </a>
+      );
+    }
+
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        onClick={onNavigate}
+        className={className}
+        aria-current={active ? "page" : undefined}
+        data-tour={item.tourId}
+      >
+        {content}
       </Link>
     );
   };
 
-  const renderNavSection = (section: NavSection) => (
+  const renderNavSection = (section: NavSection, onNavigate?: () => void) => (
     <div key={section.title} className="mb-5">
       <h3 className="px-5 mb-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-text-muted">
         {section.title}
       </h3>
-      <nav className="flex flex-col gap-0.5">
-        {section.items.map(renderNavItem)}
+      <nav className="flex flex-col gap-0.5" aria-label={section.title}>
+        {section.items.map((item) => renderNavItem(item, onNavigate))}
       </nav>
     </div>
   );
@@ -299,7 +348,7 @@ export function AppLayout({ children, pulseMessage }: AppLayoutProps) {
 
         {/* Navigation */}
         <div className="flex-1 overflow-y-auto pt-5 pb-2">
-          {visibleNavSections.map(renderNavSection)}
+          {visibleNavSections.map((section) => renderNavSection(section))}
         </div>
 
         {/* User Profile */}
@@ -319,6 +368,7 @@ export function AppLayout({ children, pulseMessage }: AppLayoutProps) {
                 className="p-2 -ml-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-inset transition-colors"
                 aria-label="Toggle menu"
                 aria-expanded={mobileMenuOpen}
+                data-tour="nav-mobile-menu"
               >
                 <Icon
                   icon={mobileMenuOpen ? "ph:x-bold" : "ph:list-bold"}
@@ -379,34 +429,9 @@ export function AppLayout({ children, pulseMessage }: AppLayoutProps) {
               </div>
 
               <div className="flex-1 pt-5 pb-2">
-                {visibleNavSections.map((section) => (
-                  <div key={section.title} className="mb-5">
-                    <h3 className="px-5 mb-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-text-muted">
-                      {section.title}
-                    </h3>
-                    <nav className="flex flex-col gap-0.5">
-                      {section.items.map((item) => {
-                        const active = isActive(item.href);
-                        return (
-                          <Link
-                            key={item.href}
-                            href={item.href}
-                            onClick={() => setMobileMenuOpen(false)}
-                            className={[
-                              "group flex items-center gap-2.5 px-3 py-2 text-[13px] font-medium transition-all duration-150 rounded-lg mx-2",
-                              active
-                                ? "bg-orange text-white shadow-sm"
-                                : "text-text-secondary hover:text-text-primary hover:bg-surface-inset",
-                            ].join(" ")}
-                          >
-                            <Icon icon={item.icon} className={`w-[18px] h-[18px] flex-shrink-0 ${active ? "text-white" : "text-text-muted"}`} />
-                            <span>{item.label}</span>
-                          </Link>
-                        );
-                      })}
-                    </nav>
-                  </div>
-                ))}
+                {visibleNavSections.map((section) =>
+                  renderNavSection(section, () => setMobileMenuOpen(false))
+                )}
               </div>
 
               <div className="px-2.5 py-3 border-t border-border-light">

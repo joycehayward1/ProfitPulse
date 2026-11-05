@@ -198,6 +198,70 @@ describe("AppLayout", () => {
     expect(screen.getAllByRole("link", { name: "Settings" })[0]).toHaveAttribute("href", "/settings");
   });
 
+  describe("Tutorials link", () => {
+    const original = process.env.NEXT_PUBLIC_TUTORIALS_URL;
+    afterEach(() => {
+      if (original === undefined) delete process.env.NEXT_PUBLIC_TUTORIALS_URL;
+      else process.env.NEXT_PUBLIC_TUTORIALS_URL = original;
+    });
+
+    it("is hidden when NEXT_PUBLIC_TUTORIALS_URL is unset", () => {
+      delete process.env.NEXT_PUBLIC_TUTORIALS_URL;
+      render(
+        <AppLayout>
+          <div>Test content</div>
+        </AppLayout>
+      );
+
+      expect(screen.getAllByRole("link", { name: "Glossary" })[0]).toHaveAttribute("href", "/glossary");
+      expect(screen.queryByRole("link", { name: /tutorials/i })).not.toBeInTheDocument();
+    });
+
+    it("is hidden when the configured value is not an http(s) URL", () => {
+      process.env.NEXT_PUBLIC_TUTORIALS_URL = "javascript:alert(1)";
+      render(
+        <AppLayout>
+          <div>Test content</div>
+        </AppLayout>
+      );
+
+      expect(screen.queryByRole("link", { name: /tutorials/i })).not.toBeInTheDocument();
+    });
+
+    it("opens the configured community page in a new tab, under Glossary", () => {
+      process.env.NEXT_PUBLIC_TUTORIALS_URL = "https://community.example.test/tutorials";
+      render(
+        <AppLayout>
+          <div>Test content</div>
+        </AppLayout>
+      );
+
+      const link = screen.getAllByRole("link", { name: /tutorials/i })[0];
+      expect(link).toHaveAttribute("href", "https://community.example.test/tutorials");
+      expect(link).toHaveAttribute("target", "_blank");
+      expect(link).toHaveAttribute("rel", "noopener noreferrer");
+
+      const helpNav = screen.getAllByRole("navigation", { name: "HELP" })[0];
+      const labels = Array.from(helpNav.querySelectorAll("a")).map((a) => a.textContent);
+      expect(labels[0]).toContain("Glossary");
+      expect(labels[1]).toContain("Tutorials");
+    });
+
+    it("is also in the mobile menu", async () => {
+      process.env.NEXT_PUBLIC_TUTORIALS_URL = "https://community.example.test/tutorials";
+      render(
+        <AppLayout>
+          <div>Test content</div>
+        </AppLayout>
+      );
+
+      fireEvent.click(screen.getByLabelText("Toggle menu"));
+      await waitFor(() => {
+        expect(screen.getAllByRole("link", { name: /tutorials/i })).toHaveLength(2);
+      });
+    });
+  });
+
   it("renders fixed sidebar on desktop", () => {
     render(
       <AppLayout>
