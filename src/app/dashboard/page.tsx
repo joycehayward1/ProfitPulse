@@ -35,15 +35,14 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-function getTimeOfDay(): string {
-  const hour = new Date().getHours();
+function getTimeOfDay(date: Date): string {
+  const hour = date.getHours();
   if (hour < 12) return "morning";
   if (hour < 18) return "afternoon";
   return "evening";
 }
 
-function getFormattedDate(): string {
-  const date = new Date();
+function getFormattedDate(date: Date): string {
   const options: Intl.DateTimeFormatOptions = {
     weekday: "long",
     year: "numeric",
@@ -424,8 +423,12 @@ export default function DashboardPage() {
     dataLoaded: !loading,
   });
 
-  const timeOfDay = getTimeOfDay();
-  const formattedDate = getFormattedDate();
+  // Read the clock only in the browser: this page is prerendered at build
+  // time, so a greeting rendered there would not match the visitor's time.
+  const [now, setNow] = useState<Date | null>(null);
+  useEffect(() => setNow(new Date()), []);
+  const greeting = now ? `Good ${getTimeOfDay(now)}` : "Welcome back";
+  const formattedDate = now ? getFormattedDate(now) : "\u00a0";
   const insight = useMemo(() => buildLatestMonthInsight(monthly), [monthly]);
   // Use actual user's name from profile, not business name
   const userName = user?.name?.split(' ')[0] || user?.email?.split('@')[0] || "there";
@@ -486,12 +489,12 @@ export default function DashboardPage() {
         {/* Greeting Section */}
         <div>
           <h1 className="font-display text-display text-text-primary">
-            Good {timeOfDay},{" "}
+            {greeting},{" "}
             <span className="text-orange">
               {userName}
             </span>
           </h1>
-          <p className="text-body-sm text-text-muted mt-1">
+          <p className="text-body-sm text-text-muted mt-1" data-testid="greeting-date">
             {formattedDate}
           </p>
         </div>
