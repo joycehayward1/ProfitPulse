@@ -70,6 +70,7 @@ describe("DashboardPage", () => {
 
   afterEach(() => {
     jest.useRealTimers();
+    window.localStorage.clear();
   });
 
   it("renders the greeting with time of day", async () => {
@@ -120,7 +121,36 @@ describe("DashboardPage", () => {
     expect(document.querySelector(".animate-pulse")).toBeInTheDocument();
   });
 
+  const finishTour = () =>
+    window.localStorage.setItem(
+      "profitpulse_tour_test-user",
+      JSON.stringify({ status: "completed", step: 6, updatedAt: "2026-02-19T00:00:00Z" })
+    );
+
+  it("shows a labelled example dashboard to a new account with no numbers", async () => {
+    window.localStorage.clear();
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Example dashboard: not your data")).toBeInTheDocument();
+    });
+    expect(screen.getByText(/Nothing here is saved to your account/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Let's get you some clarity/i)).not.toBeInTheDocument();
+  });
+
+  it("removes the example once the tour is finished", async () => {
+    window.localStorage.clear();
+    finishTour();
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Let's get you some clarity/i)).toBeInTheDocument();
+    });
+    expect(screen.queryByText("Example dashboard: not your data")).not.toBeInTheDocument();
+  });
+
   it("shows empty state when no assessment exists", async () => {
+    finishTour();
     render(<DashboardPage />);
 
     await waitFor(() => {
@@ -140,6 +170,7 @@ describe("DashboardPage", () => {
 
   it("empty state button links to assessment page", async () => {
     const originalLocation = window.location.href;
+    finishTour();
 
     render(<DashboardPage />);
 

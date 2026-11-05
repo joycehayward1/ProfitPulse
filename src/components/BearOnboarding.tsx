@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Icon } from "@iconify/react";
+import { INTRO_COMPLETE_EVENT } from "@/lib/onboarding-tour";
 
 const MESSAGES = [
   {
@@ -74,6 +75,7 @@ export function BearOnboarding({ userId, onComplete }: BearOnboardingProps) {
     }
     setVisible(false);
     onComplete?.();
+    window.dispatchEvent(new Event(INTRO_COMPLETE_EVENT));
   }
 
   const bodyParts = current.body.split(/(\*\*[^*]+\*\*)/g);

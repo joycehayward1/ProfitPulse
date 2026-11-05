@@ -18,6 +18,9 @@ import { LockedFeature } from "@/components/LockedFeature";
 import { FocusAreasCard } from "@/components/FocusAreasCard";
 import type { FinancialContext, SelfAssessment } from "@/lib/self-assessment";
 import { InfoTooltip } from "@/components/ui/MetricTooltip";
+import { SampleDashboardPreview } from "@/components/onboarding/SampleDashboardPreview";
+import { ProductTour } from "@/components/onboarding/ProductTour";
+import { useProductTour } from "@/components/onboarding/useProductTour";
 import {
   BarChart,
   Bar,
@@ -427,6 +430,12 @@ export default function DashboardPage() {
     };
   }, [assessment, latestSnapshot, chartSnapshots, trialMode]);
 
+  const tour = useProductTour({
+    userId: user?.id,
+    hasRealData: Boolean(assessment),
+    dataLoaded: !loading,
+  });
+
   const timeOfDay = getTimeOfDay();
   const formattedDate = getFormattedDate();
   // Use actual user's name from profile, not business name
@@ -498,6 +507,13 @@ export default function DashboardPage() {
           </p>
         </div>
 
+        {tour.showSample ? (
+          <SampleDashboardPreview
+            onResumeTour={tour.status === "dismissed" ? tour.resume : undefined}
+            onDismissExample={tour.open ? undefined : tour.complete}
+          />
+        ) : (
+        <>
         {/* Health Score Feature Card */}
         {loading ? (
           <div className="bg-surface rounded-xl p-lg border border-border-light shadow-card">
@@ -929,9 +945,22 @@ export default function DashboardPage() {
             </div>
           )
         )}
+        </>
+        )}
       </div>
 
       <ScoreRubricModal open={rubricOpen} onClose={() => setRubricOpen(false)} />
+
+      {tour.open && (
+        <ProductTour
+          steps={tour.steps}
+          step={tour.step}
+          onStepChange={tour.goTo}
+          onDismiss={tour.dismiss}
+          onFinish={tour.complete}
+          onNavigate={tour.navigate}
+        />
+      )}
     </AppLayout>
   );
 }

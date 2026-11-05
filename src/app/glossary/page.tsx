@@ -68,6 +68,13 @@ export default function GlossaryPage() {
           <p className="text-body text-text-muted mt-1">
             Plain-English definitions of every number in MyProfitPulse.
           </p>
+          <Link
+            href="/dashboard?tour=restart"
+            className="inline-flex items-center gap-1.5 mt-sm text-body-sm font-medium text-orange hover:text-orange-light transition-colors"
+          >
+            <Icon icon="ph:compass-bold" className="w-4 h-4" aria-hidden="true" />
+            Take the product tour
+          </Link>
         </div>
 
         {/* Search */}
