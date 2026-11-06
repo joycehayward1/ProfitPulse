@@ -17,7 +17,7 @@ interface TutorialsUrlState {
 
 const SOURCE_TEXT: Record<TutorialsUrlSource, string> = {
   saved: "Using the address saved here.",
-  hidden: "The link is hidden. Nothing is saved here, or the saved address isn't a valid web address.",
+  hidden: "The link is hidden, because the saved address is empty or isn't a valid web address.",
   env: "Nothing is saved here yet, so it uses the address set in the site's environment settings.",
   default: "Nothing is saved here yet, so it uses the built-in default address.",
 };
