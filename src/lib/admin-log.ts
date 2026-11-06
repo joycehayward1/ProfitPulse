@@ -38,7 +38,9 @@ export type AdminActionType =
   | "cancel_subscription"
   | "switch_plan"
   | "refund_payment"
-  | "send_update_card_link";
+  | "send_update_card_link"
+  | "tutorials_url_update"
+  | "tutorials_url_reset";
 
 /**
  * Record an admin action in the audit log. Never throws — a logging failure

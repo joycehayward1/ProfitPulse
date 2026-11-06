@@ -9,6 +9,7 @@ import { useToast } from "@/components/ui/Toast";
 import { generateScenarioExplanation } from "@/lib/ai-insights";
 import { ArrowLeft, Hourglass, TrendingUp, AlertCircle } from "lucide-react";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
+import { toInputValue } from "@/lib/format-money";
 
 interface RunwayResult {
   currentCash: number;
@@ -33,6 +34,8 @@ export default function RunwayPage() {
   // Cash Runway inputs
   const [currentCash, setCurrentCash] = useState("");
   const [monthlyBurn, setMonthlyBurn] = useState("");
+  const [cashSource, setCashSource] = useState("");
+  const [burnSource, setBurnSource] = useState("");
   const [runwayResult, setRunwayResult] = useState<RunwayResult | null>(null);
   const [runwayAiLoading, setRunwayAiLoading] = useState(false);
   const [runwaySaving, setRunwaySaving] = useState(false);
@@ -52,11 +55,13 @@ export default function RunwayPage() {
         const { loadFinancialDefaults } = await import("@/lib/financial-defaults");
         const defaults = await loadFinancialDefaults(user.id);
 
-        if (defaults.latestCash) {
-          setCurrentCash(defaults.latestCash.toString());
+        if (defaults.cash.value) {
+          setCurrentCash(toInputValue(defaults.cash.value));
+          setCashSource(defaults.cash.source);
         }
-        if (defaults.latestMonthlyExpenses) {
-          setMonthlyBurn(defaults.latestMonthlyExpenses.toString());
+        if (defaults.monthlyExpenses.value) {
+          setMonthlyBurn(toInputValue(defaults.monthlyExpenses.value));
+          setBurnSource(defaults.monthlyExpenses.source);
         }
       } catch (error) {
         console.error('Error loading financial data:', error);
@@ -281,13 +286,18 @@ export default function RunwayPage() {
                       <input
                         type="number"
                         value={currentCash}
-                        onChange={(e) => setCurrentCash(e.target.value)}
+                        onChange={(e) => {
+                          setCurrentCash(e.target.value);
+                          setCashSource("");
+                        }}
                         className="w-full h-10 pl-8 pr-3 rounded-lg border border-[#E4E4E7] text-[14px] text-[#111111] focus:outline-none focus:border-[#E65100] focus:ring-2 focus:ring-[#E65100]/15 transition-all"
                         placeholder="50,000"
                       />
                     </div>
-                    <p className="text-[12px] text-[#8B8B8B] mt-1">
-                      Pulled from the cash on your balance sheet — type over it any time
+                    <p data-testid="cash-source" className="text-[12px] text-[#8B8B8B] mt-1">
+                      {cashSource
+                        ? `Cash on your balance sheet, ${cashSource} (a balance, not added up across months) — type over it any time`
+                        : "Pulled from the cash on your balance sheet — type over it any time"}
                     </p>
                   </div>
 
@@ -302,13 +312,16 @@ export default function RunwayPage() {
                       <input
                         type="number"
                         value={monthlyBurn}
-                        onChange={(e) => setMonthlyBurn(e.target.value)}
+                        onChange={(e) => {
+                          setMonthlyBurn(e.target.value);
+                          setBurnSource("");
+                        }}
                         className="w-full h-10 pl-8 pr-3 rounded-lg border border-[#E4E4E7] text-[14px] text-[#111111] focus:outline-none focus:border-[#E65100] focus:ring-2 focus:ring-[#E65100]/15 transition-all"
                         placeholder="8,000"
                       />
                     </div>
-                    <p className="text-[12px] text-[#8B8B8B] mt-1">
-                      Your total monthly expenses
+                    <p data-testid="burn-source" className="text-[12px] text-[#8B8B8B] mt-1">
+                      {burnSource ? `Your total monthly expenses, ${burnSource}` : "Your total monthly expenses"}
                     </p>
                   </div>
 

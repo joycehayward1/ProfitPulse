@@ -2,9 +2,30 @@
  * Tests for the AppLayout component.
  */
 
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { act, render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { AppLayout } from "../AppLayout";
 import { useAuth } from "@/contexts/AuthContext";
+import { resetTutorialsSettingsForTests, setSavedTutorialsUrl } from "@/lib/tutorials-settings";
+
+let savedSetting: { data: { value: string } | null; error: unknown } = { data: null, error: null };
+const mockSavedQuery = jest.fn();
+jest.mock("@/lib/insforge", () => ({
+  getAccessToken: jest.fn().mockResolvedValue(null),
+  getInsForgeClient: () => ({
+    database: {
+      from: (table: string) => ({
+        select: () => ({
+          eq: (column: string, key: string) => ({
+            maybeSingle: () => {
+              mockSavedQuery(table, column, key);
+              return Promise.resolve(savedSetting);
+            },
+          }),
+        }),
+      }),
+    },
+  }),
+}));
 
 // Mock next/navigation
 const mockPush = jest.fn();
@@ -196,6 +217,116 @@ describe("AppLayout", () => {
     // Settings section
     expect(screen.getAllByRole("link", { name: "Data" })[0]).toHaveAttribute("href", "/data");
     expect(screen.getAllByRole("link", { name: "Settings" })[0]).toHaveAttribute("href", "/settings");
+  });
+
+  describe("Tutorials link", () => {
+    const COMMUNITY =
+      "https://community.fusion4business.net/courses/products/cf34560e-fbf3-4779-878f-e747bf2ed247";
+    const original = process.env.NEXT_PUBLIC_TUTORIALS_URL;
+
+    beforeEach(() => {
+      resetTutorialsSettingsForTests();
+      savedSetting = { data: null, error: null };
+      delete process.env.NEXT_PUBLIC_TUTORIALS_URL;
+    });
+    afterEach(() => {
+      if (original === undefined) delete process.env.NEXT_PUBLIC_TUTORIALS_URL;
+      else process.env.NEXT_PUBLIC_TUTORIALS_URL = original;
+    });
+
+    const renderLayout = () =>
+      render(
+        <AppLayout>
+          <div>Test content</div>
+        </AppLayout>
+      );
+
+    it("opens the community tutorials page in a new tab by default, under Glossary", async () => {
+      renderLayout();
+
+      const link = (await screen.findAllByRole("link", { name: /tutorials/i }))[0];
+      expect(link).toHaveAttribute("href", COMMUNITY);
+      expect(link).toHaveAttribute("target", "_blank");
+      expect(link).toHaveAttribute("rel", "noopener noreferrer");
+
+      const helpNav = screen.getAllByRole("navigation", { name: "HELP" })[0];
+      const labels = Array.from(helpNav.querySelectorAll("a")).map((a) => a.textContent);
+      expect(labels[0]).toContain("Glossary");
+      expect(labels[1]).toContain("Tutorials");
+      expect(screen.getAllByRole("link", { name: "Glossary" })[0]).toHaveAttribute("href", "/glossary");
+    });
+
+    it("is hidden until the saved setting has loaded, so a removed link never flashes", async () => {
+      renderLayout();
+      expect(screen.queryByRole("link", { name: /tutorials/i })).not.toBeInTheDocument();
+      await screen.findAllByRole("link", { name: /tutorials/i });
+    });
+
+    it("uses the address an admin saved, ahead of the env fallback", async () => {
+      process.env.NEXT_PUBLIC_TUTORIALS_URL = "https://env.example.test/tutorials";
+      savedSetting = { data: { value: "https://saved.example.test/courses" }, error: null };
+      renderLayout();
+
+      const link = (await screen.findAllByRole("link", { name: /tutorials/i }))[0];
+      expect(link).toHaveAttribute("href", "https://saved.example.test/courses");
+    });
+
+    it("uses the env value only when nothing is saved", async () => {
+      process.env.NEXT_PUBLIC_TUTORIALS_URL = "https://env.example.test/tutorials";
+      renderLayout();
+
+      const link = (await screen.findAllByRole("link", { name: /tutorials/i }))[0];
+      expect(link).toHaveAttribute("href", "https://env.example.test/tutorials");
+    });
+
+    it("is hidden when an admin saved an empty address", async () => {
+      savedSetting = { data: { value: "" }, error: null };
+      renderLayout();
+
+      await waitFor(() => expect(mockSavedQuery).toHaveBeenCalled());
+      await waitFor(() => expect(screen.getAllByRole("link", { name: "Glossary" })[0]).toBeInTheDocument());
+      expect(screen.queryByRole("link", { name: /tutorials/i })).not.toBeInTheDocument();
+    });
+
+    it("is hidden when the saved value is not an http(s) URL", async () => {
+      savedSetting = { data: { value: "javascript:alert(1)" }, error: null };
+      renderLayout();
+
+      await waitFor(() => expect(mockSavedQuery).toHaveBeenCalled());
+      expect(screen.queryByRole("link", { name: /tutorials/i })).not.toBeInTheDocument();
+    });
+
+    it("falls back to the default when the setting can't be read", async () => {
+      savedSetting = { data: null, error: { message: "relation does not exist" } };
+      renderLayout();
+
+      const link = (await screen.findAllByRole("link", { name: /tutorials/i }))[0];
+      expect(link).toHaveAttribute("href", COMMUNITY);
+    });
+
+    it("updates when the admin screen saves a new address", async () => {
+      renderLayout();
+      await screen.findAllByRole("link", { name: /tutorials/i });
+
+      act(() => setSavedTutorialsUrl("https://changed.example.test/page"));
+      expect(screen.getAllByRole("link", { name: /tutorials/i })[0]).toHaveAttribute(
+        "href",
+        "https://changed.example.test/page"
+      );
+
+      act(() => setSavedTutorialsUrl(""));
+      expect(screen.queryByRole("link", { name: /tutorials/i })).not.toBeInTheDocument();
+    });
+
+    it("is also in the mobile menu", async () => {
+      renderLayout();
+      await screen.findAllByRole("link", { name: /tutorials/i });
+
+      fireEvent.click(screen.getByLabelText("Toggle menu"));
+      await waitFor(() => {
+        expect(screen.getAllByRole("link", { name: /tutorials/i })).toHaveLength(2);
+      });
+    });
   });
 
   it("renders fixed sidebar on desktop", () => {

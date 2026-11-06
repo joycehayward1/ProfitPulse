@@ -1,15 +1,15 @@
 import { getInsForgeAdmin } from "@/lib/insforge";
 import { adminSql } from "@/lib/admin-log";
-import { getResend, FROM_EMAIL, REPLY_TO_EMAIL } from "@/lib/resend";
+import { sendEmail, FROM_EMAIL, REPLY_TO_EMAIL } from "@/lib/resend";
 
 /**
- * Account lifecycle emails: payment declined, trial ending soon, trial ended.
- * Each is sent at most once per event, keyed in `email_log` by
- * (user, kind, ref) — so a retried webhook or a re-run of the daily job never
- * sends the same email twice.
+ * Account lifecycle emails: payment declined, trial ending soon, trial ended,
+ * plus the weekly summary. Each is sent at most once per event, keyed in
+ * `email_log` by (user, kind, ref) — so a retried webhook or a re-run of a
+ * cron job never sends the same email twice.
  */
 
-export type LifecycleKind = "payment_declined" | "trial_ending" | "trial_ended";
+export type LifecycleKind = "payment_declined" | "trial_ending" | "trial_ended" | "weekly_summary";
 
 const HOUR = 3_600_000;
 
@@ -115,35 +115,41 @@ export async function getUserEmail(userId: string): Promise<string | null> {
   return email && !email.endsWith("@deleted.invalid") ? email : null;
 }
 
-/**
- * Send an email once per (user, kind, ref). Claims the log row first so two
- * concurrent runs can't both send; releases it if the send fails so the next
- * run retries. Never throws. Returns true when this call sent the email.
- */
-export async function sendLifecycleEmailOnce(args: {
+export interface OnceEmail {
   userId: string;
   kind: LifecycleKind;
   ref: string;
   to: string;
   subject: string;
   html: string;
-}): Promise<boolean> {
+}
+
+/**
+ * Send an email once per (user, kind, ref). Claims the log row first so two
+ * concurrent runs can't both send; releases it if the send fails so the next
+ * run retries. Never throws.
+ *
+ * - "sent": this call sent it
+ * - "duplicate": the claim was refused (already sent, or the log is unavailable)
+ * - "failed": the send failed (including Resend returning an error) and the claim was released
+ */
+export async function sendEmailOnce(args: OnceEmail): Promise<"sent" | "duplicate" | "failed"> {
   const db = getInsForgeAdmin().database;
   try {
     const { error: claimError } = await db
       .from("email_log")
       .insert([{ user_id: args.userId, kind: args.kind, ref: args.ref }]);
-    if (claimError) return false; // already sent (unique key) or log unavailable
+    if (claimError) return "duplicate";
 
     try {
-      await getResend().emails.send({
+      await sendEmail({
         from: FROM_EMAIL,
         replyTo: REPLY_TO_EMAIL,
         to: args.to,
         subject: args.subject,
         html: args.html,
       });
-      return true;
+      return "sent";
     } catch (err) {
       console.error(`[lifecycle-email] ${args.kind} send failed for ${args.userId}:`, err);
       await db
@@ -152,12 +158,17 @@ export async function sendLifecycleEmailOnce(args: {
         .eq("user_id", args.userId)
         .eq("kind", args.kind)
         .eq("ref", args.ref);
-      return false;
+      return "failed";
     }
   } catch (err) {
     console.error(`[lifecycle-email] ${args.kind} failed for ${args.userId}:`, err);
-    return false;
+    return "failed";
   }
+}
+
+/** sendEmailOnce, as a boolean: true when this call sent the email. */
+export async function sendLifecycleEmailOnce(args: OnceEmail): Promise<boolean> {
+  return (await sendEmailOnce(args)) === "sent";
 }
 
 /** Email a customer that a renewal was declined (once per declined charge). */

@@ -147,12 +147,33 @@ Transactional email sends from **`hello@contact.myprofitpulse.app`** (domain `co
 RESEND_API_KEY=re_...
 ```
 
+### Go High Level (optional CRM sync)
+
+Every URL is optional. An unset variable skips that event silently, and a failed or slow webhook never blocks or fails the request that triggered it. The URLs contain tokens and are never logged.
+
+```env
+GHL_SIGNUP_WEBHOOK_URL=...             # new sign-ups (includes trial_end_date)
+GHL_PURCHASE_WEBHOOK_URL=...           # successful subscription payment (/api/payments/subscribe)
+GHL_TRIAL_UPDATE_WEBHOOK_URL=...       # trial started (real end date) or extended by an admin
+GHL_CANCEL_WEBHOOK_URL=...             # subscription cancelled (user, admin, or Authorize.net)
+```
+
 ### Cron + admin
 
 ```env
 CRON_SECRET=...                        # required header for /api/cron/* invocations
 ADMIN_EMAILS=joyce@fusion4business.com,...   # comma-separated allow-list for /admin
 ```
+
+Without `CRON_SECRET`, Vercel calls the cron routes without an `Authorization` header and every run is rejected with 401. To preview who the weekly summary would reach without sending anything, call `GET /api/cron/weekly-summary?dryRun=1` (optionally `&email=<address>`) with `Authorization: Bearer <CRON_SECRET>`.
+
+### Help links
+
+```env
+NEXT_PUBLIC_TUTORIALS_URL=...          # optional fallback for the "Tutorials" nav link; admins change the address in Admin Panel > Settings, which wins over this
+```
+
+Set at build time, so redeploy after changing it. See `docs/MVP_FOLLOWUP_NOV4.md` for the community login caveats, the weekly-summary activation steps and the GHL lifecycle setup.
 
 ## Database
 

@@ -5,7 +5,12 @@ const mockAdminSql = jest.fn();
 let trialRows: { user_id: string; trial_end_date: string }[] = [];
 
 jest.mock("../resend", () => ({
-  getResend: () => ({ emails: { send: (...a: unknown[]) => mockSend(...a) } }),
+  // Mirrors the real helper: a Resend `{ error }` result becomes a throw.
+  sendEmail: async (...a: unknown[]) => {
+    const result = await mockSend(...a);
+    if (result?.error) throw new Error(result.error.name);
+    return result?.data?.id ?? null;
+  },
   FROM_EMAIL: "from@example.com",
   REPLY_TO_EMAIL: "reply@example.com",
 }));
@@ -32,7 +37,7 @@ jest.mock("../insforge", () => ({
   }),
 }));
 
-import { sendLifecycleEmailOnce, sendTrialEmails, paymentDeclinedEmail } from "../lifecycle-emails";
+import { sendEmailOnce, sendLifecycleEmailOnce, sendTrialEmails, paymentDeclinedEmail } from "../lifecycle-emails";
 
 const HOUR = 3_600_000;
 const inHours = (h: number) => new Date(Date.now() + h * HOUR).toISOString();
@@ -63,6 +68,17 @@ describe("sendLifecycleEmailOnce", () => {
     mockSend.mockRejectedValue(new Error("resend down"));
     expect(await sendLifecycleEmailOnce(email)).toBe(false);
     expect(mockDelete).toHaveBeenCalled();
+  });
+
+  it("treats a Resend error result as a failed send and releases the claim", async () => {
+    mockSend.mockResolvedValue({ data: null, error: { name: "validation_error", message: "domain not verified" } });
+    expect(await sendEmailOnce(email)).toBe("failed");
+    expect(mockDelete).toHaveBeenCalled();
+  });
+
+  it("reports a refused claim as a duplicate", async () => {
+    mockInsert.mockReturnValue({ error: { code: "23505" } });
+    expect(await sendEmailOnce(email)).toBe("duplicate");
   });
 });
 

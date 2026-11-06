@@ -6,6 +6,7 @@ import { InfoTooltip } from "@/components/ui/MetricTooltip";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import type { FinancialSnapshot } from "@/lib/database.types";
+import { addMonths, monthLabel, normalizeMonthly, previousMonth, sameMonthLastYear } from "@/lib/financial-periods";
 import {
   LineChart,
   Line,
@@ -38,16 +39,6 @@ function formatRatio(value: number | null, suffix = ""): string {
 function formatPercent(value: number | null): string {
   if (value === null) return "—";
   return `${value.toFixed(1)}%`;
-}
-
-function formatMonthLabel(dateStr: string): string {
-  const date = new Date(dateStr);
-  return date.toLocaleDateString("en-US", { month: "short", year: "2-digit" });
-}
-
-function formatPeriodLabel(dateStr: string): string {
-  const date = new Date(dateStr);
-  return date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
 }
 
 interface KPICardProps {
@@ -116,13 +107,14 @@ interface TableRowData {
   tooltip?: string;
 }
 
-function SummaryTable({ rows }: { rows: TableRowData[] }) {
+function SummaryTable({ rows, asOfLabel, priorYearLabel }: { rows: TableRowData[]; asOfLabel: string; priorYearLabel: string }) {
   return (
     <div className="bg-surface rounded-xl border border-border-light shadow-card overflow-hidden">
       <div className="px-lg py-md border-b border-border">
         <h3 className="text-[20px] font-semibold text-text-primary">
           Balance Sheet Summary
         </h3>
+        <p className="text-[13px] text-text-muted mt-0.5">Balances as of the end of {asOfLabel}. Balances are never added up across months.</p>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full">
@@ -132,10 +124,10 @@ function SummaryTable({ rows }: { rows: TableRowData[] }) {
                 Account
               </th>
               <th className="text-right px-lg py-2.5 text-[12px] font-semibold uppercase tracking-wider text-text-muted">
-                Current Period
+                As of {asOfLabel}
               </th>
               <th className="text-right px-lg py-2.5 text-[12px] font-semibold uppercase tracking-wider text-text-muted">
-                Prior Year
+                {priorYearLabel}
               </th>
               <th className="text-right px-lg py-2.5 text-[12px] font-semibold uppercase tracking-wider text-text-muted">
                 Variance
@@ -232,49 +224,33 @@ export default function BalanceSheetPage() {
     fetchSnapshots();
   }, [user]);
 
-  const currentSnapshot = snapshots[selectedPeriodIndex] || null;
+  const monthly = useMemo(() => normalizeMonthly(snapshots), [snapshots]);
+  const periods = useMemo(() => [...monthly.months].reverse(), [monthly]);
+  const selectedMonth = periods[selectedPeriodIndex]?.month ?? null;
+  const currentSnapshot = periods[selectedPeriodIndex]?.snapshot ?? null;
 
-  // Find prior year snapshot (12 months back)
-  const priorYearSnapshot = useMemo(() => {
-    if (!currentSnapshot) return null;
-    const currentDate = new Date(currentSnapshot.period_date);
-    const priorYearDate = new Date(currentDate);
-    priorYearDate.setFullYear(priorYearDate.getFullYear() - 1);
-
-    return (
-      snapshots.find((s) => {
-        const sDate = new Date(s.period_date);
-        return (
-          sDate.getMonth() === priorYearDate.getMonth() &&
-          sDate.getFullYear() === priorYearDate.getFullYear()
-        );
-      }) || null
-    );
-  }, [currentSnapshot, snapshots]);
-
-  // Find prior period snapshot (previous month)
-  const priorPeriodSnapshot = snapshots[selectedPeriodIndex + 1] || null;
+  // Balances as of the same month last year and the calendar month before
+  const priorYearSnapshot = selectedMonth ? sameMonthLastYear(monthly, selectedMonth).record?.snapshot ?? null : null;
+  const priorPeriodSnapshot = selectedMonth ? previousMonth(monthly, selectedMonth).record?.snapshot ?? null : null;
 
   // Compute KPI changes
   const computeChange = (
-    current: number | null,
-    prior: number | null
+    current: number | null | undefined,
+    prior: number | null | undefined
   ): number | null => {
+    if (current == null || prior == null) return null;
     if (current === null || prior === null || prior === 0) return null;
     return ((current - prior) / Math.abs(prior)) * 100;
   };
 
   // Chart data (reversed for chronological order)
   const chartData = useMemo(() => {
-    return [...snapshots]
-      .reverse()
-      .slice(-12)
-      .map((s) => ({
-        month: formatMonthLabel(s.period_date),
-        currentRatio: s.current_ratio ?? 0,
-        workingCapital: s.working_capital ?? 0,
-      }));
-  }, [snapshots]);
+    return monthly.months.slice(-12).map(({ month, snapshot }) => ({
+      month: monthLabel(month, "short"),
+      currentRatio: snapshot.current_ratio ?? null,
+      workingCapital: snapshot.working_capital ?? null,
+    }));
+  }, [monthly]);
 
   // Table rows
   const tableRows: TableRowData[] = useMemo(() => {
@@ -352,7 +328,7 @@ export default function BalanceSheetPage() {
   }
 
   // Empty state
-  if (snapshots.length === 0) {
+  if (periods.length === 0) {
     return (
       <AppLayout>
         <div className="space-y-xl">
@@ -429,9 +405,9 @@ export default function BalanceSheetPage() {
                 backgroundSize: "16px",
               }}
             >
-              {snapshots.map((snapshot, idx) => (
-                <option key={snapshot.id} value={idx}>
-                  {formatPeriodLabel(snapshot.period_date)}
+              {periods.map((p, idx) => (
+                <option key={p.month} value={idx}>
+                  {monthLabel(p.month)}
                 </option>
               ))}
             </select>
@@ -444,7 +420,7 @@ export default function BalanceSheetPage() {
             label="Current Ratio"
             value={formatRatio(currentSnapshot?.current_ratio)}
             change={computeChange(currentSnapshot?.current_ratio, priorPeriodSnapshot?.current_ratio)}
-            changeLabel="vs prior period"
+            changeLabel={selectedMonth ? `vs ${monthLabel(addMonths(selectedMonth, -1), "short")}` : "vs prior month"}
             isHealthy={(currentSnapshot?.current_ratio ?? 0) >= 2}
             icon="ph:scales-bold"
             tooltip="Current assets divided by current liabilities. Above 2.0 means you can comfortably cover short-term debts."
@@ -453,7 +429,7 @@ export default function BalanceSheetPage() {
             label="Working Capital"
             value={formatCurrency(currentSnapshot?.working_capital)}
             change={computeChange(currentSnapshot?.working_capital, priorPeriodSnapshot?.working_capital)}
-            changeLabel="vs prior period"
+            changeLabel={selectedMonth ? `vs ${monthLabel(addMonths(selectedMonth, -1), "short")}` : "vs prior month"}
             isHealthy={(currentSnapshot?.working_capital ?? 0) > 0}
             icon="ph:wallet-bold"
             tooltip="Current assets minus current liabilities. Positive means you have enough to fund day-to-day operations."
@@ -462,7 +438,7 @@ export default function BalanceSheetPage() {
             label="ROA"
             value={formatPercent(currentSnapshot?.roa)}
             change={computeChange(currentSnapshot?.roa, priorPeriodSnapshot?.roa)}
-            changeLabel="vs prior period"
+            changeLabel={selectedMonth ? `vs ${monthLabel(addMonths(selectedMonth, -1), "short")}` : "vs prior month"}
             isHealthy={(currentSnapshot?.roa ?? 0) > 5}
             icon="ph:chart-pie-bold"
             tooltip="Return on Assets — how efficiently your business uses its assets to generate profit. Higher is better."
@@ -471,7 +447,7 @@ export default function BalanceSheetPage() {
             label="ROE"
             value={formatPercent(currentSnapshot?.roe)}
             change={computeChange(currentSnapshot?.roe, priorPeriodSnapshot?.roe)}
-            changeLabel="vs prior period"
+            changeLabel={selectedMonth ? `vs ${monthLabel(addMonths(selectedMonth, -1), "short")}` : "vs prior month"}
             isHealthy={(currentSnapshot?.roe ?? 0) > 10}
             icon="ph:trend-up-bold"
             tooltip="Return on Equity — how much profit you generate for each dollar of owner's equity. Higher means better returns."
@@ -479,7 +455,11 @@ export default function BalanceSheetPage() {
         </div>
 
         {/* Summary Table */}
-        <SummaryTable rows={tableRows} />
+        <SummaryTable
+          rows={tableRows}
+          asOfLabel={selectedMonth ? monthLabel(selectedMonth) : ""}
+          priorYearLabel={selectedMonth ? monthLabel(addMonths(selectedMonth, -12), "short") : "Prior Year"}
+        />
 
         {/* Charts Grid */}
         <div className="grid gap-md lg:grid-cols-2">
@@ -489,7 +469,7 @@ export default function BalanceSheetPage() {
               <h3 className="text-[20px] font-semibold text-text-primary">
                 Current Ratio Trend
               </h3>
-              <p className="text-[13px] text-text-muted mt-0.5">Last 12 periods</p>
+              <p className="text-[13px] text-text-muted mt-0.5">Last 12 saved months</p>
             </div>
             <div className="h-[280px]">
               <ResponsiveContainer width="100%" height="100%">
@@ -548,7 +528,7 @@ export default function BalanceSheetPage() {
               <h3 className="text-[20px] font-semibold text-text-primary">
                 Working Capital Trend
               </h3>
-              <p className="text-[13px] text-text-muted mt-0.5">Last 12 periods</p>
+              <p className="text-[13px] text-text-muted mt-0.5">Last 12 saved months</p>
             </div>
             <div className="h-[280px]">
               <ResponsiveContainer width="100%" height="100%">
@@ -586,7 +566,7 @@ export default function BalanceSheetPage() {
                     {chartData.map((entry, index) => (
                       <Cell
                         key={`cell-${index}`}
-                        fill={entry.workingCapital >= 0 ? "#E65100" : "#DC2626"}
+                        fill={(entry.workingCapital ?? 0) >= 0 ? "#E65100" : "#DC2626"}
                       />
                     ))}
                   </Bar>

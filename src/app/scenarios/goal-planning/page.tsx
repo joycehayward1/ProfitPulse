@@ -9,20 +9,25 @@ import { useToast } from "@/components/ui/Toast";
 import { generateScenarioExplanation } from "@/lib/ai-insights";
 import { ArrowLeft, Flag, TrendingUp } from "lucide-react";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
+import type { FinancialDefaults } from "@/lib/financial-defaults";
+import { buildGoalBaseline, computeGoal, type GoalComputation } from "@/lib/goal-planning";
+import { changeTone, listMonths, makeMonthKey, monthLabel, monthRangeLabel, normalizeMonthly } from "@/lib/financial-periods";
+import { formatMoney, toInputValue } from "@/lib/format-money";
 
-interface GoalResult {
+interface GoalResult extends GoalComputation {
   annualGoal: number;
   currentMonthlyRevenue: number;
   currentMonthlyExpenses: number;
-  ytdRevenue: number;
-  ytdExpenses: number;
   monthsRemaining: number;
-  requiredMonthly: number;
-  currentMonthlyProfit: number;
-  ytdProfit: number;
-  progressPercent: number;
-  status: "healthy" | "attention" | "critical";
+  /** YTD figures exactly as typed (null when left blank). */
+  enteredYtdRevenue: number | null;
+  enteredYtdExpenses: number | null;
   explanation: string | null;
+}
+
+function parseAmount(value: string): number | null {
+  const n = parseFloat(value);
+  return Number.isFinite(n) && n > 0 ? n : null;
 }
 
 export default function GoalPlanningPage() {
@@ -36,7 +41,9 @@ export default function GoalPlanningPage() {
   const [currentMonthlyExpenses, setCurrentMonthlyExpenses] = useState("");
   const [ytdRevenue, setYtdRevenue] = useState("");
   const [ytdExpenses, setYtdExpenses] = useState("");
-  const [monthsRemaining, setMonthsRemaining] = useState(0);
+  const [monthsRemaining, setMonthsRemaining] = useState(() => buildGoalBaseline(normalizeMonthly([])).monthsRemaining);
+  const [defaults, setDefaults] = useState<FinancialDefaults | null>(null);
+  const [edited, setEdited] = useState<Record<string, boolean>>({});
 
   // Results
   const [result, setResult] = useState<GoalResult | null>(null);
@@ -49,42 +56,32 @@ export default function GoalPlanningPage() {
 
       try {
         const { loadFinancialDefaults } = await import("@/lib/financial-defaults");
-        const defaults = await loadFinancialDefaults(user.id);
+        const loaded = await loadFinancialDefaults(user.id);
+        setDefaults(loaded);
 
-        // Pre-fill from the data the user already gave us — average monthly
-        // figures and YTD totals. Everything stays editable.
-        if (defaults.avgMonthlyRevenue) {
-          setCurrentMonthly(defaults.avgMonthlyRevenue.toString());
-        }
-        if (defaults.avgMonthlyExpenses) {
-          setCurrentMonthlyExpenses(defaults.avgMonthlyExpenses.toString());
-        }
-        if (defaults.ytdRevenue) {
-          setYtdRevenue(Math.round(defaults.ytdRevenue).toString());
-        }
-        if (defaults.ytdExpenses) {
-          setYtdExpenses(Math.round(defaults.ytdExpenses).toString());
-        }
+        // Pre-fill from the data the user already gave us. Everything stays editable.
+        if (loaded.monthlyRevenue.value) setCurrentMonthly(toInputValue(loaded.monthlyRevenue.value));
+        if (loaded.monthlyExpenses.value) setCurrentMonthlyExpenses(toInputValue(loaded.monthlyExpenses.value));
+        if (loaded.goal.revenueSoFar) setYtdRevenue(toInputValue(loaded.goal.revenueSoFar));
+        if (loaded.goal.expensesSoFar) setYtdExpenses(toInputValue(loaded.goal.expensesSoFar));
+        setMonthsRemaining(loaded.goal.monthsRemaining);
       } catch (error) {
         console.error('Error loading financial data:', error);
       }
     }
 
-    // Calculate months remaining in fiscal year (defaults to calendar year-end)
-    const now = new Date();
-    const yearEnd = new Date(now.getFullYear(), 11, 31);
-    const monthsLeft = Math.max(1, Math.ceil((yearEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30)));
-    setMonthsRemaining(monthsLeft);
-
     loadFinancialData();
   }, [user]);
+
+  const baseline = defaults?.goal ?? null;
+  const markEdited = (field: string) => setEdited((prev) => ({ ...prev, [field]: true }));
 
   const handleCalculate = async () => {
     const goal = parseFloat(annualGoal);
     const monthly = parseFloat(currentMonthly);
     const monthlyExpenses = parseFloat(currentMonthlyExpenses) || 0;
-    const ytdRev = parseFloat(ytdRevenue) || 0;
-    const ytdExp = parseFloat(ytdExpenses) || 0;
+    const enteredYtdRevenue = parseAmount(ytdRevenue);
+    const enteredYtdExpenses = parseAmount(ytdExpenses);
     const months = monthsRemaining;
 
     if (!goal || goal <= 0) {
@@ -97,46 +94,28 @@ export default function GoalPlanningPage() {
       return;
     }
 
-    if (!months || months <= 0) {
-      showToast('error', 'Please enter months remaining');
+    if (!months || months <= 0 || months > 12) {
+      showToast('error', 'Months remaining must be between 1 and 12');
       return;
     }
 
-    // Use actual YTD revenue if provided, otherwise estimate from monthly
-    const currentMonth = new Date().getMonth() + 1;
-    const monthsElapsed = currentMonth;
-    const revenueSoFar = ytdRev > 0 ? ytdRev : monthly * monthsElapsed;
-    const remaining = goal - revenueSoFar;
-    const requiredMonthly = Math.max(0, remaining / months);
-
-    const progressPercent = Math.min((revenueSoFar / goal) * 100, 100);
-    const currentMonthlyProfit = monthly - monthlyExpenses;
-    const ytdProfit = ytdRev > 0 && ytdExp > 0 ? ytdRev - ytdExp : currentMonthlyProfit * monthsElapsed;
-
-    // Determine status based on required growth
-    const growthRequired = ((requiredMonthly - monthly) / monthly) * 100;
-    let status: "healthy" | "attention" | "critical";
-
-    if (progressPercent >= 80 || growthRequired <= 10) {
-      status = "healthy";
-    } else if (growthRequired <= 30) {
-      status = "attention";
-    } else {
-      status = "critical";
-    }
+    const computed = computeGoal({
+      annualGoal: goal,
+      monthlyRevenue: monthly,
+      monthlyExpenses,
+      ytdRevenue: enteredYtdRevenue ?? 0,
+      ytdExpenses: enteredYtdExpenses ?? 0,
+      monthsRemaining: months,
+    });
 
     setResult({
+      ...computed,
       annualGoal: goal,
       currentMonthlyRevenue: monthly,
       currentMonthlyExpenses: monthlyExpenses,
-      ytdRevenue: revenueSoFar,
-      ytdExpenses: ytdExp > 0 ? ytdExp : monthlyExpenses * monthsElapsed,
-      monthsRemaining: months,
-      requiredMonthly,
-      currentMonthlyProfit,
-      ytdProfit,
-      progressPercent,
-      status,
+      monthsRemaining: 12 - computed.monthsElapsed,
+      enteredYtdRevenue,
+      enteredYtdExpenses,
       explanation: null,
     });
 
@@ -148,16 +127,16 @@ export default function GoalPlanningPage() {
         annualGoal: goal,
         currentMonthlyRevenue: monthly,
         currentMonthlyExpenses: monthlyExpenses,
-        ytdRevenue: revenueSoFar,
-        ytdExpenses: ytdExp > 0 ? ytdExp : monthlyExpenses * monthsElapsed,
-        monthsRemaining: months,
+        ytdRevenue: computed.revenueSoFar,
+        ytdExpenses: computed.expensesSoFar,
+        monthsRemaining: 12 - computed.monthsElapsed,
       },
       {
-        requiredMonthly,
-        progressPercent,
-        growthRequired,
-        currentMonthlyProfit,
-        ytdProfit,
+        requiredMonthly: computed.requiredMonthly,
+        progressPercent: computed.progressPercent,
+        growthRequired: computed.growthRequired,
+        currentMonthlyProfit: computed.currentMonthlyProfit,
+        ytdProfit: computed.ytdProfit,
       }
     );
 
@@ -190,8 +169,8 @@ export default function GoalPlanningPage() {
             annualGoal: result.annualGoal,
             currentMonthlyRevenue: result.currentMonthlyRevenue,
             currentMonthlyExpenses: result.currentMonthlyExpenses,
-            ytdRevenue: result.ytdRevenue,
-            ytdExpenses: result.ytdExpenses,
+            ytdRevenue: result.enteredYtdRevenue,
+            ytdExpenses: result.enteredYtdExpenses,
             monthsRemaining: result.monthsRemaining,
           },
           result: {
@@ -199,8 +178,13 @@ export default function GoalPlanningPage() {
             progressPercent: result.progressPercent,
             currentMonthlyProfit: result.currentMonthlyProfit,
             ytdProfit: result.ytdProfit,
+            revenueSoFar: result.revenueSoFar,
+            revenueSoFarSource: result.revenueSoFarSource,
+            expensesSoFar: result.expensesSoFar,
+            expensesSoFarSource: result.expensesSoFarSource,
+            monthsElapsed: result.monthsElapsed,
             status: result.status,
-            summary: `To hit $${result.annualGoal.toLocaleString()} by year-end, you need $${Math.round(result.requiredMonthly).toLocaleString()}/month`,
+            summary: `To hit ${formatMoney(result.annualGoal)} by year-end, you need ${formatMoney(Math.round(result.requiredMonthly))}/month`,
           },
           ai_explanation: result.explanation,
         }]);
@@ -217,14 +201,14 @@ export default function GoalPlanningPage() {
     }
   };
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value);
-  };
+  const formatCurrency = formatMoney;
+
+  const ytdHint = (() => {
+    if (!baseline || baseline.source === "none") return "Add up your income since January 1 — leave blank to estimate it from your monthly figure";
+    if (baseline.source === "entered_ytd") return "The year-to-date figure you entered — adjust if needed";
+    const covered = baseline.coveredThrough ? monthRangeLabel(makeMonthKey(baseline.year, 1), baseline.coveredThrough) : "";
+    return `Added up from your saved months, ${covered} — adjust if needed`;
+  })();
 
   return (
     <AppLayout>
@@ -291,13 +275,15 @@ export default function GoalPlanningPage() {
                     <input
                       type="number"
                       value={currentMonthly}
-                      onChange={(e) => setCurrentMonthly(e.target.value)}
+                      onChange={(e) => { setCurrentMonthly(e.target.value); markEdited("monthly"); }}
                       className="w-full h-10 pl-8 pr-3 rounded-lg border border-[#E4E4E7] text-[14px] text-[#111111] focus:outline-none focus:border-[#E65100] focus:ring-2 focus:ring-[#E65100]/15 transition-all"
                       placeholder="35,000"
                     />
                   </div>
                   <p className="text-[12px] text-[#8B8B8B] mt-1">
-                    Auto-filled from your average monthly revenue when you have data — adjust if needed
+                    {!edited.monthly && defaults?.monthlyRevenue.source
+                      ? `Pre-filled with your ${defaults.monthlyRevenue.source} — adjust if needed`
+                      : "Auto-filled from your average monthly revenue when you have data — adjust if needed"}
                   </p>
                 </div>
 
@@ -313,13 +299,15 @@ export default function GoalPlanningPage() {
                     <input
                       type="number"
                       value={currentMonthlyExpenses}
-                      onChange={(e) => setCurrentMonthlyExpenses(e.target.value)}
+                      onChange={(e) => { setCurrentMonthlyExpenses(e.target.value); markEdited("expenses"); }}
                       className="w-full h-10 pl-8 pr-3 rounded-lg border border-[#E4E4E7] text-[14px] text-[#111111] focus:outline-none focus:border-[#E65100] focus:ring-2 focus:ring-[#E65100]/15 transition-all"
                       placeholder="20,000"
                     />
                   </div>
                   <p className="text-[12px] text-[#8B8B8B] mt-1">
-                    Auto-filled from your average monthly expenses when you have data — adjust if needed
+                    {!edited.expenses && defaults?.monthlyExpenses.source
+                      ? `Pre-filled with your ${defaults.monthlyExpenses.source} — adjust if needed`
+                      : "Auto-filled from your average monthly expenses when you have data — adjust if needed"}
                   </p>
                 </div>
 
@@ -335,13 +323,13 @@ export default function GoalPlanningPage() {
                     <input
                       type="number"
                       value={ytdRevenue}
-                      onChange={(e) => setYtdRevenue(e.target.value)}
+                      onChange={(e) => { setYtdRevenue(e.target.value); markEdited("ytdRevenue"); }}
                       className="w-full h-10 pl-8 pr-3 rounded-lg border border-[#E4E4E7] text-[14px] text-[#111111] focus:outline-none focus:border-[#E65100] focus:ring-2 focus:ring-[#E65100]/15 transition-all"
                       placeholder="70,000"
                     />
                   </div>
                   <p className="text-[12px] text-[#8B8B8B] mt-1">
-                    Added up from the months you&apos;ve entered — adjust if needed
+                    {edited.ytdRevenue ? "Your figure — leave blank to estimate it from your monthly revenue" : ytdHint}
                   </p>
                 </div>
 
@@ -357,15 +345,31 @@ export default function GoalPlanningPage() {
                     <input
                       type="number"
                       value={ytdExpenses}
-                      onChange={(e) => setYtdExpenses(e.target.value)}
+                      onChange={(e) => { setYtdExpenses(e.target.value); markEdited("ytdExpenses"); }}
                       className="w-full h-10 pl-8 pr-3 rounded-lg border border-[#E4E4E7] text-[14px] text-[#111111] focus:outline-none focus:border-[#E65100] focus:ring-2 focus:ring-[#E65100]/15 transition-all"
                       placeholder="40,000"
                     />
                   </div>
                   <p className="text-[12px] text-[#8B8B8B] mt-1">
-                    Added up from the months you&apos;ve entered — adjust if needed
+                    {edited.ytdExpenses ? "Your figure — leave blank to estimate it from your monthly expenses" : ytdHint}
                   </p>
                 </div>
+
+                {baseline && (baseline.missingMonths.length > 0 || baseline.unsavedPastMonths.length > 0) && (
+                  <div data-testid="ytd-coverage" className="rounded-lg bg-[#FFF7F2] border border-[#FCD9C2] p-3 space-y-1">
+                    {baseline.missingMonths.length > 0 && (
+                      <p className="text-[12px] text-[#4B4B4B]">
+                        {listMonths(baseline.missingMonths)} {baseline.missingMonths.length === 1 ? "isn't" : "aren't"} saved, so {baseline.missingMonths.length === 1 ? "it is" : "they are"} not in the year-to-date total.
+                      </p>
+                    )}
+                    {baseline.unsavedPastMonths.length > 0 && baseline.coveredThrough && (
+                      <p className="text-[12px] text-[#4B4B4B]">
+                        {monthRangeLabel(baseline.unsavedPastMonths[0], baseline.unsavedPastMonths[baseline.unsavedPastMonths.length - 1])}{" "}
+                        {baseline.unsavedPastMonths.length === 1 ? "is" : "are"} over but not saved yet. Year to date runs through {monthLabel(baseline.coveredThrough)}, so the target assumes nothing was earned since. Save those months on the Data page for an accurate target.
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 {/* Months Remaining in Fiscal Year */}
                 <div>
@@ -382,7 +386,9 @@ export default function GoalPlanningPage() {
                     placeholder="6"
                   />
                   <p className="text-[12px] text-[#8B8B8B] mt-1">
-                    Auto-calculated to calendar year-end (adjust for your fiscal year)
+                    {monthsRemaining >= 1 && monthsRemaining <= 12
+                      ? `${12 - monthsRemaining} of 12 months done, ${monthsRemaining} left including this one. Uses the calendar year (January–December); adjust if your year ends differently.`
+                      : "Enter a number from 1 to 12"}
                   </p>
                 </div>
 
@@ -464,14 +470,20 @@ export default function GoalPlanningPage() {
                         <div className="bg-[#F4F4F5] rounded-lg p-3">
                           <p className="text-[12px] text-[#8B8B8B] mb-0.5">YTD revenue</p>
                           <p className="text-[16px] font-semibold text-[#111111] tabular-nums">
-                            {formatCurrency(result.ytdRevenue)}
+                            {formatCurrency(result.revenueSoFar)}
                           </p>
+                          {result.revenueSoFarSource === "estimated" && (
+                            <p className="text-[11px] text-[#8B8B8B]">Estimate: monthly × {result.monthsElapsed} months</p>
+                          )}
                         </div>
                         <div className="bg-[#F4F4F5] rounded-lg p-3">
                           <p className="text-[12px] text-[#8B8B8B] mb-0.5">YTD expenses</p>
                           <p className="text-[16px] font-semibold text-[#111111] tabular-nums">
-                            {formatCurrency(result.ytdExpenses)}
+                            {formatCurrency(result.expensesSoFar)}
                           </p>
+                          {result.expensesSoFarSource === "estimated" && (
+                            <p className="text-[11px] text-[#8B8B8B]">Estimate: monthly × {result.monthsElapsed} months</p>
+                          )}
                         </div>
                         <div className="bg-[#F4F4F5] rounded-lg p-3">
                           <p className="text-[12px] text-[#8B8B8B] mb-0.5">Monthly profit</p>
@@ -501,7 +513,7 @@ export default function GoalPlanningPage() {
                             <span className="font-semibold text-[#E65100]">
                               {formatCurrency(result.requiredMonthly - result.currentMonthlyRevenue)}/month
                             </span>
-                            {' '}({Math.round(((result.requiredMonthly - result.currentMonthlyRevenue) / result.currentMonthlyRevenue) * 100)}% increase)
+                            {result.growthRequired !== null && <>{' '}({Math.round(result.growthRequired)}% increase)</>}
                           </p>
                         </div>
                       )}
@@ -571,6 +583,46 @@ export default function GoalPlanningPage() {
               )}
             </div>
           </div>
+
+          {baseline && baseline.months.length > 0 && (
+            <div data-testid="goal-months" className="bg-white rounded-xl border border-[#F0F0F2] shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-6">
+              <h2 className="text-[16px] font-semibold text-[#111111]">Month by month, {baseline.year}</h2>
+              <p className="text-[12px] text-[#8B8B8B] mt-0.5 mb-4">
+                Income from your saved months, with each month compared with the one before and the running total since January.
+              </p>
+              <div className="overflow-x-auto">
+                <table className="w-full text-[13px]">
+                  <thead>
+                    <tr className="border-b border-[#F0F0F2] text-[11px] uppercase tracking-wider text-[#8B8B8B]">
+                      <th className="text-left py-2 pr-3 font-semibold">Month</th>
+                      <th className="text-right py-2 px-3 font-semibold">Income</th>
+                      <th className="text-right py-2 px-3 font-semibold">vs month before</th>
+                      <th className="text-right py-2 pl-3 font-semibold">Running total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {baseline.months.map((m) => {
+                      const tone = changeTone(m.changeFromPrevious, true);
+                      return (
+                        <tr key={m.month} className="border-b border-[#F0F0F2] last:border-b-0">
+                          <td className="py-2 pr-3 text-[#111111]">{monthLabel(m.month)}</td>
+                          <td className="py-2 px-3 text-right tabular-nums text-[#111111]">
+                            {m.income === null ? <span className="text-[#8B8B8B]">Not saved</span> : formatCurrency(m.income)}
+                          </td>
+                          <td className={`py-2 px-3 text-right tabular-nums ${tone === "good" ? "text-[#16A34A]" : tone === "bad" ? "text-[#DC2626]" : "text-[#8B8B8B]"}`}>
+                            {m.changeFromPrevious === null
+                              ? "—"
+                              : `${m.changeFromPrevious > 0 ? "▲" : m.changeFromPrevious < 0 ? "▼" : ""} ${Math.abs(m.changeFromPrevious).toFixed(1)}%`}
+                          </td>
+                          <td className="py-2 pl-3 text-right tabular-nums font-medium text-[#111111]">{formatCurrency(m.cumulative)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </AppLayout>

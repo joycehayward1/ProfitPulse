@@ -11,6 +11,8 @@ import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { getAccessToken, getInsForgeClient } from "@/lib/insforge";
 import type { FinancialSnapshot } from "@/lib/database.types";
 import { authFetch } from "@/lib/auth-fetch";
+import { listMonths } from "@/lib/financial-periods";
+import { normalizeUploadPeriods } from "@/lib/upload-periods";
 
 type Tab = "manual" | "upload" | "quickbooks";
 
@@ -1370,21 +1372,18 @@ function DataContent() {
       const { getInsForgeClient: getClient } = await import("@/lib/insforge");
       const client = getClient();
 
-      const snapshotRows = parsedSnapshots.map((snap) => {
-        let periodDate = snap.period_date;
-        if (periodDate) {
-          const d = new Date(periodDate);
-          if (!isNaN(d.getTime())) {
-            const year = d.getFullYear();
-            const month = d.getMonth() + 1;
-            const lastDay = new Date(year, month, 0).getDate();
-            periodDate = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
-          }
-        }
+      const { rows: monthRows, duplicateMonths } = normalizeUploadPeriods(parsedSnapshots);
+      if (duplicateMonths.length > 0) {
+        showToast(
+          "info",
+          `${listMonths(duplicateMonths)} appeared more than once in this file; the last one was saved.`
+        );
+      }
 
+      const snapshotRows = monthRows.map((snap) => {
         return {
           user_id: user.id,
-          period_date: periodDate,
+          period_date: snap.period_date,
           data_source: "spreadsheet",
           total_income: snap.total_income,
           gross_profit: snap.gross_profit,

@@ -5,6 +5,7 @@ import { Icon } from "@iconify/react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { useToast } from "@/components/ui";
+import { TutorialsUrlSettings } from "./TutorialsUrlSettings";
 import { UserDetailDrawer, statusDot, type BillingRequest } from "./UserDetailDrawer";
 import {
   ACCESS_REASON_LABELS,
@@ -56,7 +57,7 @@ interface CompedEmail {
   claimed_by: string | null;
 }
 
-type Tab = "people" | "payments" | "comped" | "activity";
+type Tab = "people" | "payments" | "comped" | "activity" | "settings";
 type PeopleFilter = "all" | "can_use" | "locked" | "trial" | "problems";
 type SortKey = "newest" | "name" | "ending";
 
@@ -836,7 +837,8 @@ export default function AdminPage() {
               { key: "payments", label: "Payments", count: payments.length },
               { key: "comped", label: "Free access list", count: compedEmails.length },
               { key: "activity", label: "Activity", count: actions.length },
-            ] as { key: Tab; label: string; count: number }[]
+              { key: "settings", label: "Settings" },
+            ] as { key: Tab; label: string; count?: number }[]
           ).map((t) => (
             <button
               key={t.key}
@@ -849,7 +851,7 @@ export default function AdminPage() {
               }`}
             >
               {t.label}
-              <span className="ml-1.5 text-[13px] text-text-muted">{t.count}</span>
+              {t.count !== undefined && <span className="ml-1.5 text-[13px] text-text-muted">{t.count}</span>}
             </button>
           ))}
         </nav>
@@ -1125,6 +1127,9 @@ export default function AdminPage() {
             </div>
           </section>
         )}
+
+        {/* Settings */}
+        {tab === "settings" && <TutorialsUrlSettings />}
 
         {/* Activity */}
         {tab === "activity" && (

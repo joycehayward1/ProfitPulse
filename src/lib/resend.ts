@@ -12,6 +12,22 @@ export function getResend(): Resend {
   return _resend;
 }
 
+type SendEmailOptions = Parameters<Resend["emails"]["send"]>[0];
+
+/**
+ * Send one email. The Resend SDK reports API failures (rate limit, unverified
+ * domain, bad recipient) in the returned `error` instead of throwing, so this
+ * throws on them: callers that catch can then count, log and retry correctly.
+ * Returns the Resend email id.
+ */
+export async function sendEmail(payload: SendEmailOptions): Promise<string | null> {
+  const result = await getResend().emails.send(payload);
+  if (result?.error) {
+    throw new Error(`Resend rejected the email (${result.error.name}): ${result.error.message}`);
+  }
+  return result?.data?.id ?? null;
+}
+
 export const FROM_EMAIL = "MyProfitPulse <hello@contact.myprofitpulse.app>";
 
 // Customer-facing inbox. Replies to any MyProfitPulse email route here.
