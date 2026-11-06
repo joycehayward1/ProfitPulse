@@ -13,7 +13,7 @@ import {
   type TourStatus,
   type TourStep,
 } from "@/lib/onboarding-tour";
-import { getTutorialsUrl } from "@/lib/tutorials";
+import { useTutorialsUrl } from "@/lib/tutorials-settings";
 
 interface UseProductTourArgs {
   userId: string | undefined;
@@ -38,10 +38,11 @@ export function useProductTour({ userId, hasRealData, dataLoaded }: UseProductTo
   const [state, setState] = useState<TourState | null>(null);
   const [introDone, setIntroDone] = useState(false);
 
+  const tutorialsUrl = useTutorialsUrl();
   const steps: TourStep[] = useMemo(() => {
-    if (!getTutorialsUrl()) return TOUR_STEPS;
+    if (!tutorialsUrl) return TOUR_STEPS;
     return TOUR_STEPS.map((s) => (s.id === "help" ? { ...s, body: TOUR_HELP_STEP_WITH_TUTORIALS } : s));
-  }, []);
+  }, [tutorialsUrl]);
 
   useEffect(() => {
     if (!userId) return;

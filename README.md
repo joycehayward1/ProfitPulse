@@ -170,7 +170,7 @@ Without `CRON_SECRET`, Vercel calls the cron routes without an `Authorization` h
 ### Help links
 
 ```env
-NEXT_PUBLIC_TUTORIALS_URL=...          # community tutorials page; the "Tutorials" nav link is hidden when unset
+NEXT_PUBLIC_TUTORIALS_URL=...          # optional fallback for the "Tutorials" nav link; admins change the address in Admin Panel > Settings, which wins over this
 ```
 
 Set at build time, so redeploy after changing it. See `docs/MVP_FOLLOWUP_NOV4.md` for the community login caveats, the weekly-summary activation steps and the GHL lifecycle setup.

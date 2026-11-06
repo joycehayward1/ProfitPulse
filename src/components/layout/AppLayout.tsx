@@ -13,7 +13,7 @@ import { DunningBanner } from "@/components/DunningBanner";
 import { PaywallScreen } from "@/components/PaywallScreen";
 import { BearOnboarding, hasCompletedOnboarding } from "@/components/BearOnboarding";
 import { getUserAccessLevel } from "@/lib/feature-gate";
-import { getTutorialsUrl } from "@/lib/tutorials";
+import { useTutorialsUrl } from "@/lib/tutorials-settings";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -154,7 +154,8 @@ export function AppLayout({ children, pulseMessage }: AppLayoutProps) {
     };
   }, [user?.id]);
 
-  const navSections = buildNavSections(getTutorialsUrl());
+  const tutorialsUrl = useTutorialsUrl();
+  const navSections = buildNavSections(tutorialsUrl);
   const visibleNavSections = isAdmin ? [...navSections, adminNavSection] : navSections;
 
   const userInitials = user?.name

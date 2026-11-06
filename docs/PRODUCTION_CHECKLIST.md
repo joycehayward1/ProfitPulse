@@ -125,7 +125,7 @@ below has a Production-scoped value and it is NOT pointing at sandbox:
 | `GHL_PURCHASE_WEBHOOK_URL` | Mastermind GHL inbound webhook (purchase) |
 | `GHL_TRIAL_UPDATE_WEBHOOK_URL` | Optional: GHL inbound webhook (trial started/extended) |
 | `GHL_CANCEL_WEBHOOK_URL` | Optional: GHL inbound webhook (cancellation) |
-| `NEXT_PUBLIC_TUTORIALS_URL` | Community tutorials page (Tutorials link hidden when unset) |
+| `NEXT_PUBLIC_TUTORIALS_URL` | Optional fallback for the Tutorials link. The address is edited in Admin Panel > Settings (needs migration 009); a saved address wins, then this, then the built-in community default |
 
 ## 9. Code audit
 

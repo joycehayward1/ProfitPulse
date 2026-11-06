@@ -11,25 +11,61 @@ schedules, GHL workflows or data. Values are never listed here, only names.
 
 A **Tutorials** item sits under **Glossary** in the Help section of the
 sidebar and the mobile menu. It opens the community tutorials page in a new
-tab.
+tab and is styled like the Glossary item.
+
+**Current address:**
+`https://community.fusion4business.net/courses/products/cf34560e-fbf3-4779-878f-e747bf2ed247`
+(built into the app as the default).
+
+### Changing it without a redeploy
+
+An admin (anyone in `ADMIN_EMAILS`) opens **Admin Panel, Settings tab, Tutorials
+link**, types the new address and clicks **Save**. People see it the next time
+they open or refresh the app. Each change is recorded in the Activity tab.
+
+- **Empty address:** save the box empty to hide the link.
+- **Invalid address:** only absolute `https://` (or `http://`) addresses are
+  accepted, with no username or password in them. Anything else is refused when
+  saving, and a stored value that isn't valid hides the link rather than
+  pointing somewhere broken or unsafe.
+- **Use the default:** removes the saved address, so the fallbacks below apply
+  again.
+- **Where it is stored:** the `app_settings` table (key `tutorials_url`). Anyone
+  can read that one key, since it is a public link. Only the admin route
+  `/api/admin/tutorials-url` can write it, and it checks `ADMIN_EMAILS` first.
+
+### Which address the app uses
+
+In this order:
+
+1. The address saved in the Admin Panel (an empty one hides the link).
+2. `NEXT_PUBLIC_TUTORIALS_URL`, if set. This is now **only a fallback** for when
+   nothing has been saved. It is compiled into the app, so changing it needs a
+   redeploy. It does not need to be set.
+3. The built-in default above.
 
 | Setting | Where | Notes |
 |---|---|---|
-| `NEXT_PUBLIC_TUTORIALS_URL` | Vercel env (Production, and Preview if wanted) | Full `https://` URL of the tutorials page in Joyce's GHL community. |
+| `NEXT_PUBLIC_TUTORIALS_URL` | Vercel env (optional) | Fallback only; an admin-saved address always wins. |
 
-- **Unset or invalid:** the link is hidden. Only absolute `http(s)` URLs are
-  accepted, so a typo can't produce a broken or unsafe link.
-- **Build time:** `NEXT_PUBLIC_*` values are compiled into the app, so
-  redeploy after setting or changing it.
-- **Pending:** the real URL. It isn't in the repo and nobody has guessed one.
+- **Until migration 009 is applied** (see below) the app can't read or store a
+  saved address. It uses steps 2 and 3, and saving in the Admin Panel shows an
+  error that names the migration.
+- **The link appears after a moment on each fresh page load**, once the saved
+  setting has been read, so a link an admin removed never flashes up first.
+
+**Pending: migration `src/lib/migrations/009_app_settings.sql`** (not yet
+applied to production). It creates the `app_settings` table. Apply it before
+the Settings tab can save anything.
+
 - **Login and redirects:** the community is a separate GHL site with its own
   login. Someone who isn't signed in there will likely see the community login
   page first. Whether they land back on the tutorials page afterwards depends
   on GHL, and some GHL sign-in flows drop the original page and go to the
   community home instead. Test with a member account that is signed out of
-  the community. If it doesn't return them, point the setting at the page
-  that does work after login (or the community home), and mention the extra
-  click in the welcome email.
+  the community. If it doesn't return them, change the address in the Admin
+  Panel to the page that does work after login (or the community home), and
+  mention the extra click in the welcome email.
 
 ## 2. New-user tour and example dashboard
 

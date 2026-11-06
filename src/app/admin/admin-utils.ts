@@ -101,6 +101,10 @@ export function describeAction(a: AdminAction): string {
       return `${d.outcome === "voided" ? "Voided" : "Refunded"} a ${formatMoney(Number(d.amount))} payment`;
     case "send_update_card_link":
       return "Emailed them a link to update their card";
+    case "tutorials_url_update":
+      return d.url ? `Changed the Tutorials link to ${d.url}` : "Hid the Tutorials link";
+    case "tutorials_url_reset":
+      return "Reset the Tutorials link to the default";
     default:
       return a.action;
   }
